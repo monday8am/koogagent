@@ -12,6 +12,8 @@ kotlin {
 }
 
 dependencies {
-    implementation(libs.koog.agents)
+    implementation(libs.koog.agents) {
+        exclude(group = "io.modelcontextprotocol", module = "kotlin-sdk-core-jvm")
+    }
     testImplementation(kotlin("test"))
 }

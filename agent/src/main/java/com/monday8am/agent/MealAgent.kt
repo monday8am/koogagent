@@ -15,7 +15,7 @@ class MealAgent(
     private val language: String
 ) {
 
-    private val client = OllamaClient()
+    private val client = OllamaClient(baseUrl = "http://10.0.2.2:11434")
     private var agent: AIAgent<String, String>? = null
 
     private val systemPrompt = PromptTemplate.Builder(
@@ -38,11 +38,16 @@ class MealAgent(
                 "meal" to meal,
             )
         )
-        return getAIAgent(systemPrompt = systemPrompt).run(
-            agentInput = userPrompt.fill(
-                values = mapOf("language" to language)
+        return try {
+            getAIAgent(systemPrompt = systemPrompt).run(
+                agentInput = userPrompt.fill(
+                    values = mapOf("language" to language)
+                )
             )
-        )
+        } catch (e: Exception) {
+            println(e)
+            "Error generating message"
+        }
     }
 
     private suspend fun getAIAgent(systemPrompt: String): AIAgent<String, String> {
@@ -63,6 +68,9 @@ class MealAgent(
                         }
                         onAgentFinished { eventContext ->
                             println("Agent finished with result: ${eventContext.result}")
+                        }
+                        onAgentRunError { errorContext ->
+                            println("Agent error with result: ${errorContext.throwable}")
                         }
                     }
                 }

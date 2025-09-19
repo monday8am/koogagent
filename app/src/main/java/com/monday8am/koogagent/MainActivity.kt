@@ -18,7 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.monday8am.agent.MealAgent
-import com.monday8am.koogagent.ui.NotificationPayload
+import com.monday8am.koogagent.ui.NotificationUtils
 import com.monday8am.koogagent.ui.NotificationViewModel
 import com.monday8am.koogagent.ui.theme.KoogAgentTheme
 import kotlinx.coroutines.launch
@@ -27,20 +27,17 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        NotificationUtils.createChannel(this)
+        NotificationUtils.requestNotificationPermission(this)
+
         setContent {
             val viewModel: NotificationViewModel by viewModels()
 
             KoogAgentTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     MainScreen(
-                        onClickButton = {
-                            viewModel.processAndShowNotification(
-                                payload = NotificationPayload(
-                                    title = "Test title",
-                                    message = "Test message"
-                                )
-                            )
-                        },
+                        onClickButton = { viewModel.processAndShowNotification() },
                         modifier = Modifier.padding(innerPadding)
                     )
                 }
