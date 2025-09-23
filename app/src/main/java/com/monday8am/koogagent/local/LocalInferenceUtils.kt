@@ -6,14 +6,16 @@ import com.google.common.util.concurrent.ListenableFuture
 import com.google.mediapipe.tasks.genai.llminference.LlmInference
 import com.google.mediapipe.tasks.genai.llminference.LlmInferenceSession
 import com.monday8am.agent.LocalLLModel
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
-import kotlinx.coroutines.suspendCancellableCoroutine
 
-data class LlmModelInstance(val engine: LlmInference, var session: LlmInferenceSession)
+data class LlmModelInstance(
+    val engine: LlmInference,
+    var session: LlmInferenceSession,
+)
 
 object LocalInferenceUtils {
-
     private val TAG = LocalInferenceUtils::class.java.simpleName
 
     fun initialize(
@@ -24,7 +26,8 @@ object LocalInferenceUtils {
 
         val preferredBackend = if (model.isGPUAccelerated) LlmInference.Backend.GPU else LlmInference.Backend.CPU
         val options =
-            LlmInference.LlmInferenceOptions.builder()
+            LlmInference.LlmInferenceOptions
+                .builder()
                 .setModelPath(model.path)
                 .setMaxTokens(model.maxToken)
                 .setPreferredBackend(preferredBackend)
@@ -36,7 +39,8 @@ object LocalInferenceUtils {
             val session =
                 LlmInferenceSession.createFromOptions(
                     llmInference,
-                    LlmInferenceSession.LlmInferenceSessionOptions.builder()
+                    LlmInferenceSession.LlmInferenceSessionOptions
+                        .builder()
                         .setTopK(model.topK)
                         .setTopP(model.topP)
                         .setTemperature(model.temperature)
@@ -48,7 +52,10 @@ object LocalInferenceUtils {
         }
     }
 
-    suspend fun prompt(instance: LlmModelInstance, prompt: String): Result<String> {
+    suspend fun prompt(
+        instance: LlmModelInstance,
+        prompt: String,
+    ): Result<String> {
         val session = instance.session
         return try {
             if (prompt.trim().isNotEmpty()) {
@@ -85,20 +92,22 @@ object LocalInferenceUtils {
     }
 }
 
-private suspend fun <T> ListenableFuture<T>.await(): T = suspendCancellableCoroutine { cont ->
-    // Propagate coroutine cancellation to the future
-    cont.invokeOnCancellation {
-        this.cancel(true)
+private suspend fun <T> ListenableFuture<T>.await(): T =
+    suspendCancellableCoroutine { cont ->
+        // Propagate coroutine cancellation to the future
+        cont.invokeOnCancellation {
+            this.cancel(true)
+        }
+        this.addListener(
+            {
+                try {
+                    cont.resume(this.get())
+                } catch (e: Exception) {
+                    cont.resumeWithException(e)
+                }
+            },
+            // Use direct executor to avoid thread pool overhead
+            com.google.common.util.concurrent.MoreExecutors
+                .directExecutor(),
+        )
     }
-    this.addListener(
-        {
-            try {
-                cont.resume(this.get())
-            } catch (e: Exception) {
-                cont.resumeWithException(e)
-            }
-        },
-        // Use direct executor to avoid thread pool overhead
-        com.google.common.util.concurrent.MoreExecutors.directExecutor()
-    )
-}

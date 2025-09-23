@@ -36,7 +36,7 @@ class MainActivity : ComponentActivity() {
                     MainScreen(
                         onClickAIButton = { viewModel.prompt() },
                         onClickNotificationButton = { viewModel.processAndShowNotification() },
-                        modifier = Modifier.padding(innerPadding)
+                        modifier = Modifier.padding(innerPadding),
                     )
                 }
             }
@@ -48,13 +48,13 @@ class MainActivity : ComponentActivity() {
 fun MainScreen(
     onClickAIButton: () -> Unit,
     onClickNotificationButton: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Column(
         verticalArrangement = Arrangement.SpaceEvenly,
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = modifier.fillMaxSize()
-    )  {
+        modifier = modifier.fillMaxSize(),
+    ) {
         Button(onClick = onClickAIButton) {
             Text("Generate Meal Message")
         }
@@ -73,7 +73,7 @@ fun MainScreenPreview() {
     KoogAgentTheme {
         MainScreen(
             onClickAIButton = { },
-            onClickNotificationButton = { }
+            onClickNotificationButton = { },
         )
     }
 }

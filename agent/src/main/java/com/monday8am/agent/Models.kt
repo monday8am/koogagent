@@ -6,7 +6,9 @@ const val DEFAULT_TOPP = 0.9f
 const val DEFAULT_TEMPERATURE = 0.5f
 
 enum class MealType { BREAKFAST, LUNCH, DINNER, SNACK, WATER }
+
 enum class MotivationLevel { LOW, MEDIUM, HIGH }
+
 enum class WeatherCondition { SUNNY, CLOUDY, RAINY, HOT, COLD }
 
 data class NotificationContext(
@@ -15,7 +17,7 @@ data class NotificationContext(
     val weather: WeatherCondition,
     val alreadyLogged: Boolean,
     val userLocale: String = "en-US",
-    val country: String = "ES"
+    val country: String = "ES",
 )
 
 data class NotificationResult(
@@ -23,7 +25,7 @@ data class NotificationResult(
     val body: String,
     val language: String,
     val confidence: Double,
-    val isFallback: Boolean = false
+    val isFallback: Boolean = false,
 )
 
 data class LocalLLModel(

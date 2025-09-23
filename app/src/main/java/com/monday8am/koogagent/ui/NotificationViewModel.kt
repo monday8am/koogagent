@@ -11,26 +11,29 @@ import com.monday8am.agent.NotificationGenerator
 import com.monday8am.agent.NotificationResult
 import com.monday8am.agent.OllamaAgent
 import com.monday8am.agent.WeatherCondition
-import com.monday8am.koogagent.local.LocalInferenceUtils
 import com.monday8am.koogagent.local.LlmModelInstance
+import com.monday8am.koogagent.local.LocalInferenceUtils
 import kotlinx.coroutines.launch
 
-val notificationContext = NotificationContext(
-    mealType = MealType.WATER,
-    motivationLevel = MotivationLevel.HIGH,
-    weather = WeatherCondition.SUNNY,
-    alreadyLogged = true,
-    userLocale = "en-US",
-    country = "ES",
-)
-
-class NotificationViewModel(application: Application) : AndroidViewModel(application) {
-
-    private val instance: LlmModelInstance?
-    private val localModel = LocalLLModel(
-        path = "",
-        temperature = 0.8f,
+val notificationContext =
+    NotificationContext(
+        mealType = MealType.WATER,
+        motivationLevel = MotivationLevel.HIGH,
+        weather = WeatherCondition.SUNNY,
+        alreadyLogged = true,
+        userLocale = "en-US",
+        country = "ES",
     )
+
+class NotificationViewModel(
+    application: Application,
+) : AndroidViewModel(application) {
+    private val instance: LlmModelInstance?
+    private val localModel =
+        LocalLLModel(
+            path = "",
+            temperature = 0.8f,
+        )
 
     init {
         instance = LocalInferenceUtils.initialize(context = application.applicationContext, model = localModel).getOrNull()
@@ -45,9 +48,10 @@ class NotificationViewModel(application: Application) : AndroidViewModel(applica
 
     fun prompt() {
         viewModelScope.launch {
-            val message = NotificationGenerator(
-                agent = OllamaAgent()
-            ).generate(notificationContext)
+            val message =
+                NotificationGenerator(
+                    agent = OllamaAgent(),
+                ).generate(notificationContext)
             println(message)
         }
     }
@@ -69,5 +73,4 @@ class NotificationViewModel(application: Application) : AndroidViewModel(applica
             isFallback = false,
         )
     }
-
 }
