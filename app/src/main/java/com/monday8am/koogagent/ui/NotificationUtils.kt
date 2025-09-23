@@ -9,7 +9,7 @@ import android.os.Build
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
-import com.monday8am.mcpserver.NotificationResult
+import com.monday8am.agent.NotificationResult
 
 object NotificationUtils {
     private const val CHANNEL_ID = "meal_reminder"

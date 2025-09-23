@@ -8,41 +8,19 @@ import ai.koog.prompt.executor.llms.all.simpleOllamaAIExecutor
 import ai.koog.prompt.executor.ollama.client.OllamaClient
 import ai.koog.prompt.executor.ollama.client.toLLModel
 
-class MealAgent(
-    private val country: String,
-    private val season: String,
-    private val meal: String,
-    private val language: String
-) {
+interface NotificationAgent {
+    suspend fun generateMessage(systemPrompt: String, userPrompt: String): String
+}
+
+class OllamaAgent: NotificationAgent {
 
     private val client = OllamaClient(baseUrl = "http://10.0.2.2:11434")
     private var agent: AIAgent<String, String>? = null
 
-    private val systemPrompt = PromptTemplate.Builder(
-        template = """
-                You're a motivational nutrition assistant.
-                The user is in {{country}}, it's {{season}}.
-                They haven't logged their {{meal}} yet.
-                """.trimIndent()
-    ).build()
-
-    private val userPrompt = PromptTemplate.Builder(
-        template = "Suggest a local dish or drink and encourage them in {{language}}."
-    ).build()
-
-    suspend fun generateMessage(): String {
-        val systemPrompt = systemPrompt.fill(
-            mapOf(
-                "country" to country,
-                "season" to season,
-                "meal" to meal,
-            )
-        )
+    override suspend fun generateMessage(systemPrompt: String, userPrompt: String): String {
         return try {
             getAIAgent(systemPrompt = systemPrompt).run(
-                agentInput = userPrompt.fill(
-                    values = mapOf("language" to language)
-                )
+                agentInput = userPrompt
             )
         } catch (e: Exception) {
             println(e)

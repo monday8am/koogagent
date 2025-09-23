@@ -10,6 +10,8 @@ activityCompose = "1.11.0"
 composeBom = "2025.09.00"
 jetbrainsKotlinJvm = "2.2.20"
 koog = "0.4.2"
+mediapipeTasksText = "0.20230731"
+mediapipeTasksGenai = "0.10.27"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -27,6 +29,8 @@ androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-
 androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
 koog-agents = { group = "ai.koog", name = "koog-agents", version.ref = "koog" }
+mediapipe-tasks-text = { group = "com.google.mediapipe", name = "tasks-text", version.ref = "mediapipeTasksText" }
+mediapipe-tasks-genai = { group = "com.google.mediapipe", name = "tasks-genai", version.ref = "mediapipeTasksGenai" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

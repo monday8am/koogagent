@@ -17,10 +17,15 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import com.monday8am.agent.MealAgent
+import com.monday8am.agent.NotificationGenerator
+import com.monday8am.agent.OllamaAgent
 import com.monday8am.koogagent.ui.NotificationUtils
 import com.monday8am.koogagent.ui.NotificationViewModel
 import com.monday8am.koogagent.ui.theme.KoogAgentTheme
+import com.monday8am.agent.MealType
+import com.monday8am.agent.MotivationLevel
+import com.monday8am.agent.NotificationContext
+import com.monday8am.agent.WeatherCondition
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -60,13 +65,19 @@ fun MainScreen(
     )  {
         Button(onClick = {
             scope.launch {
-                val agent = MealAgent(
-                    country = "Spain",
-                    language = "es",
-                    meal = "snack",
-                    season = "summer"
+                val message = NotificationGenerator(
+                    agent = OllamaAgent()
+                ).generate(
+                    NotificationContext(
+                        mealType = MealType.WATER,
+                        motivationLevel = MotivationLevel.HIGH,
+                        weather = WeatherCondition.SUNNY,
+                        alreadyLogged = true,
+                        userLocale = "en-US",
+                        country = "ES",
+                    )
                 )
-                agent.generateMessage()
+                println(message)
             }
         }) {
             Text("Generate Meal Message")
