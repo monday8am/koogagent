@@ -26,7 +26,11 @@ data class NotificationResult(
     val language: String,
     val confidence: Double,
     val isFallback: Boolean = false,
-)
+    val errorMessage: String? = null,
+) {
+    val formatted: String
+        get() = "$title\n$body\n$language\n$confidence"
+}
 
 data class LocalLLModel(
     val path: String,

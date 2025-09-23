@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Arrangement.Absolute.spacedBy
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -13,9 +14,13 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.monday8am.koogagent.ui.NotificationUtils
 import com.monday8am.koogagent.ui.NotificationViewModel
 import com.monday8am.koogagent.ui.theme.KoogAgentTheme
@@ -30,10 +35,12 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val viewModel: NotificationViewModel by viewModels()
+            val state by viewModel.uiState.collectAsStateWithLifecycle()
 
             KoogAgentTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     MainScreen(
+                        log = state,
                         onClickAIButton = { viewModel.prompt() },
                         onClickNotificationButton = { viewModel.processAndShowNotification() },
                         modifier = Modifier.padding(innerPadding),
@@ -46,14 +53,15 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun MainScreen(
+    log: String,
     onClickAIButton: () -> Unit,
     onClickNotificationButton: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
-        verticalArrangement = Arrangement.SpaceEvenly,
+        verticalArrangement = spacedBy(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize().padding(16.dp),
     ) {
         Button(onClick = onClickAIButton) {
             Text("Generate Meal Message")
@@ -64,6 +72,8 @@ fun MainScreen(
                 text = "Trigger Notification",
             )
         }
+
+        Text(log, textAlign = TextAlign.Center)
     }
 }
 
@@ -72,6 +82,7 @@ fun MainScreen(
 fun MainScreenPreview() {
     KoogAgentTheme {
         MainScreen(
+            log = "Welcome to KoogAgent!",
             onClickAIButton = { },
             onClickNotificationButton = { },
         )

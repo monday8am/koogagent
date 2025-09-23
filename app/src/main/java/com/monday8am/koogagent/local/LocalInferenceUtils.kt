@@ -56,7 +56,9 @@ object LocalInferenceUtils {
         instance: LlmModelInstance,
         prompt: String,
     ): Result<String> {
+        Log.d(TAG, "Prompting: $prompt")
         val session = instance.session
+
         return try {
             if (prompt.trim().isNotEmpty()) {
                 session.addQueryChunk(prompt)
