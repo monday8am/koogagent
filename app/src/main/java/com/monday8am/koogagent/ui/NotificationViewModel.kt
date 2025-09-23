@@ -4,10 +4,25 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.monday8am.agent.LocalLLModel
+import com.monday8am.agent.MealType
+import com.monday8am.agent.MotivationLevel
+import com.monday8am.agent.NotificationContext
+import com.monday8am.agent.NotificationGenerator
 import com.monday8am.agent.NotificationResult
+import com.monday8am.agent.OllamaAgent
+import com.monday8am.agent.WeatherCondition
 import com.monday8am.koogagent.local.LocalInferenceUtils
 import com.monday8am.koogagent.local.LlmModelInstance
 import kotlinx.coroutines.launch
+
+val notificationContext = NotificationContext(
+    mealType = MealType.WATER,
+    motivationLevel = MotivationLevel.HIGH,
+    weather = WeatherCondition.SUNNY,
+    alreadyLogged = true,
+    userLocale = "en-US",
+    country = "ES",
+)
 
 class NotificationViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -28,8 +43,12 @@ class NotificationViewModel(application: Application) : AndroidViewModel(applica
         }
     }
 
-    fun prompt(message: String) {
+    fun prompt() {
         viewModelScope.launch {
+            val message = NotificationGenerator(
+                agent = OllamaAgent()
+            ).generate(notificationContext)
+            println(message)
         }
     }
 

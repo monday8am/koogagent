@@ -13,20 +13,12 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import com.monday8am.agent.NotificationGenerator
-import com.monday8am.agent.OllamaAgent
 import com.monday8am.koogagent.ui.NotificationUtils
 import com.monday8am.koogagent.ui.NotificationViewModel
 import com.monday8am.koogagent.ui.theme.KoogAgentTheme
-import com.monday8am.agent.MealType
-import com.monday8am.agent.MotivationLevel
-import com.monday8am.agent.NotificationContext
-import com.monday8am.agent.WeatherCondition
-import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -42,7 +34,8 @@ class MainActivity : ComponentActivity() {
             KoogAgentTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     MainScreen(
-                        onClickButton = { viewModel.processAndShowNotification() },
+                        onClickAIButton = { viewModel.prompt() },
+                        onClickNotificationButton = { viewModel.processAndShowNotification() },
                         modifier = Modifier.padding(innerPadding)
                     )
                 }
@@ -53,39 +46,20 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun MainScreen(
-    onClickButton: () -> Unit,
+    onClickAIButton: () -> Unit,
+    onClickNotificationButton: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val scope = rememberCoroutineScope()
-
     Column(
         verticalArrangement = Arrangement.SpaceEvenly,
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier.fillMaxSize()
     )  {
-        Button(onClick = {
-            scope.launch {
-                val message = NotificationGenerator(
-                    agent = OllamaAgent()
-                ).generate(
-                    NotificationContext(
-                        mealType = MealType.WATER,
-                        motivationLevel = MotivationLevel.HIGH,
-                        weather = WeatherCondition.SUNNY,
-                        alreadyLogged = true,
-                        userLocale = "en-US",
-                        country = "ES",
-                    )
-                )
-                println(message)
-            }
-        }) {
+        Button(onClick = onClickAIButton) {
             Text("Generate Meal Message")
         }
 
-        Button(
-            onClick = onClickButton,
-        ) {
+        Button(onClick = onClickNotificationButton) {
             Text(
                 text = "Trigger Notification",
             )
@@ -98,7 +72,8 @@ fun MainScreen(
 fun MainScreenPreview() {
     KoogAgentTheme {
         MainScreen(
-            onClickButton = { }
+            onClickAIButton = { },
+            onClickNotificationButton = { }
         )
     }
 }
