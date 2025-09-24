@@ -18,7 +18,10 @@ data class NotificationContext(
     val alreadyLogged: Boolean,
     val userLocale: String = "en-US",
     val country: String = "ES",
-)
+) {
+    val formatted: String
+        get() = "MealType: $mealType\nMotivationLevel: $motivationLevel\nWeather: $weather\nAlreadyLogged: $alreadyLogged"
+}
 
 data class NotificationResult(
     val title: String,

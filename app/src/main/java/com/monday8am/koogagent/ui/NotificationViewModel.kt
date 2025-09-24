@@ -8,7 +8,6 @@ import com.monday8am.agent.MealType
 import com.monday8am.agent.MotivationLevel
 import com.monday8am.agent.NotificationContext
 import com.monday8am.agent.NotificationGenerator
-import com.monday8am.agent.NotificationResult
 import com.monday8am.agent.WeatherCondition
 import com.monday8am.koogagent.local.GemmaAgent
 import com.monday8am.koogagent.local.LlmModelInstance
@@ -17,6 +16,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.io.File
 
 val notificationContext =
     NotificationContext(
@@ -28,32 +28,49 @@ val notificationContext =
         country = "ES",
     )
 
-private const val GemmaModelPath = "/data/local/tmp/slm/gemma3-1b-it-int4.litertlm"
+private const val GemmaModelName = "gemma3-1b-it-int4.litertlm"
+private const val GemmaModelFile = "/data/local/tmp/slm/$GemmaModelName"
 
 class NotificationViewModel(
     application: Application,
 ) : AndroidViewModel(application) {
-
     private val _uiState = MutableStateFlow("Initializing!")
     val uiState = _uiState.asStateFlow()
 
     private var instance: LlmModelInstance? = null
     private val localModel =
         LocalLLModel(
-            path = GemmaModelPath,
+            path = GemmaModelFile,
             temperature = 0.8f,
         )
 
     init {
         viewModelScope.launch {
-            LocalInferenceUtils.initialize(context = application.applicationContext, model = localModel)
+            LocalInferenceUtils
+                .initialize(context = application.applicationContext, model = localModel)
                 .onSuccess { result ->
                     instance = result
-                    _uiState.update { "Welcome to the KoogAgent!\nInitialized with model Gemma" }
+                    _uiState.update { "Welcome to Yazio notificator :)\nInitialized with model $GemmaModelName" }
+                }.onFailure { error ->
+                    _uiState.update { "Failed to initialize model:\n${error.message}" }
                 }
-                .onFailure { error ->
-                    _uiState.update { "Failed to initialize model: ${error.message}" }
+        }
+    }
+
+    fun processAndShowNotification() {
+        _uiState.update { "Prompting with context:\n ${notificationContext.formatted}" }
+        instance?.let { instance ->
+            viewModelScope.launch {
+                val processedPayload = doExtraProcessing(instance = instance, context = notificationContext)
+                with(processedPayload) {
+                    if (isFallback) {
+                        _uiState.update { "Failed with error: ${errorMessage}\nFallback message:\n $formatted" }
+                    } else {
+                        _uiState.update { "Notification:\n $formatted" }
+                        NotificationUtils.showNotification(getApplication(), this)
+                    }
                 }
+            }
         }
     }
 
@@ -64,39 +81,10 @@ class NotificationViewModel(
         }
     }
 
-    fun prompt() {
-        _uiState.update { "Context: $notificationContext" }
-        instance?.let { instance ->
-            viewModelScope.launch {
-                val message =
-                    NotificationGenerator(
-                        agent = GemmaAgent(instance = instance),
-                    ).generate(notificationContext)
-
-                if (message.isFallback) {
-                    _uiState.update { "Failed with error: ${message.errorMessage}\nFallback message:\n ${message.formatted}" }
-                } else {
-                    _uiState.update { "Notification:\n ${message.formatted}" }
-                }
-            }
-        }
-    }
-
-    fun processAndShowNotification() {
-        viewModelScope.launch {
-            val processedPayload = doExtraProcessing()
-            NotificationUtils.showNotification(getApplication(), processedPayload)
-        }
-    }
-
-    private fun doExtraProcessing(): NotificationResult {
-        // Example: Add a prefix to the message
-        return NotificationResult(
-            title = "Processed",
-            body = "This is a processed notification message",
-            language = "en",
-            confidence = 0.9,
-            isFallback = false,
-        )
-    }
+    private suspend fun doExtraProcessing(
+        instance: LlmModelInstance,
+        context: NotificationContext,
+    ) = NotificationGenerator(
+        agent = GemmaAgent(instance = instance),
+    ).generate(context)
 }
