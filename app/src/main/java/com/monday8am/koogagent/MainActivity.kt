@@ -5,7 +5,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Arrangement.Absolute.spacedBy
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -42,8 +41,8 @@ class MainActivity : ComponentActivity() {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     MainScreen(
                         log = state,
-                        onClickAIButton = { viewModel.prompt() },
-                        onClickNotificationButton = { viewModel.processAndShowNotification() },
+                        onClickDownload = { },
+                        onClickNotification = { viewModel.processAndShowNotification() },
                         modifier = Modifier.padding(innerPadding),
                     )
                 }
@@ -55,8 +54,8 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainScreen(
     log: String,
-    onClickAIButton: () -> Unit,
-    onClickNotificationButton: () -> Unit,
+    onClickDownload: () -> Unit,
+    onClickNotification: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -64,17 +63,17 @@ fun MainScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier.fillMaxSize().padding(16.dp),
     ) {
-        Button(onClick = onClickAIButton) {
-            Text("Generate Meal Message")
+        Button(onClick = onClickDownload) {
+            Text("Download Gemma model")
         }
 
-        Button(onClick = onClickNotificationButton) {
+        Button(onClick = onClickNotification) {
             Text(
                 text = "Trigger Notification",
             )
         }
 
-        Text( text = log, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+        Text(text = log, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
     }
 }
 
@@ -84,8 +83,8 @@ fun MainScreenPreview() {
     KoogAgentTheme {
         MainScreen(
             log = "Welcome to KoogAgent!",
-            onClickAIButton = { },
-            onClickNotificationButton = { },
+            onClickDownload = { },
+            onClickNotification = { },
         )
     }
 }

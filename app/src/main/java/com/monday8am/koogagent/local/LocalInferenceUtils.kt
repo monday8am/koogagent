@@ -1,7 +1,6 @@
 package com.monday8am.koogagent.local
 
 import android.content.Context
-import android.util.Log
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.mediapipe.tasks.genai.llminference.LlmInference
 import com.google.mediapipe.tasks.genai.llminference.LlmInferenceSession
@@ -18,57 +17,54 @@ data class LlmModelInstance(
 )
 
 object LocalInferenceUtils {
-    private val TAG = LocalInferenceUtils::class.java.simpleName
-
     suspend fun initialize(
         context: Context,
         model: LocalLLModel,
-    ): Result<LlmModelInstance> = withContext(Dispatchers.IO) {
-        Log.d(TAG, "Initializing...")
+    ): Result<LlmModelInstance> =
+        withContext(Dispatchers.IO) {
+            val preferredBackend = if (model.isGPUAccelerated) LlmInference.Backend.GPU else LlmInference.Backend.CPU
+            val options =
+                LlmInference.LlmInferenceOptions
+                    .builder()
+                    .setModelPath(model.path)
+                    .setMaxTokens(model.maxToken)
+                    .setPreferredBackend(preferredBackend)
+                    .build()
 
-        val preferredBackend = if (model.isGPUAccelerated) LlmInference.Backend.GPU else LlmInference.Backend.CPU
-        val options =
-            LlmInference.LlmInferenceOptions
-                .builder()
-                .setModelPath(model.path)
-                .setMaxTokens(model.maxToken)
-                .setPreferredBackend(preferredBackend)
-                .build()
-
-        // Create an instance of the LLM Inference task and session.
-        return@withContext try {
-            val llmInference = LlmInference.createFromOptions(context, options)
-            val session =
-                LlmInferenceSession.createFromOptions(
-                    llmInference,
-                    LlmInferenceSession.LlmInferenceSessionOptions
-                        .builder()
-                        .setTopK(model.topK)
-                        .setTopP(model.topP)
-                        .setTemperature(model.temperature)
-                        .build(),
-                )
-            Result.success(LlmModelInstance(engine = llmInference, session = session))
-        } catch (e: Exception) {
-            Result.failure(e)
+            // Create an instance of the LLM Inference task and session.
+            try {
+                val llmInference = LlmInference.createFromOptions(context, options)
+                val session =
+                    LlmInferenceSession.createFromOptions(
+                        llmInference,
+                        LlmInferenceSession.LlmInferenceSessionOptions
+                            .builder()
+                            .setTopK(model.topK)
+                            .setTopP(model.topP)
+                            .setTemperature(model.temperature)
+                            .build(),
+                    )
+                Result.success(LlmModelInstance(engine = llmInference, session = session))
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
         }
-    }
 
     suspend fun prompt(
         instance: LlmModelInstance,
         prompt: String,
-    ): Result<String> {
-        Log.d(TAG, "Prompting...")
-        val session = instance.session
-        return try {
-            if (prompt.trim().isNotEmpty()) {
-                session.addQueryChunk(prompt)
+    ): Result<String> =
+        withContext(Dispatchers.IO) {
+            val session = instance.session
+            try {
+                if (prompt.trim().isNotEmpty()) {
+                    session.addQueryChunk(prompt)
+                }
+                Result.success(session.generateResponseAsync().await())
+            } catch (e: Exception) {
+                Result.failure(e)
             }
-            Result.success(session.generateResponseAsync().await())
-        } catch (e: Exception) {
-            Result.failure(e)
         }
-    }
 
     fun close(instance: LlmModelInstance): Result<Unit> {
         try {
@@ -84,14 +80,6 @@ object LocalInferenceUtils {
         }
 
         return Result.success(Unit)
-    }
-
-    private fun String.cleanUpMediapipeTaskErrorMessage(): String {
-        val index = this.indexOf("=== Source Location Trace")
-        if (index >= 0) {
-            return this.substring(0, index)
-        }
-        return this
     }
 }
 
