@@ -6,27 +6,25 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Arrangement.Absolute.spacedBy
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
-import com.monday8am.agent.NotificationGenerator
-import com.monday8am.agent.OllamaAgent
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.monday8am.koogagent.ui.NotificationUtils
 import com.monday8am.koogagent.ui.NotificationViewModel
 import com.monday8am.koogagent.ui.theme.KoogAgentTheme
-import com.monday8am.agent.MealType
-import com.monday8am.agent.MotivationLevel
-import com.monday8am.agent.NotificationContext
-import com.monday8am.agent.WeatherCondition
-import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -38,12 +36,15 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val viewModel: NotificationViewModel by viewModels()
+            val state by viewModel.uiState.collectAsStateWithLifecycle()
 
             KoogAgentTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     MainScreen(
-                        onClickButton = { viewModel.processAndShowNotification() },
-                        modifier = Modifier.padding(innerPadding)
+                        log = state,
+                        onClickAIButton = { viewModel.prompt() },
+                        onClickNotificationButton = { viewModel.processAndShowNotification() },
+                        modifier = Modifier.padding(innerPadding),
                     )
                 }
             }
@@ -53,43 +54,27 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun MainScreen(
-    onClickButton: () -> Unit,
-    modifier: Modifier = Modifier
+    log: String,
+    onClickAIButton: () -> Unit,
+    onClickNotificationButton: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    val scope = rememberCoroutineScope()
-
     Column(
-        verticalArrangement = Arrangement.SpaceEvenly,
+        verticalArrangement = spacedBy(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = modifier.fillMaxSize()
-    )  {
-        Button(onClick = {
-            scope.launch {
-                val message = NotificationGenerator(
-                    agent = OllamaAgent()
-                ).generate(
-                    NotificationContext(
-                        mealType = MealType.WATER,
-                        motivationLevel = MotivationLevel.HIGH,
-                        weather = WeatherCondition.SUNNY,
-                        alreadyLogged = true,
-                        userLocale = "en-US",
-                        country = "ES",
-                    )
-                )
-                println(message)
-            }
-        }) {
+        modifier = modifier.fillMaxSize().padding(16.dp),
+    ) {
+        Button(onClick = onClickAIButton) {
             Text("Generate Meal Message")
         }
 
-        Button(
-            onClick = onClickButton,
-        ) {
+        Button(onClick = onClickNotificationButton) {
             Text(
                 text = "Trigger Notification",
             )
         }
+
+        Text( text = log, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
     }
 }
 
@@ -98,7 +83,9 @@ fun MainScreen(
 fun MainScreenPreview() {
     KoogAgentTheme {
         MainScreen(
-            onClickButton = { }
+            log = "Welcome to KoogAgent!",
+            onClickAIButton = { },
+            onClickNotificationButton = { },
         )
     }
 }

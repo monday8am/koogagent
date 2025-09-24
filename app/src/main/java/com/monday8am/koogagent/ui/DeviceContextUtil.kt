@@ -5,7 +5,7 @@ import java.util.Locale
 
 data class DeviceContext(
     val country: String,
-    val language: String
+    val language: String,
 )
 
 object DeviceContextUtil {

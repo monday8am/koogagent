@@ -57,7 +57,9 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
 
-    implementation(libs.koog.agents)
+    implementation(libs.koog.agents) {
+        exclude(group = "io.modelcontextprotocol", module = "kotlin-sdk-core-jvm")
+    }
     implementation(libs.mediapipe.tasks.text)
     implementation(libs.mediapipe.tasks.genai)
 
