@@ -8,6 +8,7 @@ import com.monday8am.agent.LocalLLModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import java.io.File
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
@@ -22,6 +23,10 @@ object LocalInferenceUtils {
         model: LocalLLModel,
     ): Result<LlmModelInstance> =
         withContext(Dispatchers.IO) {
+            if (!File(model.path).exists()) {
+                return@withContext Result.failure(Exception("Model file not found"))
+            }
+
             val preferredBackend = if (model.isGPUAccelerated) LlmInference.Backend.GPU else LlmInference.Backend.CPU
             val options =
                 LlmInference.LlmInferenceOptions

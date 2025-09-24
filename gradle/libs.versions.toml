@@ -11,7 +11,7 @@ composeBom = "2025.09.00"
 jetbrainsKotlinJvm = "2.2.20"
 koog = "0.4.2"
 mediapipeTasksText = "0.20230731"
-mediapipeTasksGenai = "0.10.27"
+mediapipeTasksGenai = "0.10.29"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
