@@ -6,7 +6,9 @@ import com.google.common.util.concurrent.ListenableFuture
 import com.google.mediapipe.tasks.genai.llminference.LlmInference
 import com.google.mediapipe.tasks.genai.llminference.LlmInferenceSession
 import com.monday8am.agent.LocalLLModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
@@ -18,10 +20,10 @@ data class LlmModelInstance(
 object LocalInferenceUtils {
     private val TAG = LocalInferenceUtils::class.java.simpleName
 
-    fun initialize(
+    suspend fun initialize(
         context: Context,
         model: LocalLLModel,
-    ): Result<LlmModelInstance> {
+    ): Result<LlmModelInstance> = withContext(Dispatchers.IO) {
         Log.d(TAG, "Initializing...")
 
         val preferredBackend = if (model.isGPUAccelerated) LlmInference.Backend.GPU else LlmInference.Backend.CPU
@@ -34,7 +36,7 @@ object LocalInferenceUtils {
                 .build()
 
         // Create an instance of the LLM Inference task and session.
-        return try {
+        return@withContext try {
             val llmInference = LlmInference.createFromOptions(context, options)
             val session =
                 LlmInferenceSession.createFromOptions(
@@ -56,9 +58,8 @@ object LocalInferenceUtils {
         instance: LlmModelInstance,
         prompt: String,
     ): Result<String> {
-        Log.d(TAG, "Prompting: $prompt")
+        Log.d(TAG, "Prompting...")
         val session = instance.session
-
         return try {
             if (prompt.trim().isNotEmpty()) {
                 session.addQueryChunk(prompt)

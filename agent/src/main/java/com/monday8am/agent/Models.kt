@@ -29,7 +29,7 @@ data class NotificationResult(
     val errorMessage: String? = null,
 ) {
     val formatted: String
-        get() = "$title\n$body\n$language\n$confidence"
+        get() = "Title:$title\nBody:$body\nLanguage:$language\nConfidence:$confidence"
 }
 
 data class LocalLLModel(

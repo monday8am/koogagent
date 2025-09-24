@@ -15,6 +15,7 @@ class NotificationGenerator(
                 )
             parseResponse(response)
         } catch (e: Exception) {
+            println("NotificationGenerator: Error generating notification ${e.message}")
             fallback(context)
         }
     }
@@ -28,12 +29,12 @@ class NotificationGenerator(
         - Already logged: ${context.alreadyLogged}
         - Language: ${context.userLocale}
         - Country: ${context.country}
-        Generate a title (max 35 characters) and a body (max 160 characters) in JSON format: {"title":"...", "body":"...", "language":"en-US", "confidence":0.9}
+        Generate a title (max 35 characters) and a body (max 160 characters) in plain JSON format: {"title":"...", "body":"...", "language":"en-US", "confidence":0.9}
         """.trimIndent()
 
     private fun parseResponse(response: String): NotificationResult {
-        // Parse JSON from LLM output (assume direct JSON for MVP)
-        val json = org.json.JSONObject(response)
+        val cleanJson = response.removePrefix("```json\n").removeSuffix("\n```")
+        val json = org.json.JSONObject(cleanJson)
         return NotificationResult(
             title = json.optString("title"),
             body = json.optString("body"),

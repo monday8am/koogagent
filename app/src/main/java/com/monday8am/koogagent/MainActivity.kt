@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Arrangement.Absolute.spacedBy
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Scaffold
@@ -73,7 +74,7 @@ fun MainScreen(
             )
         }
 
-        Text(log, textAlign = TextAlign.Center)
+        Text( text = log, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
     }
 }
 

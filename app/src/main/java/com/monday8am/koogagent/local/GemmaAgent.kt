@@ -85,15 +85,15 @@ private class GemmaLLMClient(
         prompt: Prompt,
         model: LLModel,
         tools: List<ToolDescriptor>,
-    ): List<Message.Response> =
-        prompt.messages.mapNotNull {
-            LocalInferenceUtils.prompt(instance, it.content).getOrNull()?.let { result ->
-                Message.Assistant(
-                    metaInfo = ResponseMetaInfo.Empty,
-                    content = result,
-                )
-            }
-        }
+    ): List<Message.Response> {
+        val prompt = prompt.messages.joinToString("\n") { it.content }
+        return LocalInferenceUtils.prompt(instance, prompt).getOrNull()?.let {
+            listOf(
+                Message.Assistant(metaInfo = ResponseMetaInfo.Empty, content = it)
+            )
+        } ?: listOf()
+    }
+
 
     override fun executeStreaming(
         prompt: Prompt,

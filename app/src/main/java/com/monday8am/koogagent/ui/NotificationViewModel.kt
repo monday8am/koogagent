@@ -28,6 +28,8 @@ val notificationContext =
         country = "ES",
     )
 
+private const val GemmaModelPath = "/data/local/tmp/slm/gemma3-1b-it-int4.litertlm"
+
 class NotificationViewModel(
     application: Application,
 ) : AndroidViewModel(application) {
@@ -38,23 +40,21 @@ class NotificationViewModel(
     private var instance: LlmModelInstance? = null
     private val localModel =
         LocalLLModel(
-            path = "",
+            path = GemmaModelPath,
             temperature = 0.8f,
         )
 
     init {
-        LocalInferenceUtils.initialize(context = application.applicationContext, model = localModel)
-            .onSuccess { result ->
-                instance = result
-                _uiState.update {
-                    """Welcome to the KoogAgent!
-               Initialized with model Gemma
-            """.trimIndent()
+        viewModelScope.launch {
+            LocalInferenceUtils.initialize(context = application.applicationContext, model = localModel)
+                .onSuccess { result ->
+                    instance = result
+                    _uiState.update { "Welcome to the KoogAgent!\nInitialized with model Gemma" }
                 }
-            }
-            .onFailure { error ->
-                _uiState.update { "Failed to initialize model: ${error.message}" }
-            }
+                .onFailure { error ->
+                    _uiState.update { "Failed to initialize model: ${error.message}" }
+                }
+        }
     }
 
     override fun onCleared() {
@@ -74,14 +74,9 @@ class NotificationViewModel(
                     ).generate(notificationContext)
 
                 if (message.isFallback) {
-                    _uiState.update {
-                        """
-                            Failed with error: ${message.errorMessage}
-                            Fallback message: ${message.formatted}
-                        """.trimIndent()
-                    }
+                    _uiState.update { "Failed with error: ${message.errorMessage}\nFallback message:\n ${message.formatted}" }
                 } else {
-                    _uiState.update { "Generated Notification: ${message.formatted}" }
+                    _uiState.update { "Notification:\n ${message.formatted}" }
                 }
             }
         }
