@@ -2,6 +2,7 @@ package com.monday8am.koogagent.ui
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.application
 import androidx.lifecycle.viewModelScope
 import com.monday8am.agent.LocalLLModel
 import com.monday8am.agent.MealType
@@ -12,6 +13,7 @@ import com.monday8am.agent.WeatherCondition
 import com.monday8am.koogagent.local.GemmaAgent
 import com.monday8am.koogagent.local.LlmModelInstance
 import com.monday8am.koogagent.local.LocalInferenceUtils
+import com.monday8am.koogagent.local.download.ModelDownloadManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -27,32 +29,51 @@ val notificationContext =
         country = "ES",
     )
 
+private const val GemmaModelUrl = "https://github.com/monday8am/koogagent/releases/download/0.0.1/gemma3-1b-it-int4.litertlm.zip"
 private const val GemmaModelName = "gemma3-1b-it-int4.litertlm"
-private const val GemmaModelFile = "/data/local/tmp/slm/$GemmaModelName"
 
 class NotificationViewModel(
     application: Application,
 ) : AndroidViewModel(application) {
+
+    private val gemmaModelFile = "${application.applicationContext.filesDir}/data/local/tmp/slm/$GemmaModelName"
+    private val modelManager = ModelDownloadManager(application)
     private val _uiState = MutableStateFlow("Initializing!")
     val uiState = _uiState.asStateFlow()
 
     private var instance: LlmModelInstance? = null
     private val localModel =
         LocalLLModel(
-            path = GemmaModelFile,
+            path = gemmaModelFile,
             temperature = 0.8f,
         )
 
     init {
+        if (modelManager.modelExists(gemmaModelFile)) {
+            initGemmaModel()
+        } else {
+            _uiState.update { "Welcome!\nPress download model button" }
+        }
+    }
+
+    fun downloadModel() {
         viewModelScope.launch {
-            LocalInferenceUtils
-                .initialize(context = application.applicationContext, model = localModel)
-                .onSuccess { result ->
-                    instance = result
-                    _uiState.update { "Welcome to Yazio notificator :)\nInitialized with model $GemmaModelName" }
-                }.onFailure { error ->
-                    _uiState.update { "Failed to initialize model:\n${error.message}" }
+            modelManager.downloadModel(GemmaModelUrl, gemmaModelFile).collect { status ->
+                when (status) {
+                    ModelDownloadManager.DownloadStatus.Pending -> { }
+                    ModelDownloadManager.DownloadStatus.Cancelled -> { }
+                    is ModelDownloadManager.DownloadStatus.Completed -> {
+                        _uiState.update { "Download ready!" }
+                        initGemmaModel()
+                    }
+                    is ModelDownloadManager.DownloadStatus.Failed -> {
+                        _uiState.update { "Download failed with error: ${status.message}" }
+                    }
+                    is ModelDownloadManager.DownloadStatus.InProgress -> {
+                        _uiState.update { "Download in progress: ${status.progress}%" }
+                    }
                 }
+            }
         }
     }
 
@@ -77,6 +98,19 @@ class NotificationViewModel(
         super.onCleared()
         instance?.let {
             LocalInferenceUtils.close(instance = it)
+        }
+    }
+
+    private fun initGemmaModel() {
+        viewModelScope.launch {
+            LocalInferenceUtils
+                .initialize(context = application.applicationContext, model = localModel)
+                .onSuccess { result ->
+                    instance = result
+                    _uiState.update { "Welcome to Yazio notificator :)\nInitialized with model $GemmaModelName" }
+                }.onFailure { error ->
+                    _uiState.update { "Failed to initialize model:\n${error.message}" }
+                }
         }
     }
 
