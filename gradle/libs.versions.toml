@@ -12,6 +12,8 @@ jetbrainsKotlinJvm = "2.2.20"
 koog = "0.4.2"
 mediapipeTasksText = "0.20230731"
 mediapipeTasksGenai = "0.10.29"
+kotlinxCoroutines = "1.9.0"
+workRuntime = "2.10.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -31,6 +33,8 @@ androidx-compose-material3 = { group = "androidx.compose.material3", name = "mat
 koog-agents = { group = "ai.koog", name = "koog-agents", version.ref = "koog" }
 mediapipe-tasks-text = { group = "com.google.mediapipe", name = "tasks-text", version.ref = "mediapipeTasksText" }
 mediapipe-tasks-genai = { group = "com.google.mediapipe", name = "tasks-genai", version.ref = "mediapipeTasksGenai" }
+kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "kotlinxCoroutines" }
+androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "workRuntime" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
