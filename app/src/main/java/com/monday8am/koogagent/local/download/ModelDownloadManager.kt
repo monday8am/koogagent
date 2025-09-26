@@ -22,14 +22,14 @@ class ModelDownloadManager(
     private val workManager: WorkManager = WorkManager.getInstance(context),
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
+    val modelDestinationPath = "${context.applicationContext.filesDir}/data/local/tmp/slm/"
 
-    fun modelExists(path: String): Boolean {
-        // return File(path).exists()
-        File(path).delete()
-        return false
-    }
+    fun getModelPath(modelName: String) = "$modelDestinationPath$modelName"
 
-    fun downloadModel(url: String, destinationPath: String): Flow<DownloadStatus> = channelFlow {
+    fun modelExists(path: String) = File(path).exists()
+
+    fun downloadModel(url: String, modelName: String): Flow<DownloadStatus> = channelFlow {
+        val destinationPath = "$modelDestinationPath$modelName"
         val destinationFile = File(destinationPath)
 
         if (destinationFile.exists()) {

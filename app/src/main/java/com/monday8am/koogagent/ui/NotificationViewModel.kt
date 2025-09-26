@@ -29,27 +29,27 @@ val notificationContext =
         country = "ES",
     )
 
-private const val GemmaModelUrl = "https://github.com/monday8am/koogagent/releases/download/0.0.1/gemma3-1b-it-int4.litertlm.zip"
+private const val GemmaModelUrl = "https://github.com/monday8am/koogagent/releases/download/0.0.1/gemma3-1b-it-int4.zip"
 private const val GemmaModelName = "gemma3-1b-it-int4.litertlm"
 
 class NotificationViewModel(
     application: Application,
 ) : AndroidViewModel(application) {
 
-    private val gemmaModelFile = "${application.applicationContext.filesDir}/data/local/tmp/slm/$GemmaModelName"
     private val modelManager = ModelDownloadManager(application)
+
     private val _uiState = MutableStateFlow("Initializing!")
     val uiState = _uiState.asStateFlow()
 
     private var instance: LlmModelInstance? = null
     private val localModel =
         LocalLLModel(
-            path = gemmaModelFile,
+            path = modelManager.getModelPath(GemmaModelName),
             temperature = 0.8f,
         )
 
     init {
-        if (modelManager.modelExists(gemmaModelFile)) {
+        if (modelManager.modelExists(GemmaModelName)) {
             initGemmaModel()
         } else {
             _uiState.update { "Welcome!\nPress download model button" }
@@ -58,7 +58,7 @@ class NotificationViewModel(
 
     fun downloadModel() {
         viewModelScope.launch {
-            modelManager.downloadModel(GemmaModelUrl, gemmaModelFile).collect { status ->
+            modelManager.downloadModel(url = GemmaModelUrl, modelName = GemmaModelName).collect { status ->
                 when (status) {
                     ModelDownloadManager.DownloadStatus.Pending -> { }
                     ModelDownloadManager.DownloadStatus.Cancelled -> { }

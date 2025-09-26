@@ -66,7 +66,7 @@ class DownloadUnzipWorker(
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) throw IOException("HTTP error ${response.code}")
 
-            val body = response.body ?: throw IOException("Empty body")
+            val body = response.body
             val totalBytes = body.contentLength().takeIf { it > 0 } ?: -1L
 
             body.byteStream().use { input ->

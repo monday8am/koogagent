@@ -74,7 +74,6 @@ fun MainScreen(
 
         Button(
             onClick = onClickNotification,
-            modifier = Modifier.padding(top = 32.dp),
         ) {
             Text(
                 text = "Trigger Notification",
