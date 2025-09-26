@@ -19,7 +19,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-val notificationContext =
+val defaultNotificationContext =
     NotificationContext(
         mealType = MealType.WATER,
         motivationLevel = MotivationLevel.HIGH,
@@ -31,7 +31,7 @@ val notificationContext =
 
 data class UiState(
     val textLog: String = "Initializing!",
-    val context: NotificationContext = notificationContext,
+    val context: NotificationContext = defaultNotificationContext,
     val isModelReady: Boolean = false,
 )
 
@@ -83,11 +83,12 @@ class NotificationViewModel(
     }
 
     fun processAndShowNotification() {
-        printLog("Prompting with context:\n ${notificationContext.formatted}")
+        val currentContext = _uiState.value.context
+        printLog("Prompting with context:\n ${currentContext.formatted}")
 
         instance?.let { instance ->
             viewModelScope.launch {
-                val processedPayload = doExtraProcessing(instance = instance, context = notificationContext)
+                val processedPayload = doExtraProcessing(instance = instance, context = currentContext)
                 with(processedPayload) {
                     if (isFallback) {
                         printLog("Failed with error: ${errorMessage}\nFallback message:\n $formatted")
