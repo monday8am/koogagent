@@ -41,6 +41,7 @@ class MainActivity : ComponentActivity() {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     MainScreen(
                         log = state,
+                        onClickDownload = { viewModel.downloadModel() },
                         onClickNotification = { viewModel.processAndShowNotification() },
                         modifier = Modifier.padding(innerPadding),
                     )
@@ -53,6 +54,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainScreen(
     log: String,
+    onClickDownload: () -> Unit,
     onClickNotification: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -62,8 +64,16 @@ fun MainScreen(
         modifier = modifier.fillMaxSize().padding(16.dp),
     ) {
         Button(
-            onClick = onClickNotification,
+            onClick = onClickDownload,
             modifier = Modifier.padding(top = 32.dp),
+        ) {
+            Text(
+                text = "Download model",
+            )
+        }
+
+        Button(
+            onClick = onClickNotification,
         ) {
             Text(
                 text = "Trigger Notification",
@@ -80,6 +90,7 @@ fun MainScreenPreview() {
     KoogAgentTheme {
         MainScreen(
             log = "Welcome to KoogAgent!",
+            onClickDownload = { },
             onClickNotification = { },
         )
     }
