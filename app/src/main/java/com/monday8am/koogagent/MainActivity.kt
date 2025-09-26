@@ -5,12 +5,15 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement.spacedBy
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.height
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -25,8 +28,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -80,11 +85,14 @@ fun MainScreen(
     Column(
         verticalArrangement = spacedBy(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = modifier.fillMaxSize().padding(16.dp),
+        modifier = modifier
+            .fillMaxSize()
+            .padding(16.dp),
     ) {
+        LogPanel(textLog = log, modifier = Modifier.padding(top = 32.dp),)
+
         Button(
             onClick = onClickDownload,
-            modifier = Modifier.padding(top = 32.dp),
         ) {
             Text(
                 text = "Download model",
@@ -99,12 +107,20 @@ fun MainScreen(
             )
         }
 
-        Text(text = log, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-
         NotificationContextEditor(
             notificationContext = notificationContext,
             onContextChange = onNotificationContextChange,
         )
+    }
+}
+
+@Composable
+private fun LogPanel(
+    textLog: String,
+    modifier: Modifier = Modifier,
+) {
+    Box(modifier = modifier.fillMaxWidth().height(240.dp).background(Color(0xFF000080))) {
+        Text(text = textLog, color = Color(0xFF00FF00), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
     }
 }
 
@@ -203,7 +219,7 @@ private fun RowWithSwitch(
         horizontalArrangement = spacedBy(16.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Text(text = "Already logged")
+        Text(text = "Already logged a meal")
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,
@@ -221,7 +237,7 @@ private fun formatEnumName(raw: String): String {
 fun MainScreenPreview() {
     KoogAgentTheme {
         MainScreen(
-            log = "Welcome to KoogAgent!",
+            log = "Welcome to Yazio notificator!",
             notificationContext = defaultNotificationContext,
             onNotificationContextChange = { },
             onClickDownload = { },

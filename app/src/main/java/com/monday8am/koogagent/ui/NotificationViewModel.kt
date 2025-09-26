@@ -41,6 +41,7 @@ private const val GemmaModelName = "gemma3-1b-it-int4.litertlm"
 class NotificationViewModel(
     application: Application,
 ) : AndroidViewModel(application) {
+
     private val modelManager = ModelDownloadManager(application)
 
     private val _uiState = MutableStateFlow(UiState())
@@ -57,7 +58,7 @@ class NotificationViewModel(
         if (modelManager.modelExists(GemmaModelName)) {
             initGemmaModel()
         } else {
-            printLog("Welcome!\nPress download model button")
+            printLog("Welcome!\nPress download model button. It's a one time operation and it will take close to 4 minutes.")
         }
     }
 
@@ -75,7 +76,7 @@ class NotificationViewModel(
                         printLog("Download failed with error: ${status.message}")
                     }
                     is ModelDownloadManager.DownloadStatus.InProgress -> {
-                        printLog("Download in progress: ${status.progress}%")
+                        printLog("Download in progress: ${String.format("%.2f", status.progress ?: 0.00)}%")
                     }
                 }
             }
@@ -83,7 +84,17 @@ class NotificationViewModel(
     }
 
     fun processAndShowNotification() {
-        val currentContext = _uiState.value.context
+        if (_uiState.value.isModelReady.not()) {
+            printLog("Model isn't ready yet. Please wait.")
+            return
+        }
+
+        val deviceContext = DeviceContextUtil.getDeviceContext(application)
+        val currentContext = _uiState.value.context.copy(
+            userLocale = deviceContext.language,
+            country = deviceContext.country,
+        )
+
         printLog("Prompting with context:\n ${currentContext.formatted}")
 
         instance?.let { instance ->

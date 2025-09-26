@@ -30,6 +30,8 @@ class NotificationGenerator(
         - Language: ${context.userLocale}
         - Country: ${context.country}
         Generate a title (max 35 characters) and a body (max 160 characters) in plain JSON format: {"title":"...", "body":"...", "language":"en-US", "confidence":0.9}
+        Use the language and suggest a meal or drink based on the country provided.
+        ${if (context.alreadyLogged) "- The user has already logged something today." else "the user has not logged anything today."}
         """.trimIndent()
 
     private fun parseResponse(response: String): NotificationResult {

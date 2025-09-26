@@ -27,17 +27,17 @@ object LocalInferenceUtils {
                 return@withContext Result.failure(Exception("Model file not found"))
             }
 
-            val preferredBackend = if (model.isGPUAccelerated) LlmInference.Backend.GPU else LlmInference.Backend.CPU
-            val options =
-                LlmInference.LlmInferenceOptions
-                    .builder()
-                    .setModelPath(model.path)
-                    .setMaxTokens(model.maxToken)
-                    .setPreferredBackend(preferredBackend)
-                    .build()
-
             // Create an instance of the LLM Inference task and session.
             try {
+                val preferredBackend = if (model.isGPUAccelerated) LlmInference.Backend.GPU else LlmInference.Backend.CPU
+                val options =
+                    LlmInference.LlmInferenceOptions
+                        .builder()
+                        .setModelPath(model.path)
+                        .setMaxTokens(model.maxToken)
+                        .setPreferredBackend(preferredBackend)
+                        .build()
+
                 val llmInference = LlmInference.createFromOptions(context, options)
                 val session =
                     LlmInferenceSession.createFromOptions(
