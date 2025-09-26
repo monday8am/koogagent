@@ -43,7 +43,12 @@ class DownloadUnzipWorker(
 
                 val destinationFile = File(destinationPath)
                 val parentDir = destinationFile.parentFile
-                if (parentDir != null && !parentDir.exists()) {
+                if (parentDir == null) {
+                    return@withContext Result.failure(
+                        workDataOf(KEY_ERROR_MESSAGE to "Could not create destination directory: $destinationFile"),
+                    )
+                }
+                if (!parentDir.exists()) {
                     if (!parentDir.mkdirs()) {
                         return@withContext Result.failure(
                             workDataOf(KEY_ERROR_MESSAGE to "Could not create destination directory: ${parentDir.absolutePath}"),
@@ -54,7 +59,7 @@ class DownloadUnzipWorker(
                 val zipFile = File(applicationContext.cacheDir, "demo-data.zip")
 
                 downloadFile(url, zipFile)
-                unzipWithProgress(zipFile, destinationFile)
+                unzipWithProgress(zipFile, parentDir)
                 zipFile.delete()
 
                 setProgress(workDataOf(KEY_PROGRESS to 100))
@@ -111,9 +116,9 @@ class DownloadUnzipWorker(
                 processedEntries++
                 val unzipProgress =
                     if (totalEntries > 0) {
-                        (processedEntries * 100 / totalEntries)
+                        (processedEntries * 100 / totalEntries.toFloat())
                     } else {
-                        100
+                        100f
                     }
                 setProgress(workDataOf(KEY_PROGRESS to unzipProgress))
 
@@ -137,7 +142,7 @@ class DownloadUnzipWorker(
         input: InputStream,
         output: OutputStream,
         totalBytes: Long,
-        onProgress: suspend (Int) -> Unit,
+        onProgress: suspend (Float) -> Unit,
     ) {
         val buffer = ByteArray(DEFAULT_BUFFER_SIZE) // 8KB
         var bytesRead: Int
@@ -148,7 +153,7 @@ class DownloadUnzipWorker(
             bytesCopied += bytesRead
 
             if (totalBytes > 0) {
-                val progress = ((bytesCopied * 100) / totalBytes).toInt()
+                val progress = (bytesCopied * 100).toFloat() / totalBytes.toFloat()
                 onProgress(progress)
             }
         }

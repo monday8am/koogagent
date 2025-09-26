@@ -85,8 +85,8 @@ class ModelDownloadManager(
         when (state) {
             WorkInfo.State.ENQUEUED, WorkInfo.State.BLOCKED -> DownloadStatus.Pending
             WorkInfo.State.RUNNING -> {
-                val progress = progress.getInt(DownloadUnzipWorker.KEY_PROGRESS, -1)
-                DownloadStatus.InProgress(progress.takeIf { it in 0..100 })
+                val progress = progress.getFloat(DownloadUnzipWorker.KEY_PROGRESS, 0f)
+                DownloadStatus.InProgress(progress.takeIf { it in 0f..100f })
             }
             WorkInfo.State.SUCCEEDED -> DownloadStatus.Completed(file)
             WorkInfo.State.FAILED ->
@@ -101,7 +101,7 @@ class ModelDownloadManager(
         data object Pending : DownloadStatus
 
         data class InProgress(
-            val progress: Int?,
+            val progress: Float?,
         ) : DownloadStatus // progress typically 0-100
 
         data class Completed(
