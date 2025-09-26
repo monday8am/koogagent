@@ -65,7 +65,6 @@ dependencies {
     implementation(libs.mediapipe.tasks.text)
     implementation(libs.mediapipe.tasks.genai)
     implementation(libs.okhttp)
-    implementation(libs.dropbox.core.sdk)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

@@ -35,7 +35,6 @@ private const val GemmaModelName = "gemma3-1b-it-int4.litertlm"
 class NotificationViewModel(
     application: Application,
 ) : AndroidViewModel(application) {
-
     private val modelManager = ModelDownloadManager(application)
 
     private val _uiState = MutableStateFlow("Initializing!")

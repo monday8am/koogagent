@@ -1,6 +1,5 @@
 [versions]
 agp = "8.13.0-rc02"
-dropboxCoreSdk = "7.0.0"
 kotlin = "2.2.20"
 coreKtx = "1.17.0"
 junit = "4.13.2"
@@ -8,18 +7,17 @@ junitVersion = "1.3.0"
 espressoCore = "3.7.0"
 lifecycleRuntimeKtx = "2.9.4"
 activityCompose = "1.11.0"
-composeBom = "2025.09.00"
+composeBom = "2025.09.01"
 jetbrainsKotlinJvm = "2.2.20"
 koog = "0.4.2"
 mediapipeTasksText = "0.20230731"
 mediapipeTasksGenai = "0.10.29"
 kotlinxCoroutines = "1.10.2"
 okhttp = "5.1.0"
-workRuntime = "2.10.4"
+workRuntime = "2.10.5"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
-dropbox-core-sdk = { module = "com.dropbox.core:dropbox-core-sdk", version.ref = "dropboxCoreSdk" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
