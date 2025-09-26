@@ -26,7 +26,7 @@ class ModelDownloadManager(
 
     fun getModelPath(modelName: String) = "$modelDestinationPath$modelName"
 
-    fun modelExists(path: String) = File(path).exists()
+    fun modelExists(modelName: String) = File(getModelPath(modelName)).exists()
 
     fun downloadModel(
         url: String,

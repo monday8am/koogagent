@@ -21,8 +21,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.monday8am.agent.NotificationContext
 import com.monday8am.koogagent.ui.NotificationUtils
 import com.monday8am.koogagent.ui.NotificationViewModel
+import com.monday8am.koogagent.ui.notificationContext
 import com.monday8am.koogagent.ui.theme.KoogAgentTheme
 
 class MainActivity : ComponentActivity() {
@@ -40,7 +42,8 @@ class MainActivity : ComponentActivity() {
             KoogAgentTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     MainScreen(
-                        log = state,
+                        log = state.textLog,
+                        notificationContext = state.context,
                         onClickDownload = { viewModel.downloadModel() },
                         onClickNotification = { viewModel.processAndShowNotification() },
                         modifier = Modifier.padding(innerPadding),
@@ -54,6 +57,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainScreen(
     log: String,
+    notificationContext: NotificationContext,
     onClickDownload: () -> Unit,
     onClickNotification: () -> Unit,
     modifier: Modifier = Modifier,
@@ -81,7 +85,16 @@ fun MainScreen(
         }
 
         Text(text = log, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+
+        NotificationContextEditor(notificationContext)
     }
+}
+
+private fun NotificationContextEditor(
+    notificationContext: NotificationContext,
+    modifier: Modifier = Modifier,
+) {
+
 }
 
 @Preview(showBackground = true)
@@ -90,6 +103,7 @@ fun MainScreenPreview() {
     KoogAgentTheme {
         MainScreen(
             log = "Welcome to KoogAgent!",
+            notificationContext = notificationContext,
             onClickDownload = { },
             onClickNotification = { },
         )
