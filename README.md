@@ -16,6 +16,8 @@ Check out the full technical write-up:
 
 ---
 
+_Disclaimer: It's a prototype app. Althout it solves problems like PipeMedia Inference API + Koog agents integration, the code is created for **fast iteration**, **experimentation** and **learning**._ 
+
 ### What It Does
 
 This prototype generates smarter notifications using local context and on-device inference:
@@ -55,8 +57,7 @@ This prototype generates smarter notifications using local context and on-device
 
 ### Screenshots
 
-![Prompt UI](screenshots/koog_prompt_ui.png)
-![Notification Output](screenshots/generated_notification.png)
+<img src="screenshots/prototype.png" width="700" />
 
 
 ---
