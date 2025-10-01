@@ -44,12 +44,6 @@ This prototype generates smarter notifications using local context and on-device
 - Local SLM models (Gemma, Mistral)
 - Ollama (for JVM-side testing)
 
-### Testing Plan
-
-- Golden set: 50 pre-defined contexts to validate behavior
-- Output checks: tone, emoji use, locale formatting, length
-- A/B testing potential: compare static vs. generated messages
-- Performance goal: under 600 ms inference on mid-range devices
 
 ### Roadmap
 
