@@ -16,7 +16,7 @@ Check out the full technical write-up:
 
 ---
 
-_Disclaimer: It's a prototype app. Althout it solves problems like PipeMedia Inference API + Koog agents integration, the code is created for **fast iteration**, **experimentation** and **learning**._ 
+_Disclaimer: It's a prototype app. Althout it solves problems like MediaPipe Inference API + Koog agents integration, the code is created for **fast iteration**, **experimentation** and **learning**._ 
 
 ### What It Does
 
