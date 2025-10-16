@@ -41,8 +41,9 @@ class OllamaAgent : NotificationAgent {
         }
 
     private suspend fun getAIAgent(systemPrompt: String): AIAgent<String, String> {
-        if (weatherToolSet == null)
+        if (weatherToolSet == null) {
             throw Exception("Tools aren't initialized")
+        }
 
         if (agent == null) {
             agent =
@@ -51,9 +52,10 @@ class OllamaAgent : NotificationAgent {
                         executor = simpleOllamaAIExecutor(),
                         systemPrompt = systemPrompt,
                         temperature = 0.7,
-                        toolRegistry = ToolRegistry {
-                            tools(weatherToolSet!!.asTools() + SayToUser)
-                        },
+                        toolRegistry =
+                            ToolRegistry {
+                                tools(weatherToolSet!!.asTools() + SayToUser)
+                            },
                         llmModel = llModel,
                     ) {
                         handleEvents {

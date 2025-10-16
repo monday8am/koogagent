@@ -5,11 +5,17 @@ package com.monday8am.koogagent.data
  * Implementations can use MCP servers, REST APIs, or mock data.
  */
 interface WeatherProvider {
-    suspend fun getCurrentWeather(latitude: Double, longitude: Double): WeatherCondition?
+    suspend fun getCurrentWeather(
+        latitude: Double,
+        longitude: Double,
+    ): WeatherCondition?
 }
 
 class MockWeatherProvider : WeatherProvider {
-    override suspend fun getCurrentWeather(latitude: Double, longitude: Double): WeatherCondition {
+    override suspend fun getCurrentWeather(
+        latitude: Double,
+        longitude: Double,
+    ): WeatherCondition {
         // Simple mock based on latitude (northern vs southern hemisphere season approximation)
         return if (latitude > 40) WeatherCondition.COLD else WeatherCondition.SUNNY
     }

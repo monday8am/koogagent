@@ -45,7 +45,6 @@ private const val GemmaModelName = "gemma3-1b-it-int4.litertlm"
 class NotificationViewModel(
     application: Application,
 ) : AndroidViewModel(application) {
-
     private val modelManager = ModelDownloadManager(application)
     private val weatherProvider = OpenMeteoWeatherProvider()
     private val locationProvider = MockLocationProvider()
@@ -102,11 +101,12 @@ class NotificationViewModel(
                 printLog("Agent will autonomously decide if weather data is needed...")
 
                 val deviceContext = DeviceContextUtil.getDeviceContext(application)
-                val currentContext = _uiState.value.context.copy(
-                    userLocale = deviceContext.language,
-                    country = deviceContext.country,
-                    // Note: weather is no longer set here - agent will fetch it via tool if needed
-                )
+                val currentContext =
+                    _uiState.value.context.copy(
+                        userLocale = deviceContext.language,
+                        country = deviceContext.country,
+                        // Note: weather is no longer set here - agent will fetch it via tool if needed
+                    )
 
                 printLog("Prompting with context:\n ${currentContext.formatted}")
 
@@ -160,5 +160,4 @@ class NotificationViewModel(
     private fun printLog(log: String) {
         _uiState.update { it.copy(textLog = log) }
     }
-
 }

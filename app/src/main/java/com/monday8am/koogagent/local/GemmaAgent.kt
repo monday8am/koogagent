@@ -67,9 +67,10 @@ class GemmaAgent(
                     systemPrompt = systemPrompt,
                     temperature = 0.7,
                     llmModel = gemmaModel,
-                    toolRegistry = ToolRegistry {
-                        tools(weatherToolSet!!.asTools() + SayToUser)
-                    },
+                    toolRegistry =
+                        ToolRegistry {
+                            tools(weatherToolSet!!.asTools() + SayToUser)
+                        },
                 ) {
                     handleEvents {
                         onToolCall { eventContext ->

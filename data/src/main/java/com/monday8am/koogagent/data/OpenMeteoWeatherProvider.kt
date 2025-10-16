@@ -15,16 +15,21 @@ class OpenMeteoWeatherProvider(
     private val client: OkHttpClient = OkHttpClient(),
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : WeatherProvider {
-
-    override suspend fun getCurrentWeather(latitude: Double, longitude: Double): WeatherCondition? =
+    override suspend fun getCurrentWeather(
+        latitude: Double,
+        longitude: Double,
+    ): WeatherCondition? =
         withContext(dispatcher) {
             try {
-                val url = "https://api.open-meteo.com/v1/forecast?" +
+                val url =
+                    "https://api.open-meteo.com/v1/forecast?" +
                         "latitude=$latitude&longitude=$longitude&current_weather=true"
 
-                val request = Request.Builder()
-                    .url(url)
-                    .build()
+                val request =
+                    Request
+                        .Builder()
+                        .url(url)
+                        .build()
 
                 client.newCall(request).execute().use { response ->
                     if (!response.isSuccessful) return@withContext null
@@ -34,7 +39,7 @@ class OpenMeteoWeatherProvider(
 
                     mapWeatherCodeToCondition(
                         weatherCode = currentWeather.getInt("weathercode"),
-                        temperature = currentWeather.getDouble("temperature")
+                        temperature = currentWeather.getDouble("temperature"),
                     )
                 }
             } catch (e: Exception) {
@@ -47,8 +52,11 @@ class OpenMeteoWeatherProvider(
      * Maps WMO Weather interpretation codes to WeatherCondition enum.
      * See: https://open-meteo.com/en/docs
      */
-    private fun mapWeatherCodeToCondition(weatherCode: Int, temperature: Double): WeatherCondition {
-        return when {
+    private fun mapWeatherCodeToCondition(
+        weatherCode: Int,
+        temperature: Double,
+    ): WeatherCondition =
+        when {
             // Temperature-based conditions
             temperature > 30 -> WeatherCondition.HOT
             temperature < 5 -> WeatherCondition.COLD
@@ -62,5 +70,4 @@ class OpenMeteoWeatherProvider(
 
             else -> WeatherCondition.CLOUDY
         }
-    }
 }

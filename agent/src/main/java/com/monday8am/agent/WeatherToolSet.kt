@@ -8,7 +8,6 @@ import com.monday8am.koogagent.data.WeatherCondition
 import com.monday8am.koogagent.data.WeatherProvider
 import kotlinx.serialization.Serializable
 
-
 /**
  * Koog Tool for fetching weather information.
  * This tool allows the AI agent to autonomously request weather data
@@ -18,14 +17,13 @@ import kotlinx.serialization.Serializable
 class WeatherToolSet(
     private val weatherProvider: WeatherProvider,
     private val locationProvider: LocationProvider,
-): ToolSet {
-
+) : ToolSet {
     @Serializable
     private data class WeatherResult(
         val condition: String,
         val temperature: Double?,
         val location: String,
-        val success: Boolean
+        val success: Boolean,
     )
 
     /**
@@ -34,8 +32,8 @@ class WeatherToolSet(
      */
     @Tool
     @LLMDescription("Get the current weather")
-    suspend fun getCurrentWeather(): String {
-        return try {
+    suspend fun getCurrentWeather(): String =
+        try {
             val location = locationProvider.getLocation()
             val weather = weatherProvider.getCurrentWeather(location.latitude, location.longitude)
 
@@ -43,12 +41,13 @@ class WeatherToolSet(
 
             if (weather != null) {
                 val temperature = getApproximateTemperature(weather)
-                val result = WeatherResult(
-                    condition = weather.name.lowercase(),
-                    temperature = temperature,
-                    location = "${location.latitude}, ${location.longitude}",
-                    success = true
-                )
+                val result =
+                    WeatherResult(
+                        condition = weather.name.lowercase(),
+                        temperature = temperature,
+                        location = "${location.latitude}, ${location.longitude}",
+                        success = true,
+                    )
                 "Weather: ${result.condition}, Temperature: ${result.temperature}°C at ${result.location}"
             } else {
                 "Weather: unknown at ${location.latitude}, ${location.longitude}"
@@ -57,15 +56,13 @@ class WeatherToolSet(
             println("WeatherTool: Error fetching weather: ${e.message}")
             "Weather: error - ${e.message}"
         }
-    }
 
-    private fun getApproximateTemperature(condition: WeatherCondition): Double {
-        return when (condition) {
+    private fun getApproximateTemperature(condition: WeatherCondition): Double =
+        when (condition) {
             WeatherCondition.HOT -> 32.0
             WeatherCondition.COLD -> 5.0
             WeatherCondition.SUNNY -> 22.0
             WeatherCondition.CLOUDY -> 18.0
             WeatherCondition.RAINY -> 15.0
         }
-    }
 }
