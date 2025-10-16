@@ -1,10 +1,8 @@
-package com.monday8am.koogagent.local
+package com.monday8am.koogagent.mediapipe
 
 import ai.koog.agents.core.agent.AIAgent
-import ai.koog.agents.core.tools.Tool
 import ai.koog.agents.core.tools.ToolDescriptor
 import ai.koog.agents.core.tools.ToolRegistry
-import ai.koog.agents.core.tools.ToolRegistry.Companion.invoke
 import ai.koog.agents.core.tools.reflect.asTools
 import ai.koog.agents.ext.tool.SayToUser
 import ai.koog.agents.features.eventHandler.feature.handleEvents
@@ -20,7 +18,6 @@ import ai.koog.prompt.message.ResponseMetaInfo
 import com.monday8am.agent.DEFAULT_MAX_TOKEN
 import com.monday8am.agent.NotificationAgent
 import com.monday8am.agent.WeatherToolSet
-import kotlinx.coroutines.flow.Flow
 
 private val gemmaModel =
     LLModel(
@@ -63,7 +60,7 @@ class GemmaAgent(
         if (agent == null) {
             agent =
                 AIAgent(
-                    executor = SimpleGemmaAIExecutor(llmClient = GemmaLLMClient(instance = instance)),
+                    promptExecutor = SimpleGemmaAIExecutor(llmClient = GemmaLLMClient(instance = instance)),
                     systemPrompt = systemPrompt,
                     temperature = 0.7,
                     llmModel = gemmaModel,
@@ -73,13 +70,13 @@ class GemmaAgent(
                         },
                 ) {
                     handleEvents {
-                        onToolCall { eventContext ->
+                        onToolCallStarting { eventContext ->
                             println("Tool called: ${eventContext.tool} with args ${eventContext.toolArgs}")
                         }
-                        onAgentFinished { eventContext ->
+                        onAgentCompleted { eventContext ->
                             println("Agent finished with result: ${eventContext.result}")
                         }
-                        onAgentRunError { errorContext ->
+                        onAgentExecutionFailed { errorContext ->
                             println("Agent error with result: ${errorContext.throwable}")
                         }
                     }
@@ -109,13 +106,10 @@ private class GemmaLLMClient(
         } ?: listOf()
     }
 
-    override fun executeStreaming(
-        prompt: Prompt,
-        model: LLModel,
-    ): Flow<String> = throw Exception("Not supported")
-
     override suspend fun moderate(
         prompt: Prompt,
         model: LLModel,
     ): ModerationResult = throw Exception("Not supported")
+
+    override fun llmProvider(): LLMProvider = object : LLMProvider("gemma", "Gemma") { }
 }

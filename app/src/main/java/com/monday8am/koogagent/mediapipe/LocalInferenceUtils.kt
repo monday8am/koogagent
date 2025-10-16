@@ -1,4 +1,4 @@
-package com.monday8am.koogagent.local
+package com.monday8am.koogagent.mediapipe
 
 import android.content.Context
 import com.google.common.util.concurrent.ListenableFuture

@@ -49,7 +49,7 @@ class OllamaAgent : NotificationAgent {
             agent =
                 client.getModels().firstOrNull()?.toLLModel()?.let { llModel ->
                     AIAgent(
-                        executor = simpleOllamaAIExecutor(),
+                        promptExecutor = simpleOllamaAIExecutor(),
                         systemPrompt = systemPrompt,
                         temperature = 0.7,
                         toolRegistry =
@@ -59,13 +59,13 @@ class OllamaAgent : NotificationAgent {
                         llmModel = llModel,
                     ) {
                         handleEvents {
-                            onToolCall { eventContext ->
+                            onToolCallStarting { eventContext ->
                                 println("Tool called: ${eventContext.tool} with args ${eventContext.toolArgs}")
                             }
-                            onAgentFinished { eventContext ->
+                            onAgentCompleted { eventContext ->
                                 println("Agent finished with result: ${eventContext.result}")
                             }
-                            onAgentRunError { errorContext ->
+                            onAgentExecutionFailed { errorContext ->
                                 println("Agent error with result: ${errorContext.throwable}")
                             }
                         }

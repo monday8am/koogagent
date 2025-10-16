@@ -14,10 +14,10 @@ import com.monday8am.koogagent.data.NotificationContext
 import com.monday8am.koogagent.data.NotificationResult
 import com.monday8am.koogagent.data.OpenMeteoWeatherProvider
 import com.monday8am.koogagent.data.WeatherCondition
-import com.monday8am.koogagent.local.GemmaAgent
-import com.monday8am.koogagent.local.LlmModelInstance
-import com.monday8am.koogagent.local.LocalInferenceUtils
-import com.monday8am.koogagent.local.download.ModelDownloadManager
+import com.monday8am.koogagent.mediapipe.GemmaAgent
+import com.monday8am.koogagent.mediapipe.LlmModelInstance
+import com.monday8am.koogagent.mediapipe.LocalInferenceUtils
+import com.monday8am.koogagent.mediapipe.download.ModelDownloadManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update

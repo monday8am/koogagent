@@ -9,7 +9,7 @@ import android.os.Build
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
-import com.monday8am.agent.NotificationResult
+import com.monday8am.koogagent.data.NotificationResult
 
 object NotificationUtils {
     private const val CHANNEL_ID = "meal_reminder"

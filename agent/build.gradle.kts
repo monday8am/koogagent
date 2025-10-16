@@ -14,10 +14,9 @@ kotlin {
 
 dependencies {
     implementation(project(":data"))
-    implementation(libs.koog.agents) {
+    api(libs.koog.agents) {
         // Exclude to avoid duplicate classes with kotlin-sdk-client
         exclude(group = "io.modelcontextprotocol", module = "kotlin-sdk-core-jvm")
     }
-    implementation(libs.common)
     testImplementation(kotlin("test"))
 }

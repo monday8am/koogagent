@@ -14,7 +14,7 @@ kotlin {
     }
 }
 dependencies {
-    implementation(libs.json)
     implementation(libs.kotlinx.coroutines.android)
-    implementation(libs.okhttp)
+    api(libs.okhttp)
+    api(libs.json)
 }
