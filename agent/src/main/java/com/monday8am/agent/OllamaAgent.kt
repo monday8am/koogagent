@@ -19,7 +19,7 @@ interface NotificationAgent {
 }
 
 class OllamaAgent : NotificationAgent {
-    private val client = OllamaClient(baseUrl = "http://10.0.2.2:11434")
+    private val client = OllamaClient()
     private var agent: AIAgent<String, String>? = null
     private var weatherToolSet: WeatherToolSet? = null
 

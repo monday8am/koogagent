@@ -23,3 +23,4 @@ rootProject.name = "KoogAgent"
 include(":app")
 include(":agent")
 include(":data")
+include(":local")

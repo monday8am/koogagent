@@ -32,7 +32,7 @@ class WeatherToolSet(
      */
     @Tool
     @LLMDescription("Get the current weather")
-    suspend fun getCurrentWeather(): String =
+    suspend fun getWeather(): String =
         try {
             val location = locationProvider.getLocation()
             val weather = weatherProvider.getCurrentWeather(location.latitude, location.longitude)
