@@ -1,5 +1,9 @@
 package com.monday8am.agent
 
+import com.monday8am.koogagent.data.MealType
+import com.monday8am.koogagent.data.NotificationContext
+import com.monday8am.koogagent.data.NotificationResult
+
 class NotificationGenerator(
     private val agent: NotificationAgent,
 ) {

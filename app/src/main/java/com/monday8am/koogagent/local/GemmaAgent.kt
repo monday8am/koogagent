@@ -1,7 +1,12 @@
 package com.monday8am.koogagent.local
 
 import ai.koog.agents.core.agent.AIAgent
+import ai.koog.agents.core.tools.Tool
 import ai.koog.agents.core.tools.ToolDescriptor
+import ai.koog.agents.core.tools.ToolRegistry
+import ai.koog.agents.core.tools.ToolRegistry.Companion.invoke
+import ai.koog.agents.core.tools.reflect.asTools
+import ai.koog.agents.ext.tool.SayToUser
 import ai.koog.agents.features.eventHandler.feature.handleEvents
 import ai.koog.prompt.dsl.ModerationResult
 import ai.koog.prompt.dsl.Prompt
@@ -14,6 +19,7 @@ import ai.koog.prompt.message.Message
 import ai.koog.prompt.message.ResponseMetaInfo
 import com.monday8am.agent.DEFAULT_MAX_TOKEN
 import com.monday8am.agent.NotificationAgent
+import com.monday8am.agent.WeatherToolSet
 import kotlinx.coroutines.flow.Flow
 
 private val gemmaModel =
@@ -34,17 +40,10 @@ class GemmaAgent(
     private val instance: LlmModelInstance,
 ) : NotificationAgent {
     private var agent: AIAgent<String, String>? = null
-    private var currentWeatherProvider: com.monday8am.agent.WeatherProvider? = null
-    private var currentLocationProvider: com.monday8am.agent.LocationProvider? = null
+    private var weatherToolSet: WeatherToolSet? = null
 
-    override fun initializeWithTools(
-        weatherProvider: com.monday8am.agent.WeatherProvider,
-        locationProvider: com.monday8am.agent.LocationProvider,
-    ) {
-        currentWeatherProvider = weatherProvider
-        currentLocationProvider = locationProvider
-        // Reset agent so it gets recreated with tools
-        agent = null
+    override fun initializeWithTools(toolSet: WeatherToolSet) {
+        weatherToolSet = toolSet
     }
 
     override suspend fun generateMessage(
@@ -68,11 +67,9 @@ class GemmaAgent(
                     systemPrompt = systemPrompt,
                     temperature = 0.7,
                     llmModel = gemmaModel,
-                    toolRegistry = if (currentWeatherProvider != null && currentLocationProvider != null) {
-                        ai.koog.agents.core.tools.ToolRegistry {
-                            tool(com.monday8am.agent.WeatherTool(currentWeatherProvider!!, currentLocationProvider!!))
-                        }
-                    } else null,
+                    toolRegistry = ToolRegistry {
+                        tools(weatherToolSet!!.asTools() + SayToUser)
+                    },
                 ) {
                     handleEvents {
                         onToolCall { eventContext ->

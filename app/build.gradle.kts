@@ -46,6 +46,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":data"))
     implementation(project(":agent"))
 
     implementation(libs.androidx.core.ktx)
@@ -65,7 +66,6 @@ dependencies {
     }
     implementation(libs.mediapipe.tasks.text)
     implementation(libs.mediapipe.tasks.genai)
-    implementation(libs.okhttp)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

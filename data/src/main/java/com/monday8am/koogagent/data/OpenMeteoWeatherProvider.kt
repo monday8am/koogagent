@@ -1,7 +1,6 @@
-package com.monday8am.koogagent.weather
+package com.monday8am.koogagent.data
 
-import com.monday8am.agent.WeatherCondition
-import com.monday8am.agent.WeatherProvider
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -13,11 +12,12 @@ import org.json.JSONObject
  * No API key required, free for non-commercial use.
  */
 class OpenMeteoWeatherProvider(
-    private val client: OkHttpClient = OkHttpClient()
+    private val client: OkHttpClient = OkHttpClient(),
+    private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : WeatherProvider {
 
     override suspend fun getCurrentWeather(latitude: Double, longitude: Double): WeatherCondition? =
-        withContext(Dispatchers.IO) {
+        withContext(dispatcher) {
             try {
                 val url = "https://api.open-meteo.com/v1/forecast?" +
                         "latitude=$latitude&longitude=$longitude&current_weather=true"
@@ -29,7 +29,7 @@ class OpenMeteoWeatherProvider(
                 client.newCall(request).execute().use { response ->
                     if (!response.isSuccessful) return@withContext null
 
-                    val json = JSONObject(response.body?.string() ?: return@withContext null)
+                    val json = JSONObject(response.body.string())
                     val currentWeather = json.getJSONObject("current_weather")
 
                     mapWeatherCodeToCondition(

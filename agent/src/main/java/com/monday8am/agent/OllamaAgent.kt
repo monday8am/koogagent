@@ -2,6 +2,7 @@ package com.monday8am.agent
 
 import ai.koog.agents.core.agent.AIAgent
 import ai.koog.agents.core.tools.ToolRegistry
+import ai.koog.agents.core.tools.reflect.asTools
 import ai.koog.agents.ext.tool.SayToUser
 import ai.koog.agents.features.eventHandler.feature.handleEvents
 import ai.koog.prompt.executor.llms.all.simpleOllamaAIExecutor
@@ -14,28 +15,16 @@ interface NotificationAgent {
         userPrompt: String,
     ): String
 
-    fun initializeWithTools(
-        weatherProvider: WeatherProvider,
-        locationProvider: LocationProvider,
-    ) {
-    }
+    fun initializeWithTools(toolSet: WeatherToolSet)
 }
 
 class OllamaAgent : NotificationAgent {
     private val client = OllamaClient(baseUrl = "http://10.0.2.2:11434")
     private var agent: AIAgent<String, String>? = null
-    private var weatherToolProvider: (() -> Unit)? = null
-    private var currentWeatherProvider: WeatherProvider? = null
-    private var currentLocationProvider: LocationProvider? = null
+    private var weatherToolSet: WeatherToolSet? = null
 
-    override fun initializeWithTools(
-        weatherProvider: WeatherProvider,
-        locationProvider: LocationProvider,
-    ) {
-        currentWeatherProvider = weatherProvider
-        currentLocationProvider = locationProvider
-        // Reset agent so it gets recreated with tools
-        agent = null
+    override fun initializeWithTools(toolSet: WeatherToolSet) {
+        weatherToolSet = toolSet
     }
 
     override suspend fun generateMessage(
@@ -52,6 +41,9 @@ class OllamaAgent : NotificationAgent {
         }
 
     private suspend fun getAIAgent(systemPrompt: String): AIAgent<String, String> {
+        if (weatherToolSet == null)
+            throw Exception("Tools aren't initialized")
+
         if (agent == null) {
             agent =
                 client.getModels().firstOrNull()?.toLLModel()?.let { llModel ->
@@ -59,14 +51,9 @@ class OllamaAgent : NotificationAgent {
                         executor = simpleOllamaAIExecutor(),
                         systemPrompt = systemPrompt,
                         temperature = 0.7,
-                        toolRegistry =
-                            ToolRegistry {
-                                tool(SayToUser)
-                                // Add weather tool if providers are initialized
-                                if (currentWeatherProvider != null && currentLocationProvider != null) {
-                                    tool(WeatherTool(currentWeatherProvider!!, currentLocationProvider!!))
-                                }
-                            },
+                        toolRegistry = ToolRegistry {
+                            tools(weatherToolSet!!.asTools() + SayToUser)
+                        },
                         llmModel = llModel,
                     ) {
                         handleEvents {

@@ -1,6 +1,7 @@
 package com.monday8am.koogagent
 
 import android.os.Bundle
+import android.telephony.CarrierConfigManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -36,10 +37,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.monday8am.agent.NotificationContext
-import com.monday8am.agent.MealType
-import com.monday8am.agent.MotivationLevel
-import com.monday8am.agent.WeatherCondition
+import com.monday8am.koogagent.data.MealType
+import com.monday8am.koogagent.data.MotivationLevel
+import com.monday8am.koogagent.data.NotificationContext
+import com.monday8am.koogagent.data.WeatherCondition
 import com.monday8am.koogagent.ui.NotificationUtils
 import com.monday8am.koogagent.ui.NotificationViewModel
 import com.monday8am.koogagent.ui.defaultNotificationContext
@@ -47,6 +48,9 @@ import com.monday8am.koogagent.ui.theme.KoogAgentTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+
+        CarrierConfigManager.KEY_CARRIER_NAME_STRING
+
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
@@ -89,7 +93,7 @@ fun MainScreen(
             .fillMaxSize()
             .padding(16.dp),
     ) {
-        LogPanel(textLog = log, modifier = Modifier.padding(top = 32.dp),)
+        LogPanel(textLog = log, modifier = Modifier.padding(top = 32.dp))
 
         Button(
             onClick = onClickDownload,

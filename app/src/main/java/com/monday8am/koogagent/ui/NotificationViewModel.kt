@@ -5,16 +5,19 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.application
 import androidx.lifecycle.viewModelScope
 import com.monday8am.agent.LocalLLModel
-import com.monday8am.agent.MealType
-import com.monday8am.agent.MotivationLevel
-import com.monday8am.agent.NotificationContext
 import com.monday8am.agent.NotificationGenerator
-import com.monday8am.agent.WeatherCondition
+import com.monday8am.agent.WeatherToolSet
+import com.monday8am.koogagent.data.MealType
+import com.monday8am.koogagent.data.MockLocationProvider
+import com.monday8am.koogagent.data.MotivationLevel
+import com.monday8am.koogagent.data.NotificationContext
+import com.monday8am.koogagent.data.NotificationResult
+import com.monday8am.koogagent.data.OpenMeteoWeatherProvider
+import com.monday8am.koogagent.data.WeatherCondition
 import com.monday8am.koogagent.local.GemmaAgent
 import com.monday8am.koogagent.local.LlmModelInstance
 import com.monday8am.koogagent.local.LocalInferenceUtils
 import com.monday8am.koogagent.local.download.ModelDownloadManager
-import com.monday8am.koogagent.weather.OpenMeteoWeatherProvider
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -44,9 +47,9 @@ class NotificationViewModel(
 ) : AndroidViewModel(application) {
 
     private val modelManager = ModelDownloadManager(application)
-    private val weatherProvider: com.monday8am.agent.WeatherProvider = OpenMeteoWeatherProvider()
-    private val locationProvider: com.monday8am.koogagent.weather.LocationProvider = com.monday8am.koogagent.weather.MockLocationProvider()
-    private val locationBridge = com.monday8am.koogagent.weather.LocationProviderBridge(locationProvider)
+    private val weatherProvider = OpenMeteoWeatherProvider()
+    private val locationProvider = MockLocationProvider()
+    private val weatherToolSet = WeatherToolSet(weatherProvider, locationProvider)
 
     private val _uiState = MutableStateFlow(UiState())
     val uiState = _uiState.asStateFlow()
@@ -148,13 +151,9 @@ class NotificationViewModel(
     private suspend fun doExtraProcessing(
         instance: LlmModelInstance,
         context: NotificationContext,
-    ): com.monday8am.agent.NotificationResult {
+    ): NotificationResult {
         val agent = GemmaAgent(instance = instance)
-        // Initialize agent with tools - this enables the agentic tool-based approach
-        agent.initializeWithTools(
-            weatherProvider = weatherProvider,
-            locationProvider = locationBridge
-        )
+        agent.initializeWithTools(weatherToolSet)
         return NotificationGenerator(agent = agent).generate(context)
     }
 
