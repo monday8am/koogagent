@@ -25,13 +25,20 @@ class NotificationGenerator(
         Context:
         - Meal type: ${context.mealType}
         - Motivation level: ${context.motivationLevel}
-        - Weather: ${context.weather}
         - Already logged: ${context.alreadyLogged}
         - Language: ${context.userLocale}
         - Country: ${context.country}
+
+        Task: Generate a personalized meal notification.
+
+        You have access to tools:
+        - get_weather: Use this to fetch current weather conditions. Consider weather when suggesting meals (e.g., hot soup on cold days, refreshing salads when hot, comfort food when rainy).
+
         Generate a title (max 35 characters) and a body (max 160 characters) in plain JSON format: {"title":"...", "body":"...", "language":"en-US", "confidence":0.9}
         Use the language and suggest a meal or drink based on the country provided.
-        ${if (context.alreadyLogged) "- The user has already logged something today." else "the user has not logged anything today."}
+        ${if (context.alreadyLogged) "The user has already logged something today - encourage them to continue." else "The user has not logged anything today - motivate them to start."}
+
+        If weather information is relevant for this meal type, use the get_weather tool first to get current conditions, then tailor your suggestion accordingly.
         """.trimIndent()
 
     private fun parseResponse(response: String): NotificationResult {

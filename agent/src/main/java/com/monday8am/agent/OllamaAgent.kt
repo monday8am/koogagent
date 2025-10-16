@@ -13,11 +13,30 @@ interface NotificationAgent {
         systemPrompt: String,
         userPrompt: String,
     ): String
+
+    fun initializeWithTools(
+        weatherProvider: WeatherProvider,
+        locationProvider: LocationProvider,
+    ) {
+    }
 }
 
 class OllamaAgent : NotificationAgent {
     private val client = OllamaClient(baseUrl = "http://10.0.2.2:11434")
     private var agent: AIAgent<String, String>? = null
+    private var weatherToolProvider: (() -> Unit)? = null
+    private var currentWeatherProvider: WeatherProvider? = null
+    private var currentLocationProvider: LocationProvider? = null
+
+    override fun initializeWithTools(
+        weatherProvider: WeatherProvider,
+        locationProvider: LocationProvider,
+    ) {
+        currentWeatherProvider = weatherProvider
+        currentLocationProvider = locationProvider
+        // Reset agent so it gets recreated with tools
+        agent = null
+    }
 
     override suspend fun generateMessage(
         systemPrompt: String,
@@ -43,6 +62,10 @@ class OllamaAgent : NotificationAgent {
                         toolRegistry =
                             ToolRegistry {
                                 tool(SayToUser)
+                                // Add weather tool if providers are initialized
+                                if (currentWeatherProvider != null && currentLocationProvider != null) {
+                                    tool(WeatherTool(currentWeatherProvider!!, currentLocationProvider!!))
+                                }
                             },
                         llmModel = llModel,
                     ) {

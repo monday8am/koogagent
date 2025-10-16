@@ -34,6 +34,18 @@ class GemmaAgent(
     private val instance: LlmModelInstance,
 ) : NotificationAgent {
     private var agent: AIAgent<String, String>? = null
+    private var currentWeatherProvider: com.monday8am.agent.WeatherProvider? = null
+    private var currentLocationProvider: com.monday8am.agent.LocationProvider? = null
+
+    override fun initializeWithTools(
+        weatherProvider: com.monday8am.agent.WeatherProvider,
+        locationProvider: com.monday8am.agent.LocationProvider,
+    ) {
+        currentWeatherProvider = weatherProvider
+        currentLocationProvider = locationProvider
+        // Reset agent so it gets recreated with tools
+        agent = null
+    }
 
     override suspend fun generateMessage(
         systemPrompt: String,
@@ -56,6 +68,11 @@ class GemmaAgent(
                     systemPrompt = systemPrompt,
                     temperature = 0.7,
                     llmModel = gemmaModel,
+                    toolRegistry = if (currentWeatherProvider != null && currentLocationProvider != null) {
+                        ai.koog.agents.core.tools.ToolRegistry {
+                            tool(com.monday8am.agent.WeatherTool(currentWeatherProvider!!, currentLocationProvider!!))
+                        }
+                    } else null,
                 ) {
                     handleEvents {
                         onToolCall { eventContext ->

@@ -14,6 +14,7 @@ import com.monday8am.koogagent.local.GemmaAgent
 import com.monday8am.koogagent.local.LlmModelInstance
 import com.monday8am.koogagent.local.LocalInferenceUtils
 import com.monday8am.koogagent.local.download.ModelDownloadManager
+import com.monday8am.koogagent.weather.OpenMeteoWeatherProvider
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -43,6 +44,9 @@ class NotificationViewModel(
 ) : AndroidViewModel(application) {
 
     private val modelManager = ModelDownloadManager(application)
+    private val weatherProvider: com.monday8am.agent.WeatherProvider = OpenMeteoWeatherProvider()
+    private val locationProvider: com.monday8am.koogagent.weather.LocationProvider = com.monday8am.koogagent.weather.MockLocationProvider()
+    private val locationBridge = com.monday8am.koogagent.weather.LocationProviderBridge(locationProvider)
 
     private val _uiState = MutableStateFlow(UiState())
     val uiState = _uiState.asStateFlow()
@@ -89,16 +93,20 @@ class NotificationViewModel(
             return
         }
 
-        val deviceContext = DeviceContextUtil.getDeviceContext(application)
-        val currentContext = _uiState.value.context.copy(
-            userLocale = deviceContext.language,
-            country = deviceContext.country,
-        )
-
-        printLog("Prompting with context:\n ${currentContext.formatted}")
-
         instance?.let { instance ->
             viewModelScope.launch {
+                printLog("Generating notification with agentic tool-based approach...")
+                printLog("Agent will autonomously decide if weather data is needed...")
+
+                val deviceContext = DeviceContextUtil.getDeviceContext(application)
+                val currentContext = _uiState.value.context.copy(
+                    userLocale = deviceContext.language,
+                    country = deviceContext.country,
+                    // Note: weather is no longer set here - agent will fetch it via tool if needed
+                )
+
+                printLog("Prompting with context:\n ${currentContext.formatted}")
+
                 val processedPayload = doExtraProcessing(instance = instance, context = currentContext)
                 with(processedPayload) {
                     if (isFallback) {
@@ -140,9 +148,15 @@ class NotificationViewModel(
     private suspend fun doExtraProcessing(
         instance: LlmModelInstance,
         context: NotificationContext,
-    ) = NotificationGenerator(
-        agent = GemmaAgent(instance = instance),
-    ).generate(context)
+    ): com.monday8am.agent.NotificationResult {
+        val agent = GemmaAgent(instance = instance)
+        // Initialize agent with tools - this enables the agentic tool-based approach
+        agent.initializeWithTools(
+            weatherProvider = weatherProvider,
+            locationProvider = locationBridge
+        )
+        return NotificationGenerator(agent = agent).generate(context)
+    }
 
     private fun printLog(log: String) {
         _uiState.update { it.copy(textLog = log) }

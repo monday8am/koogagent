@@ -60,6 +60,7 @@ dependencies {
     implementation(libs.androidx.work.runtime.ktx)
 
     implementation(libs.koog.agents) {
+        // Exclude to avoid duplicate classes with kotlin-sdk-client
         exclude(group = "io.modelcontextprotocol", module = "kotlin-sdk-core-jvm")
     }
     implementation(libs.mediapipe.tasks.text)
