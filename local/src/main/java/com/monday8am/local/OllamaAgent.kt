@@ -2,12 +2,15 @@ package com.monday8am.agent
 
 import ai.koog.agents.core.agent.AIAgent
 import ai.koog.agents.core.tools.ToolRegistry
-import ai.koog.agents.core.tools.reflect.asTools
 import ai.koog.agents.ext.tool.SayToUser
 import ai.koog.agents.features.eventHandler.feature.handleEvents
+import ai.koog.agents.features.tracing.feature.Tracing
+import ai.koog.agents.features.tracing.writer.TraceFeatureMessageLogWriter
 import ai.koog.prompt.executor.llms.all.simpleOllamaAIExecutor
 import ai.koog.prompt.executor.ollama.client.OllamaClient
 import ai.koog.prompt.executor.ollama.client.toLLModel
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 interface NotificationAgent {
     suspend fun generateMessage(
@@ -15,16 +18,17 @@ interface NotificationAgent {
         userPrompt: String,
     ): String
 
-    fun initializeWithTools(toolSet: WeatherToolSet)
+    fun initializeWithTool(tool: WeatherTool)
 }
 
 class OllamaAgent : NotificationAgent {
     private val client = OllamaClient()
     private var agent: AIAgent<String, String>? = null
-    private var weatherToolSet: WeatherToolSet? = null
+    private var weatherTool: WeatherTool? = null
+    private val logger: Logger = LoggerFactory.getLogger("ai.koog.agents.tracing")
 
-    override fun initializeWithTools(toolSet: WeatherToolSet) {
-        weatherToolSet = toolSet
+    override fun initializeWithTool(tool: WeatherTool) {
+        weatherTool = tool
     }
 
     override suspend fun generateMessage(
@@ -41,7 +45,7 @@ class OllamaAgent : NotificationAgent {
         }
 
     private suspend fun getAIAgent(systemPrompt: String): AIAgent<String, String> {
-        if (weatherToolSet == null) {
+        if (weatherTool == null) {
             throw Exception("Tools aren't initialized")
         }
 
@@ -54,10 +58,16 @@ class OllamaAgent : NotificationAgent {
                         temperature = 0.7,
                         toolRegistry =
                             ToolRegistry {
-                                tools(weatherToolSet!!.asTools() + SayToUser)
+                                weatherTool
+                                SayToUser
                             },
                         llmModel = llModel,
                     ) {
+                        install(Tracing) {
+                            // Configure message processors to handle trace events
+                            addMessageProcessor(TraceFeatureMessageLogWriter(logger))
+                        }
+
                         handleEvents {
                             onToolCallStarting { eventContext ->
                                 println("Tool called: ${eventContext.tool} with args ${eventContext.toolArgs}")
