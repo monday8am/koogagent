@@ -6,14 +6,13 @@ import androidx.lifecycle.application
 import androidx.lifecycle.viewModelScope
 import com.monday8am.agent.LocalLLModel
 import com.monday8am.agent.NotificationGenerator
-import com.monday8am.agent.WeatherToolSet
+import com.monday8am.agent.WeatherTool
 import com.monday8am.koogagent.data.MealType
 import com.monday8am.koogagent.data.MockLocationProvider
 import com.monday8am.koogagent.data.MotivationLevel
 import com.monday8am.koogagent.data.NotificationContext
 import com.monday8am.koogagent.data.NotificationResult
 import com.monday8am.koogagent.data.OpenMeteoWeatherProvider
-import com.monday8am.koogagent.data.WeatherCondition
 import com.monday8am.koogagent.mediapipe.GemmaAgent
 import com.monday8am.koogagent.mediapipe.LlmModelInstance
 import com.monday8am.koogagent.mediapipe.LocalInferenceUtils
@@ -27,7 +26,6 @@ val defaultNotificationContext =
     NotificationContext(
         mealType = MealType.WATER,
         motivationLevel = MotivationLevel.HIGH,
-        weather = WeatherCondition.SUNNY,
         alreadyLogged = true,
         userLocale = "en-US",
         country = "ES",
@@ -48,7 +46,7 @@ class NotificationViewModel(
     private val modelManager = ModelDownloadManager(application)
     private val weatherProvider = OpenMeteoWeatherProvider()
     private val locationProvider = MockLocationProvider()
-    private val weatherToolSet = WeatherToolSet(weatherProvider, locationProvider)
+    private val weatherToolSet = WeatherTool(weatherProvider, locationProvider)
 
     private val _uiState = MutableStateFlow(UiState())
     val uiState = _uiState.asStateFlow()
@@ -153,7 +151,7 @@ class NotificationViewModel(
         context: NotificationContext,
     ): NotificationResult {
         val agent = GemmaAgent(instance = instance)
-        agent.initializeWithTools(weatherToolSet)
+        agent.initializeWithTool(weatherToolSet)
         return NotificationGenerator(agent = agent).generate(context)
     }
 

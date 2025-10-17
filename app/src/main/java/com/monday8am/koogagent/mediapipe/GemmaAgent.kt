@@ -3,9 +3,7 @@ package com.monday8am.koogagent.mediapipe
 import ai.koog.agents.core.agent.AIAgent
 import ai.koog.agents.core.tools.ToolDescriptor
 import ai.koog.agents.core.tools.ToolRegistry
-import ai.koog.agents.core.tools.reflect.asTools
 import ai.koog.agents.ext.tool.SayToUser
-import ai.koog.agents.features.eventHandler.feature.handleEvents
 import ai.koog.prompt.dsl.ModerationResult
 import ai.koog.prompt.dsl.Prompt
 import ai.koog.prompt.executor.clients.LLMClient
@@ -17,7 +15,8 @@ import ai.koog.prompt.message.Message
 import ai.koog.prompt.message.ResponseMetaInfo
 import com.monday8am.agent.DEFAULT_MAX_TOKEN
 import com.monday8am.agent.NotificationAgent
-import com.monday8am.agent.WeatherToolSet
+import com.monday8am.agent.WeatherTool
+import com.monday8am.agent.installCommonEventHandling
 
 private val gemmaModel =
     LLModel(
@@ -37,10 +36,10 @@ class GemmaAgent(
     private val instance: LlmModelInstance,
 ) : NotificationAgent {
     private var agent: AIAgent<String, String>? = null
-    private var weatherToolSet: WeatherToolSet? = null
+    private var weatherTool: WeatherTool? = null
 
-    override fun initializeWithTools(toolSet: WeatherToolSet) {
-        weatherToolSet = toolSet
+    override fun initializeWithTool(tool: WeatherTool) {
+        weatherTool = tool
     }
 
     override suspend fun generateMessage(
@@ -66,21 +65,11 @@ class GemmaAgent(
                     llmModel = gemmaModel,
                     toolRegistry =
                         ToolRegistry {
-                            tools(weatherToolSet!!.asTools() + SayToUser)
+                            weatherTool
+                            SayToUser
                         },
-                ) {
-                    handleEvents {
-                        onToolCallStarting { eventContext ->
-                            println("Tool called: ${eventContext.tool} with args ${eventContext.toolArgs}")
-                        }
-                        onAgentCompleted { eventContext ->
-                            println("Agent finished with result: ${eventContext.result}")
-                        }
-                        onAgentExecutionFailed { errorContext ->
-                            println("Agent error with result: ${errorContext.throwable}")
-                        }
-                    }
-                }
+                    installFeatures = installCommonEventHandling,
+                )
         }
         return agent!!
     }

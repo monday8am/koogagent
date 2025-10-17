@@ -9,13 +9,12 @@ enum class MotivationLevel { LOW, MEDIUM, HIGH }
 data class NotificationContext(
     val mealType: MealType,
     val motivationLevel: MotivationLevel,
-    val weather: WeatherCondition,
     val alreadyLogged: Boolean,
     val userLocale: String = "en-US",
     val country: String = "ES",
 ) {
     val formatted: String
-        get() = "MealType: $mealType\nMotivationLevel: $motivationLevel\nWeather: $weather\nAlreadyLogged: $alreadyLogged"
+        get() = "MealType: $mealType\nMotivationLevel: $motivationLevel\nAlreadyLogged: $alreadyLogged"
 }
 
 data class NotificationResult(

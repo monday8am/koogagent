@@ -1,23 +1,23 @@
 package com.monday8am.agent
 
 import ai.koog.agents.core.tools.SimpleTool
-import ai.koog.agents.core.tools.annotations.LLMDescription
-import ai.koog.agents.core.tools.annotations.Tool
-import ai.koog.agents.core.tools.reflect.ToolSet
+import ai.koog.agents.core.tools.ToolDescriptor
 import com.monday8am.koogagent.data.LocationProvider
 import com.monday8am.koogagent.data.WeatherCondition
 import com.monday8am.koogagent.data.WeatherProvider
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.serializer
 
 /**
  * Koog Tool for fetching weather information.
  * This tool allows the AI agent to autonomously request weather data
  * when it determines weather context is needed for notification generation.
  */
-class WeatherToolSet(
+class WeatherTool(
     private val weatherProvider: WeatherProvider,
     private val locationProvider: LocationProvider,
 ) : SimpleTool<Unit>() {
+
     @Serializable
     private data class WeatherResult(
         val condition: String,
@@ -26,13 +26,22 @@ class WeatherToolSet(
         val success: Boolean,
     )
 
+    override val argsSerializer = Unit.serializer()
+
+    override val description: String
+        get() = "Get the current weather"
+
+    override val descriptor = ToolDescriptor(
+        name = "WeatherTool",
+        description = "Get the current weather for a country",
+        requiredParameters = listOf(),
+    )
+
     /**
      * Fetches current weather information for the user's location.
      * Use this tool when you need weather context to personalize meal or hydration suggestions.
      */
-    @Tool("get_weather")
-    @LLMDescription("Get the current weather")
-    suspend fun getWeather(): String =
+    override suspend fun doExecute(args: Unit): String =
         try {
             val location = locationProvider.getLocation()
             val weather = weatherProvider.getCurrentWeather(location.latitude, location.longitude)

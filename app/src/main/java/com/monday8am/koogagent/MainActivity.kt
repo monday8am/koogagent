@@ -1,7 +1,6 @@
 package com.monday8am.koogagent
 
 import android.os.Bundle
-import android.telephony.CarrierConfigManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -40,7 +39,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.monday8am.koogagent.data.MealType
 import com.monday8am.koogagent.data.MotivationLevel
 import com.monday8am.koogagent.data.NotificationContext
-import com.monday8am.koogagent.data.WeatherCondition
 import com.monday8am.koogagent.ui.NotificationUtils
 import com.monday8am.koogagent.ui.NotificationViewModel
 import com.monday8am.koogagent.ui.defaultNotificationContext
@@ -48,8 +46,6 @@ import com.monday8am.koogagent.ui.theme.KoogAgentTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        CarrierConfigManager.KEY_CARRIER_NAME_STRING
-
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
@@ -152,13 +148,6 @@ private fun NotificationContextEditor(
             options = enumValues<MotivationLevel>(),
             selected = notificationContext.motivationLevel,
             onSelected = { onContextChange(notificationContext.copy(motivationLevel = it)) },
-        )
-
-        EnumDropdown(
-            label = "Weather",
-            options = enumValues<WeatherCondition>(),
-            selected = notificationContext.weather,
-            onSelected = { onContextChange(notificationContext.copy(weather = it)) },
         )
 
         RowWithSwitch(
