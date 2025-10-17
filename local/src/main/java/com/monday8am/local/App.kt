@@ -9,24 +9,27 @@ import com.monday8am.koogagent.data.NotificationContext
 import com.monday8am.koogagent.data.OpenMeteoWeatherProvider
 import kotlinx.coroutines.runBlocking
 
-fun main() = runBlocking {
-    println("Hello from pure Kotlin!")
+fun main() =
+    runBlocking {
+        println("Hello from pure Kotlin!")
 
-    val weatherProvider = OpenMeteoWeatherProvider()
-    val locationProvider = MockLocationProvider()
+        val weatherProvider = OpenMeteoWeatherProvider()
+        val locationProvider = MockLocationProvider()
 
-    val message = NotificationGenerator(
-        agent = OllamaAgent().apply {
-            initializeWithTool(WeatherTool(weatherProvider, locationProvider))
-        }
-    ).generate(
-        NotificationContext(
-            mealType = MealType.LUNCH,
-            motivationLevel = MotivationLevel.HIGH,
-            alreadyLogged = true,
-            userLocale = "en-US",
-            country = "ES",
-        )
-    )
-    println(message)
-}
+        val message =
+            NotificationGenerator(
+                agent =
+                    OllamaAgent().apply {
+                        initializeWithTool(WeatherTool(weatherProvider, locationProvider))
+                    },
+            ).generate(
+                NotificationContext(
+                    mealType = MealType.LUNCH,
+                    motivationLevel = MotivationLevel.HIGH,
+                    alreadyLogged = true,
+                    userLocale = "en-US",
+                    country = "ES",
+                ),
+            )
+        println(message)
+    }

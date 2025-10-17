@@ -17,7 +17,6 @@ class WeatherTool(
     private val weatherProvider: WeatherProvider,
     private val locationProvider: LocationProvider,
 ) : SimpleTool<Unit>() {
-
     @Serializable
     private data class WeatherResult(
         val condition: String,
@@ -31,11 +30,12 @@ class WeatherTool(
     override val description: String
         get() = "Get the current weather"
 
-    override val descriptor = ToolDescriptor(
-        name = "WeatherTool",
-        description = "Get the current weather for a country",
-        requiredParameters = listOf(),
-    )
+    override val descriptor =
+        ToolDescriptor(
+            name = "WeatherTool",
+            description = "Get the current weather for a country",
+            requiredParameters = listOf(),
+        )
 
     /**
      * Fetches current weather information for the user's location.
