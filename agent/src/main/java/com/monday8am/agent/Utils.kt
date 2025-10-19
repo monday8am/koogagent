@@ -1,6 +1,7 @@
 package com.monday8am.agent
 
 import ai.koog.agents.core.agent.GraphAIAgent.FeatureContext
+import ai.koog.agents.core.feature.writer.FeatureMessageLogWriter
 import ai.koog.agents.features.eventHandler.feature.handleEvents
 import ai.koog.agents.features.tracing.feature.Tracing
 import ai.koog.agents.features.tracing.writer.TraceFeatureMessageLogWriter
@@ -26,9 +27,11 @@ data class LocalLLModel(
 private val traceLogger: KLogger = KotlinLogging.logger("ai.koog.agents.tracing")
 
 val installCommonEventHandling: FeatureContext.() -> Unit = {
+    /*
     install(Tracing) {
-        addMessageProcessor(TraceFeatureMessageLogWriter(traceLogger))
+        addMessageProcessor(TraceFeatureMessageLogWriter(logLevel = FeatureMessageLogWriter.LogLevel.INFO, targetLogger = traceLogger))
     }
+     */
     handleEvents {
         onToolCallStarting { eventContext ->
             println("Tool called: ${eventContext.tool} with args ${eventContext.toolArgs}")

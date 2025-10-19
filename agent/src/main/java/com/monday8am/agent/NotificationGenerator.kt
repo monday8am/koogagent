@@ -7,7 +7,24 @@ import com.monday8am.koogagent.data.NotificationResult
 class NotificationGenerator(
     private val agent: NotificationAgent,
 ) {
-    private val systemPrompt = "You are an nutritionist that generates short, motivating reminders for logging meals or water intake."
+    private val systemPromptOld = "You are an nutritionist that generates short, motivating reminders for logging meals or water intake."
+    private val systemPrompt = """
+        You are a weather assistant. You have access to these tools:
+        
+        - GetLocationTool: Gets current location (no parameters)
+        - GetWeatherTool: Gets weather for coordinates (requires: latitude, longitude)
+        
+        IMPORTANT: When you need to use a tool, you MUST respond ONLY with a tool call in this exact format:
+        {"name": "ToolName", "arguments": {"param": "value"}}
+        
+        Do NOT write code or pseudo-code. Use actual tool calls.
+        
+        When asked about weather:
+        1. Call GetLocationTool
+        2. Wait for the location result
+        3. Call GetWeatherTool with the latitude and longitude from step 1
+        4. Present the weather information
+    """.trimIndent()
 
     suspend fun generate(context: NotificationContext): NotificationResult {
         val prompt = buildPrompt(context)
@@ -24,7 +41,10 @@ class NotificationGenerator(
         }
     }
 
-    private fun buildPrompt(context: NotificationContext): String =
+    // Consider weather when suggesting meals (e.g., hot soup on cold days, refreshing salads when hot, comfort food when rainy).
+    // If weather information is relevant for this meal type, use the WeatherTool tool first to get current conditions, then tailor your suggestion accordingly.
+
+    private fun buildPromptOld(context: NotificationContext): String =
         """
         Context:
         - Meal type: ${context.mealType}
@@ -39,11 +59,12 @@ class NotificationGenerator(
         - WeatherTool: Use this to fetch current weather conditions. Consider weather when suggesting meals (e.g., hot soup on cold days, refreshing salads when hot, comfort food when rainy).
 
         Generate a title (max 35 characters) and a body (max 160 characters) in plain JSON format: {"title":"...", "body":"...", "language":"en-US", "confidence":0.9}
-        Use the language and suggest a meal or drink based on the country provided.
+        Use the language and suggest a meal or drink based on the country provided and the weather information obtained before.
         ${if (context.alreadyLogged) "The user has already logged something today - encourage them to continue." else "The user has not logged anything today - motivate them to start."}
-
-        If weather information is relevant for this meal type, use the WeatherTool tool first to get current conditions, then tailor your suggestion accordingly.
+        Say to user if you used the WeatherTool or not and why
         """.trimIndent()
+
+    private fun buildPrompt(context: NotificationContext): String = "What's the weather today?"
 
     private fun parseResponse(response: String): NotificationResult {
         val cleanJson = response.removePrefix("```json\n").removeSuffix("\n```")

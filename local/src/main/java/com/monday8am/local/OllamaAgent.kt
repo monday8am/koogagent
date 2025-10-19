@@ -1,22 +1,30 @@
 package com.monday8am.local
 
 import ai.koog.agents.core.agent.AIAgent
+import ai.koog.agents.core.agent.functionalStrategy
+import ai.koog.agents.core.dsl.extension.asAssistantMessage
+import ai.koog.agents.core.dsl.extension.containsToolCalls
+import ai.koog.agents.core.dsl.extension.executeMultipleTools
+import ai.koog.agents.core.dsl.extension.extractToolCalls
+import ai.koog.agents.core.dsl.extension.requestLLM
+import ai.koog.agents.core.dsl.extension.requestLLMMultiple
+import ai.koog.agents.core.dsl.extension.sendMultipleToolResults
 import ai.koog.agents.core.tools.ToolRegistry
-import ai.koog.agents.ext.tool.SayToUser
+import ai.koog.agents.features.eventHandler.feature.handleEvents
 import ai.koog.prompt.executor.llms.all.simpleOllamaAIExecutor
 import ai.koog.prompt.executor.ollama.client.OllamaClient
 import ai.koog.prompt.executor.ollama.client.toLLModel
+import ai.koog.prompt.llm.LLModel
 import com.monday8am.agent.NotificationAgent
-import com.monday8am.agent.WeatherTool
 import com.monday8am.agent.installCommonEventHandling
 
 class OllamaAgent : NotificationAgent {
     private val client = OllamaClient()
     private var agent: AIAgent<String, String>? = null
-    private var weatherTool: WeatherTool? = null
+    private var registry: ToolRegistry? = null
 
-    override fun initializeWithTool(tool: WeatherTool) {
-        weatherTool = tool
+    override fun initializeWithTools(toolRegistry: ToolRegistry) {
+        registry = toolRegistry
     }
 
     override suspend fun generateMessage(
@@ -33,27 +41,36 @@ class OllamaAgent : NotificationAgent {
         }
 
     private suspend fun getAIAgent(systemPrompt: String): AIAgent<String, String> {
-        if (weatherTool == null) {
-            throw Exception("Tools aren't initialized")
+        if (registry == null) {
+            throw Exception("OllamaAgent: ToolRegistry is null!")
         }
 
-        if (agent == null) {
-            agent =
-                client.getModels().firstOrNull()?.toLLModel()?.let { llModel ->
-                    AIAgent(
-                        promptExecutor = simpleOllamaAIExecutor(),
-                        systemPrompt = systemPrompt,
-                        temperature = 0.7,
-                        toolRegistry =
-                            ToolRegistry {
-                                weatherTool
-                                SayToUser
-                            },
-                        llmModel = llModel,
-                        installFeatures = installCommonEventHandling,
-                    )
-                }
+        val llModel = client.getModels().firstOrNull()?.toLLModel()
+        if (llModel == null) {
+            throw Exception("No models found")
         }
-        return agent!!
+
+        return AIAgent(
+            promptExecutor = simpleOllamaAIExecutor(),
+            systemPrompt = systemPrompt,
+            temperature = 0.7,
+            toolRegistry = registry ?: ToolRegistry.EMPTY,
+            llmModel = llModel,
+            strategy = functionalStrategy { input ->
+                println("Calling LLM with Input = $input")
+                var responses = requestLLMMultiple(input)
+
+                while (responses.containsToolCalls()) {
+                    val pendingCalls = extractToolCalls(responses)
+                    println("Pending Calls")
+                    println(pendingCalls.map { "${it.tool} ${it.content}" })
+                    val results = executeMultipleTools(pendingCalls)
+                    responses = sendMultipleToolResults(results)
+                }
+
+                val draft = responses.single().asAssistantMessage().content
+                requestLLM("Improve and clarify: $draft").asAssistantMessage().content
+            },
+        )
     }
 }

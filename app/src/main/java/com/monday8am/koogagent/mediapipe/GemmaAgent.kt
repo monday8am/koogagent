@@ -3,7 +3,6 @@ package com.monday8am.koogagent.mediapipe
 import ai.koog.agents.core.agent.AIAgent
 import ai.koog.agents.core.tools.ToolDescriptor
 import ai.koog.agents.core.tools.ToolRegistry
-import ai.koog.agents.ext.tool.SayToUser
 import ai.koog.prompt.dsl.ModerationResult
 import ai.koog.prompt.dsl.Prompt
 import ai.koog.prompt.executor.clients.LLMClient
@@ -15,7 +14,6 @@ import ai.koog.prompt.message.Message
 import ai.koog.prompt.message.ResponseMetaInfo
 import com.monday8am.agent.DEFAULT_MAX_TOKEN
 import com.monday8am.agent.NotificationAgent
-import com.monday8am.agent.WeatherTool
 import com.monday8am.agent.installCommonEventHandling
 
 private val gemmaModel =
@@ -36,10 +34,10 @@ class GemmaAgent(
     private val instance: LlmModelInstance,
 ) : NotificationAgent {
     private var agent: AIAgent<String, String>? = null
-    private var weatherTool: WeatherTool? = null
+    private var registry: ToolRegistry? = null
 
-    override fun initializeWithTool(tool: WeatherTool) {
-        weatherTool = tool
+    override fun initializeWithTools(toolRegistry: ToolRegistry) {
+        registry = toolRegistry
     }
 
     override suspend fun generateMessage(
@@ -63,11 +61,7 @@ class GemmaAgent(
                     systemPrompt = systemPrompt,
                     temperature = 0.7,
                     llmModel = gemmaModel,
-                    toolRegistry =
-                        ToolRegistry {
-                            weatherTool
-                            SayToUser
-                        },
+                    toolRegistry = registry ?: ToolRegistry.EMPTY,
                     installFeatures = installCommonEventHandling,
                 )
         }

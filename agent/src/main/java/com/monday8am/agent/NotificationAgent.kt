@@ -1,10 +1,13 @@
 package com.monday8am.agent
 
+import ai.koog.agents.core.tools.ToolRegistry
+
 interface NotificationAgent {
     suspend fun generateMessage(
         systemPrompt: String,
         userPrompt: String,
     ): String
 
-    fun initializeWithTool(tool: WeatherTool)
+    fun initializeWithTools(toolRegistry: ToolRegistry)
 }
+    
