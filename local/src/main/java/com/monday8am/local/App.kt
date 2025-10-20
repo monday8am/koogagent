@@ -20,10 +20,11 @@ fun main() =
 
         val weatherProvider = OpenMeteoWeatherProvider()
         val locationProvider = MockLocationProvider()
-        val toolRegistry = ToolRegistry {
-            tool(tool = GetWeatherTool(weatherProvider))
-            tool(tool = GetLocationTool(locationProvider))
-        }
+        val toolRegistry =
+            ToolRegistry {
+                tool(tool = GetWeatherTool(weatherProvider))
+                tool(tool = GetLocationTool(locationProvider))
+            }
 
         val message =
             NotificationGenerator(

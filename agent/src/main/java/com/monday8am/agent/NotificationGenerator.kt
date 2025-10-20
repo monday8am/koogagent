@@ -11,7 +11,8 @@ class NotificationGenerator(
     private val agent: NotificationAgent,
 ) {
     private val systemPromptOld = "You are an nutritionist that generates short, motivating reminders for logging meals or water intake."
-    private val systemPrompt = """
+    private val systemPrompt =
+        """
         You are a tool-calling assistant.
         
         Available tool:
@@ -23,7 +24,7 @@ class NotificationGenerator(
         Example:
         For the question: Where am I right now?
         The answer is: {"tool":"getLocationTool"}
-    """.trimIndent()
+        """.trimIndent()
 
     suspend fun generate(context: NotificationContext): NotificationResult {
         val prompt = buildPrompt(context)

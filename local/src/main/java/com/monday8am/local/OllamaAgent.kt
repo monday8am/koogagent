@@ -59,28 +59,29 @@ class OllamaAgent : NotificationAgent {
             temperature = 0.7,
             toolRegistry = registry ?: ToolRegistry.EMPTY,
             llmModel = llModel,
-            strategy = functionalStrategy { input ->
-                logger.d { "Calling LLM with input: $input" }
-                var responses = requestLLMMultiple(input)
+            strategy =
+                functionalStrategy { input ->
+                    logger.d { "Calling LLM with input: $input" }
+                    var responses = requestLLMMultiple(input)
 
-                val hasToolCalls = responses.containsToolCalls()
-                logger.d { "Response contains tool calls: $hasToolCalls" }
+                    val hasToolCalls = responses.containsToolCalls()
+                    logger.d { "Response contains tool calls: $hasToolCalls" }
 
-                while (responses.containsToolCalls()) {
-                    val pendingCalls = extractToolCalls(responses)
-                    logger.i { "Executing ${pendingCalls.size} tool calls:" }
-                    pendingCalls.forEach { call ->
-                        logger.i { "  - ${call.tool}: ${call.content}" }
+                    while (responses.containsToolCalls()) {
+                        val pendingCalls = extractToolCalls(responses)
+                        logger.i { "Executing ${pendingCalls.size} tool calls:" }
+                        pendingCalls.forEach { call ->
+                            logger.i { "  - ${call.tool}: ${call.content}" }
+                        }
+                        val results = executeMultipleTools(pendingCalls)
+                        responses = sendMultipleToolResults(results)
                     }
-                    val results = executeMultipleTools(pendingCalls)
-                    responses = sendMultipleToolResults(results)
-                }
 
-                val draft = responses.single().asAssistantMessage().content
-                logger.d { "Draft response: $draft" }
-                logger.d { "Requesting LLM to improve and clarify draft" }
-                requestLLM("Improve and clarify: $draft").asAssistantMessage().content
-            },
+                    val draft = responses.single().asAssistantMessage().content
+                    logger.d { "Draft response: $draft" }
+                    logger.d { "Requesting LLM to improve and clarify draft" }
+                    requestLLM("Improve and clarify: $draft").asAssistantMessage().content
+                },
         )
     }
 }

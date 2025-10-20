@@ -17,7 +17,6 @@ import kotlinx.serialization.Serializable
 class GetWeatherTool(
     private val weatherProvider: WeatherProvider,
 ) : SimpleTool<GetWeatherTool.Args>() {
-
     @Serializable
     data class Args(
         @property:LLMDescription("Latitude of the location in double format")
@@ -43,10 +42,11 @@ class GetWeatherTool(
         ToolDescriptor(
             name = "GetWeatherTool",
             description = "Get the current weather from the provided latitude and longitude parameters",
-            requiredParameters = listOf(
-                ToolParameterDescriptor(name = "latitude", description = "geo latitude", type = ToolParameterType.String),
-                ToolParameterDescriptor(name = "longitude", description = "geo longitude", type = ToolParameterType.String),
-            ),
+            requiredParameters =
+                listOf(
+                    ToolParameterDescriptor(name = "latitude", description = "geo latitude", type = ToolParameterType.String),
+                    ToolParameterDescriptor(name = "longitude", description = "geo longitude", type = ToolParameterType.String),
+                ),
         )
 
     /**

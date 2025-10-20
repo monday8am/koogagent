@@ -8,7 +8,6 @@ import kotlinx.serialization.builtins.serializer
 class GetLocationTool(
     private val locationProvider: LocationProvider,
 ) : SimpleTool<Unit>() {
-
     override val argsSerializer = Unit.serializer()
 
     override val description: String
@@ -21,14 +20,12 @@ class GetLocationTool(
             requiredParameters = listOf(),
         )
 
-    override suspend fun doExecute(args: Unit): String {
-        return try {
+    override suspend fun doExecute(args: Unit): String =
+        try {
             val result = locationProvider.getLocation()
             "Location: latitude ${result.latitude}, longitude: ${result.longitude}"
-
         } catch (e: Exception) {
             logger.e { "GetLocationTool: Error fetching location: ${e.message}" }
             "Location: error - ${e.message}"
         }
-    }
 }

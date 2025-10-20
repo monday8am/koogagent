@@ -49,10 +49,11 @@ class NotificationViewModel(
     private val modelManager = ModelDownloadManager(application)
     private val weatherProvider = OpenMeteoWeatherProvider()
     private val locationProvider = MockLocationProvider()
-    private val toolRegistry = ToolRegistry {
-        tool(tool = GetWeatherTool(weatherProvider))
-        tool(tool = GetLocationTool(locationProvider))
-    }
+    private val toolRegistry =
+        ToolRegistry {
+            tool(tool = GetWeatherTool(weatherProvider))
+            tool(tool = GetLocationTool(locationProvider))
+        }
 
     private val _uiState = MutableStateFlow(UiState())
     val uiState = _uiState.asStateFlow()
