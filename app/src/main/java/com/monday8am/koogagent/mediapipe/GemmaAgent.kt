@@ -1,17 +1,12 @@
 package com.monday8am.koogagent.mediapipe
 
 import ai.koog.agents.core.agent.AIAgent
-import ai.koog.agents.core.tools.ToolDescriptor
 import ai.koog.agents.core.tools.ToolRegistry
-import ai.koog.prompt.dsl.ModerationResult
-import ai.koog.prompt.dsl.Prompt
 import ai.koog.prompt.executor.clients.LLMClient
 import ai.koog.prompt.executor.llms.SingleLLMPromptExecutor
 import ai.koog.prompt.llm.LLMCapability
 import ai.koog.prompt.llm.LLMProvider
 import ai.koog.prompt.llm.LLModel
-import ai.koog.prompt.message.Message
-import ai.koog.prompt.message.ResponseMetaInfo
 import com.monday8am.agent.DEFAULT_MAX_TOKEN
 import com.monday8am.agent.NotificationAgent
 import com.monday8am.agent.installCommonEventHandling
@@ -57,7 +52,11 @@ class GemmaAgent(
         if (agent == null) {
             agent =
                 AIAgent(
-                    promptExecutor = SimpleGemmaAIExecutor(llmClient = GemmaLLMClient(instance = instance)),
+                    promptExecutor = SimpleGemmaAIExecutor(
+                        llmClient = GemmaLLMClient(
+                        promptMediaPipe = { LocalInferenceUtils.prompt(instance, systemPrompt).getOrNull() }
+                    )
+                    ),
                     systemPrompt = systemPrompt,
                     temperature = 0.7,
                     llmModel = gemmaModel,
@@ -72,27 +71,3 @@ class GemmaAgent(
 private class SimpleGemmaAIExecutor(
     llmClient: LLMClient,
 ) : SingleLLMPromptExecutor(llmClient)
-
-private class GemmaLLMClient(
-    private val instance: LlmModelInstance,
-) : LLMClient {
-    override suspend fun execute(
-        prompt: Prompt,
-        model: LLModel,
-        tools: List<ToolDescriptor>,
-    ): List<Message.Response> {
-        val prompt = prompt.messages.joinToString("\n") { it.content }
-        return LocalInferenceUtils.prompt(instance, prompt).getOrNull()?.let {
-            listOf(
-                Message.Assistant(metaInfo = ResponseMetaInfo.Empty, content = it),
-            )
-        } ?: listOf()
-    }
-
-    override suspend fun moderate(
-        prompt: Prompt,
-        model: LLModel,
-    ): ModerationResult = throw Exception("Not supported")
-
-    override fun llmProvider(): LLMProvider = object : LLMProvider("gemma", "Gemma") { }
-}
