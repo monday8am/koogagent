@@ -6,13 +6,12 @@ coreKtx = "1.17.0"
 junit = "4.13.2"
 junitVersion = "1.3.0"
 espressoCore = "3.7.0"
-kotlinLoggingJvm = "7.0.13"
+kermit = "2.0.8"
 lifecycleRuntimeKtx = "2.9.4"
 activityCompose = "1.11.0"
 composeBom = "2025.10.00"
 jetbrainsKotlinJvm = "2.2.20"
 koog = "0.5.1"
-logbackClassic = "1.5.19"
 mediapipeTasksText = "0.20230731"
 mediapipeTasksGenai = "0.10.29"
 kotlinxCoroutines = "1.10.2"
@@ -36,8 +35,7 @@ androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-
 androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
 koog-agents = { group = "ai.koog", name = "koog-agents", version.ref = "koog" }
-kotlin-logging-jvm = { module = "io.github.oshai:kotlin-logging-jvm", version.ref = "kotlinLoggingJvm" }
-logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logbackClassic" }
+kermit = { group = "co.touchlab", name = "kermit", version.ref = "kermit" }
 mediapipe-tasks-text = { group = "com.google.mediapipe", name = "tasks-text", version.ref = "mediapipeTasksText" }
 mediapipe-tasks-genai = { group = "com.google.mediapipe", name = "tasks-genai", version.ref = "mediapipeTasksGenai" }
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "kotlinxCoroutines" }

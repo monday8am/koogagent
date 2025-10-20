@@ -1,43 +1,49 @@
 package com.monday8am.agent
 
+import co.touchlab.kermit.Logger
 import com.monday8am.koogagent.data.MealType
 import com.monday8am.koogagent.data.NotificationContext
 import com.monday8am.koogagent.data.NotificationResult
+
+internal val logger = Logger.withTag("NotificationGenerator")
 
 class NotificationGenerator(
     private val agent: NotificationAgent,
 ) {
     private val systemPromptOld = "You are an nutritionist that generates short, motivating reminders for logging meals or water intake."
     private val systemPrompt = """
-        You are a weather assistant. You have access to these tools:
+        You are a tool-calling assistant.
         
-        - GetLocationTool: Gets current location (no parameters)
-        - GetWeatherTool: Gets weather for coordinates (requires: latitude, longitude)
+        Available tool:
+        - getLocationTool (no parameters needed)
         
-        IMPORTANT: When you need to use a tool, you MUST respond ONLY with a tool call in this exact format:
-        {"name": "ToolName", "arguments": {"param": "value"}}
+        Rule: If the user needs location information, output exactly: {"tool":"getLocationTool"}
+        If not needed, output exactly: {"tool":"none"}
         
-        Do NOT write code or pseudo-code. Use actual tool calls.
-        
-        When asked about weather:
-        1. Call GetLocationTool
-        2. Wait for the location result
-        3. Call GetWeatherTool with the latitude and longitude from step 1
-        4. Present the weather information
+        Example:
+        For the question: Where am I right now?
+        The answer is: {"tool":"getLocationTool"}
     """.trimIndent()
 
     suspend fun generate(context: NotificationContext): NotificationResult {
         val prompt = buildPrompt(context)
+        logger.d { "Built prompt: $prompt" }
+
         return try {
             val response =
                 agent.generateMessage(
                     systemPrompt = systemPrompt,
                     userPrompt = prompt,
                 )
-            parseResponse(response)
+            logger.d { "Agent response: $response" }
+            val result = parseResponse(response)
+            logger.i { "Successfully generated notification: title='${result.title}', confidence=${result.confidence}" }
+            result
         } catch (e: Exception) {
-            println("NotificationGenerator: Error generating notification ${e.message}")
-            fallback(context)
+            logger.e(e) { "Error generating notification: ${e.message}" }
+            val fallbackResult = fallback(context)
+            logger.w { "Using fallback notification: title='${fallbackResult.title}'" }
+            fallbackResult
         }
     }
 
@@ -64,7 +70,7 @@ class NotificationGenerator(
         Say to user if you used the WeatherTool or not and why
         """.trimIndent()
 
-    private fun buildPrompt(context: NotificationContext): String = "What's the weather today?"
+    private fun buildPrompt(context: NotificationContext): String = "I'm lost. I need to know my location"
 
     private fun parseResponse(response: String): NotificationResult {
         val cleanJson = response.removePrefix("```json\n").removeSuffix("\n```")

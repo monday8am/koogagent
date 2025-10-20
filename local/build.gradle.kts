@@ -20,8 +20,7 @@ dependencies {
     implementation(project(":agent"))
     implementation(project(":data"))
     implementation(libs.kotlinx.coroutines.android)
-    implementation(libs.kotlin.logging.jvm)
-    implementation(libs.logback.classic)
+    implementation(libs.kermit)
 }
 
 application {

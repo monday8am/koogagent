@@ -10,4 +10,3 @@ interface NotificationAgent {
 
     fun initializeWithTools(toolRegistry: ToolRegistry)
 }
-    

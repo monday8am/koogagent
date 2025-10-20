@@ -10,17 +10,16 @@ import ai.koog.agents.core.dsl.extension.requestLLM
 import ai.koog.agents.core.dsl.extension.requestLLMMultiple
 import ai.koog.agents.core.dsl.extension.sendMultipleToolResults
 import ai.koog.agents.core.tools.ToolRegistry
-import ai.koog.agents.features.eventHandler.feature.handleEvents
 import ai.koog.prompt.executor.llms.all.simpleOllamaAIExecutor
 import ai.koog.prompt.executor.ollama.client.OllamaClient
 import ai.koog.prompt.executor.ollama.client.toLLModel
-import ai.koog.prompt.llm.LLModel
+import co.touchlab.kermit.Logger
 import com.monday8am.agent.NotificationAgent
-import com.monday8am.agent.installCommonEventHandling
+
+private val logger = Logger.withTag("OllamaAgent")
 
 class OllamaAgent : NotificationAgent {
     private val client = OllamaClient()
-    private var agent: AIAgent<String, String>? = null
     private var registry: ToolRegistry? = null
 
     override fun initializeWithTools(toolRegistry: ToolRegistry) {
@@ -32,23 +31,27 @@ class OllamaAgent : NotificationAgent {
         userPrompt: String,
     ): String =
         try {
+            logger.d { "Generating message with userPrompt: $userPrompt" }
             getAIAgent(systemPrompt = systemPrompt).run(
                 agentInput = userPrompt,
             )
         } catch (e: Exception) {
-            println(e)
+            logger.e(e) { "Error generating message: ${e.message}" }
             "Error generating message"
         }
 
     private suspend fun getAIAgent(systemPrompt: String): AIAgent<String, String> {
         if (registry == null) {
+            logger.e { "ToolRegistry is null!" }
             throw Exception("OllamaAgent: ToolRegistry is null!")
         }
 
         val llModel = client.getModels().firstOrNull()?.toLLModel()
         if (llModel == null) {
+            logger.e { "No Ollama models found" }
             throw Exception("No models found")
         }
+        logger.i { "Using Ollama model: ${llModel.id}" }
 
         return AIAgent(
             promptExecutor = simpleOllamaAIExecutor(),
@@ -57,18 +60,25 @@ class OllamaAgent : NotificationAgent {
             toolRegistry = registry ?: ToolRegistry.EMPTY,
             llmModel = llModel,
             strategy = functionalStrategy { input ->
-                println("Calling LLM with Input = $input")
+                logger.d { "Calling LLM with input: $input" }
                 var responses = requestLLMMultiple(input)
+
+                val hasToolCalls = responses.containsToolCalls()
+                logger.d { "Response contains tool calls: $hasToolCalls" }
 
                 while (responses.containsToolCalls()) {
                     val pendingCalls = extractToolCalls(responses)
-                    println("Pending Calls")
-                    println(pendingCalls.map { "${it.tool} ${it.content}" })
+                    logger.i { "Executing ${pendingCalls.size} tool calls:" }
+                    pendingCalls.forEach { call ->
+                        logger.i { "  - ${call.tool}: ${call.content}" }
+                    }
                     val results = executeMultipleTools(pendingCalls)
                     responses = sendMultipleToolResults(results)
                 }
 
                 val draft = responses.single().asAssistantMessage().content
+                logger.d { "Draft response: $draft" }
+                logger.d { "Requesting LLM to improve and clarify draft" }
                 requestLLM("Improve and clarify: $draft").asAssistantMessage().content
             },
         )

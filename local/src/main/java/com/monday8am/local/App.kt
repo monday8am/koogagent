@@ -1,7 +1,7 @@
 package com.monday8am.local
 
 import ai.koog.agents.core.tools.ToolRegistry
-import ai.koog.agents.ext.tool.SayToUser
+import co.touchlab.kermit.Logger
 import com.monday8am.agent.GetLocationTool
 import com.monday8am.agent.GetWeatherTool
 import com.monday8am.agent.NotificationGenerator
@@ -12,17 +12,17 @@ import com.monday8am.koogagent.data.NotificationContext
 import com.monday8am.koogagent.data.OpenMeteoWeatherProvider
 import kotlinx.coroutines.runBlocking
 
+private val logger = Logger.withTag("KoogAgentApp")
+
 fun main() =
     runBlocking {
-        println("Hello from pure Kotlin!")
+        logger.i { "Starting KoogAgent local test application" }
 
         val weatherProvider = OpenMeteoWeatherProvider()
         val locationProvider = MockLocationProvider()
-
         val toolRegistry = ToolRegistry {
             tool(tool = GetWeatherTool(weatherProvider))
             tool(tool = GetLocationTool(locationProvider))
-            SayToUser
         }
 
         val message =
@@ -40,5 +40,13 @@ fun main() =
                     country = "ES",
                 ),
             )
-        println(message)
+
+        logger.i { "Generated notification:" }
+        logger.i { "  Title: ${message.title}" }
+        logger.i { "  Body: ${message.body}" }
+        logger.i { "  Language: ${message.language}" }
+        logger.i { "  Confidence: ${message.confidence}" }
+        logger.i { "  Is Fallback: ${message.isFallback}" }
+
+        logger.i { "Application completed successfully" }
     }

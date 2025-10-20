@@ -18,5 +18,6 @@ dependencies {
         // Exclude to avoid duplicate classes with kotlin-sdk-client
         exclude(group = "io.modelcontextprotocol", module = "kotlin-sdk-core-jvm")
     }
+    implementation(libs.kermit)
     testImplementation(kotlin("test"))
 }

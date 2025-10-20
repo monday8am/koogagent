@@ -52,7 +52,6 @@ class NotificationViewModel(
     private val toolRegistry = ToolRegistry {
         tool(tool = GetWeatherTool(weatherProvider))
         tool(tool = GetLocationTool(locationProvider))
-        SayToUser
     }
 
     private val _uiState = MutableStateFlow(UiState())

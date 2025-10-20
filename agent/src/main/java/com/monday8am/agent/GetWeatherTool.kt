@@ -42,7 +42,7 @@ class GetWeatherTool(
     override val descriptor =
         ToolDescriptor(
             name = "GetWeatherTool",
-            description = "Get the current weather for a location based on latitude and longitude",
+            description = "Get the current weather from the provided latitude and longitude parameters",
             requiredParameters = listOf(
                 ToolParameterDescriptor(name = "latitude", description = "geo latitude", type = ToolParameterType.String),
                 ToolParameterDescriptor(name = "longitude", description = "geo longitude", type = ToolParameterType.String),
@@ -56,9 +56,6 @@ class GetWeatherTool(
     override suspend fun doExecute(args: Args): String =
         try {
             val weather = weatherProvider.getCurrentWeather(latitude = args.latitude, longitude = args.longitude)
-
-            println("GetWeatherTool: Agent requested weather data")
-
             if (weather != null) {
                 val temperature = getApproximateTemperature(weather)
                 val result =
@@ -73,7 +70,7 @@ class GetWeatherTool(
                 "Weather: unknown at ${args.latitude}, ${args.longitude}"
             }
         } catch (e: Exception) {
-            println("GetWeatherTool: Error fetching weather: ${e.message}")
+            logger.e { "GetWeatherTool: Error fetching weather: ${e.message}" }
             "Weather: error - ${e.message}"
         }
 

@@ -1,10 +1,7 @@
 package com.monday8am.agent
 
 import ai.koog.agents.core.agent.GraphAIAgent.FeatureContext
-import ai.koog.agents.core.feature.writer.FeatureMessageLogWriter
 import ai.koog.agents.features.eventHandler.feature.handleEvents
-import ai.koog.agents.features.tracing.feature.Tracing
-import ai.koog.agents.features.tracing.writer.TraceFeatureMessageLogWriter
 import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
 
