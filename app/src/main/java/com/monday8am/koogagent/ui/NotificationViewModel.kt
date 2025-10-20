@@ -1,8 +1,8 @@
 package com.monday8am.koogagent.ui
 
 import ai.koog.agents.core.tools.ToolRegistry
-import ai.koog.agents.ext.tool.SayToUser
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.application
 import androidx.lifecycle.viewModelScope
@@ -19,6 +19,7 @@ import com.monday8am.koogagent.data.OpenMeteoWeatherProvider
 import com.monday8am.koogagent.mediapipe.GemmaAgent
 import com.monday8am.koogagent.mediapipe.LlmModelInstance
 import com.monday8am.koogagent.mediapipe.LocalInferenceUtils
+import com.monday8am.koogagent.mediapipe.download.GemmaToolCallingTest
 import com.monday8am.koogagent.mediapipe.download.ModelDownloadManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -128,6 +129,23 @@ class NotificationViewModel(
         }
     }
 
+    fun runToolTests() {
+        if (_uiState.value.isModelReady.not()) {
+            printLog("Model isn't ready yet. Please wait.")
+            return
+        }
+
+        instance?.let { gemmaInstance ->
+            viewModelScope.launch {
+                printLog("Starting tool calling tests...\n")
+
+                val tester = GemmaToolCallingTest(instance = gemmaInstance)
+                val results = tester.runAllTests()
+                printLog(results)
+            }
+        }
+    }
+
     fun updateContext(context: NotificationContext) {
         _uiState.update { it.copy(context = context) }
     }
@@ -164,5 +182,6 @@ class NotificationViewModel(
 
     private fun printLog(log: String) {
         _uiState.update { it.copy(textLog = log) }
+        Log.d("NotificationViewModel", log)
     }
 }
