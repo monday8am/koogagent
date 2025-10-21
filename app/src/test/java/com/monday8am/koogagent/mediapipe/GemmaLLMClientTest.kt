@@ -318,6 +318,26 @@ class GemmaLLMClientTest {
     }
 
     @Test
+    fun `parseResponse trims whitespace from tool name value`() {
+        val tools = listOf(
+            ToolDescriptor(
+                name = "getWeather",
+                description = "Gets weather",
+                requiredParameters = emptyList(),
+                optionalParameters = emptyList()
+            )
+        )
+
+        // Model might add leading/trailing space in the value
+        val result = client.parseResponse("""{"tool":" getWeather "}""", tools)
+
+        assertEquals(1, result.size)
+        val message = result[0]
+        assertTrue(message is Message.Tool.Call)
+        assertEquals("getWeather", (message as Message.Tool.Call).tool)
+    }
+
+    @Test
     fun `parseResponse extracts tool name correctly from mixed content`() {
         val tools = listOf(
             ToolDescriptor(

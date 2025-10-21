@@ -2,6 +2,7 @@ package com.monday8am.agent
 
 import ai.koog.agents.core.agent.GraphAIAgent.FeatureContext
 import ai.koog.agents.features.eventHandler.feature.handleEvents
+import co.touchlab.kermit.Logger
 import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
 
@@ -22,6 +23,7 @@ data class LocalLLModel(
 )
 
 private val traceLogger: KLogger = KotlinLogging.logger("ai.koog.agents.tracing")
+private val kermitLogger = Logger.withTag("ModelEventHandling")
 
 val installCommonEventHandling: FeatureContext.() -> Unit = {
     /*
@@ -31,13 +33,13 @@ val installCommonEventHandling: FeatureContext.() -> Unit = {
      */
     handleEvents {
         onToolCallStarting { eventContext ->
-            println("Tool called: ${eventContext.tool} with args ${eventContext.toolArgs}")
+            kermitLogger.d{ "Tool called: ${eventContext.tool} with args ${eventContext.toolArgs}" }
         }
         onAgentCompleted { eventContext ->
-            println("Agent finished with result: ${eventContext.result}")
+            kermitLogger.d{ "Agent finished with result: ${eventContext.result}" }
         }
         onAgentExecutionFailed { errorContext ->
-            println("Agent error with result: ${errorContext.throwable}")
+            kermitLogger.d { "Agent error with result: ${errorContext.throwable}" }
         }
     }
 }

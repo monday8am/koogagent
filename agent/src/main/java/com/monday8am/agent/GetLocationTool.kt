@@ -11,12 +11,12 @@ class GetLocationTool(
     override val argsSerializer = Unit.serializer()
 
     override val description: String
-        get() = "Get the user current location"
+        get() = "Get the user location"
 
     override val descriptor =
         ToolDescriptor(
             name = "GetLocationTool",
-            description = "Get the current user location and returns latitude and longitude",
+            description = "Get the user location and returns it in a string with latitude and longitude",
             requiredParameters = listOf(),
         )
 

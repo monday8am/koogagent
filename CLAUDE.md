@@ -190,6 +190,20 @@ Not enabled for release builds (prototype phase)
 - `LocalInferenceUtils.prompt()` adds chunks to existing session
 - Must call `LocalInferenceUtils.close()` to free resources (done in ViewModel.onCleared())
 
+### Tool Naming Convention
+- **All tool names must use camelCase** (e.g., `getLocationTool`, `getWeatherTool`)
+- Tool names follow JSON convention with lowercase first letter
+- This is critical for Gemma's simplified tool protocol: `{"tool":"toolName"}`
+- When creating new tools, set the `ToolDescriptor.name` field to camelCase
+- Example:
+  ```kotlin
+  override val descriptor = ToolDescriptor(
+      name = "getLocationTool",  // ✅ Correct: camelCase
+      // NOT "GetLocationTool"   // ❌ Wrong: PascalCase
+      description = "Get the user location"
+  )
+  ```
+
 ## Architecture Decisions
 
 ### Why Two Modules?

@@ -101,16 +101,15 @@ internal class GemmaLLMClient(
             Available tools:
             $toolsList
 
-            To call a tool, respond ONLY with: {"tool":"toolName"}
+            To call a tool, respond ONLY with: {"tool":"ToolName"}. Tool names start with uppercase.
             To skip tools and answer directly, respond with: {"tool":"none"} followed by your answer.
 
             Examples:
             User: What's the weather?
-            Assistant: {"tool":"getWeather"}
+            Assistant: {"tool":"GetWeatherTool"}
 
             User: Tell me a joke
-            Assistant: {"tool":"none"}
-            Why did the chicken cross the road? To get to the other side!
+            Assistant: {"tool":"none"} Why did the chicken cross the road? To get to the other side!
             """.trimIndent()
     }
 
@@ -220,7 +219,8 @@ internal class GemmaLLMClient(
      * - **Case sensitivity**: Model writes `{"Tool":"X"}` or `{"TOOL":"X"}`
      *
      * ## Current Handling:
-     * - Regex is flexible with whitespace
+     * - Regex is flexible with whitespace around JSON structure
+     * - Trims whitespace from extracted tool name (handles `{"tool":" toolName "}`)
      * - Finds first match only (ignores multiple tool attempts)
      * - Validates tool name against available tools
      * - Returns helpful error for hallucinated tools
@@ -240,7 +240,7 @@ internal class GemmaLLMClient(
         val match = toolCallRegex.find(response)
 
         return if (match != null) {
-            val toolName = match.groupValues[1]
+            val toolName = match.groupValues[1].trim()
             logger.d { "Found tool pattern in response: tool='$toolName'" }
 
             if (toolName == "none") {

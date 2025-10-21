@@ -7,6 +7,7 @@ import ai.koog.prompt.executor.llms.SingleLLMPromptExecutor
 import ai.koog.prompt.llm.LLMCapability
 import ai.koog.prompt.llm.LLMProvider
 import ai.koog.prompt.llm.LLModel
+import co.touchlab.kermit.Logger
 import com.monday8am.agent.DEFAULT_MAX_TOKEN
 import com.monday8am.agent.NotificationAgent
 import com.monday8am.agent.installCommonEventHandling
@@ -28,8 +29,8 @@ private val gemmaModel =
 class GemmaAgent(
     private val instance: LlmModelInstance,
 ) : NotificationAgent {
-    private var agent: AIAgent<String, String>? = null
     private var registry: ToolRegistry? = null
+    private val logger = Logger.withTag("GemmaAgent")
 
     override fun initializeWithTools(toolRegistry: ToolRegistry) {
         registry = toolRegistry
@@ -44,28 +45,24 @@ class GemmaAgent(
                 agentInput = userPrompt,
             )
         } catch (e: Exception) {
-            println(e)
+            logger.e("Error generating message", e)
             "Error generating message"
         }
 
-    private fun getAIAgent(systemPrompt: String): AIAgent<String, String> {
-        if (agent == null) {
-            agent =
-                AIAgent(
-                    promptExecutor = SimpleGemmaAIExecutor(
-                        llmClient = GemmaLLMClient(
-                        promptMediaPipe = { LocalInferenceUtils.prompt(instance, systemPrompt).getOrNull() }
-                    )
-                    ),
-                    systemPrompt = systemPrompt,
-                    temperature = 0.7,
-                    llmModel = gemmaModel,
-                    toolRegistry = registry ?: ToolRegistry.EMPTY,
-                    installFeatures = installCommonEventHandling,
-                )
-        }
-        return agent!!
-    }
+    private fun getAIAgent(systemPrompt: String): AIAgent<String, String> = AIAgent(
+        promptExecutor = SimpleGemmaAIExecutor(
+            llmClient = GemmaLLMClient(
+                promptMediaPipe = { fullPrompt ->
+                    LocalInferenceUtils.prompt(instance, fullPrompt).getOrNull()
+                }
+            )
+        ),
+        systemPrompt = systemPrompt,
+        temperature = 0.7,
+        llmModel = gemmaModel,
+        toolRegistry = registry ?: ToolRegistry.EMPTY,
+        installFeatures = installCommonEventHandling,
+    )
 }
 
 private class SimpleGemmaAIExecutor(

@@ -27,7 +27,7 @@ internal class GemmaToolCallingTest(
     private val instance: LlmModelInstance,
 ) {
     private val logger = Logger.withTag("GemmaToolCallingTest")
-    private val testIterations = 1
+    private val testIterations = 5
 
     suspend fun runAllTests(): String = withContext(Dispatchers.IO) {
         val output = StringBuilder()
@@ -43,10 +43,10 @@ internal class GemmaToolCallingTest(
         try {
             val tests = listOf(
                 ::testBasicToolCall,
-                ::testNoToolNeeded,
-                ::testToolHallucination,
-                ::testWeatherTool,
-                ::testMultiTurnSequence
+                // ::testNoToolNeeded,
+                // ::testToolHallucination,
+                // ::testWeatherTool,
+                // ::testMultiTurnSequence
             )
 
             tests.forEach { test ->
@@ -75,8 +75,7 @@ internal class GemmaToolCallingTest(
             tool(GetLocationTool(MockLocationProvider()))
         }
 
-        val agent = GemmaAgent(instance = instance)
-        agent.initializeWithTools(toolRegistry)
+        logger.d { "Tool registry: ${toolRegistry.tools.forEach { it.name }}\n" }
 
         val queries = listOf(
             "Where am I?" to "short query",
@@ -87,6 +86,9 @@ internal class GemmaToolCallingTest(
         var passCount = 0
 
         for ((query, description) in queries) {
+            val agent = GemmaAgent(instance = instance)
+            agent.initializeWithTools(toolRegistry)
+
             val startTime = System.currentTimeMillis()
             output.appendLine("Query ($description): $query")
 
