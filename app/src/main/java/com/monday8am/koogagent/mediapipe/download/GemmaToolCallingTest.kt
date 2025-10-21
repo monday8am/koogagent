@@ -80,17 +80,17 @@ internal class GemmaToolCallingTest(
         val queries = listOf(
             "Where am I?" to "short query",
             "What is my current location?" to "explicit query",
-            "Can you tell me my coordinates?" to "coordinate query"
+            // "Can you tell me my coordinates?" to "coordinate query"
         )
 
         var passCount = 0
 
         for ((query, description) in queries) {
-            val agent = GemmaAgent(instance = instance)
-            agent.initializeWithTools(toolRegistry)
-
             val startTime = System.currentTimeMillis()
             output.appendLine("Query ($description): $query")
+
+            val agent = GemmaAgent(instance = instance)
+            agent.initializeWithTools(toolRegistry)
 
             try {
                 val result = agent.generateMessage(

@@ -339,12 +339,39 @@ Required workflow:
 
 ---
 
+## Safety Mechanisms
+
+### Infinite Loop Detection ✅
+
+**Problem**: Small models may get stuck calling the same tool repeatedly instead of using the result.
+
+**Solution**: The `GemmaLLMClient` now detects when:
+1. The model receives a tool result
+2. The model tries to call the SAME tool again
+
+**Behavior**:
+```kotlin
+// If detected:
+logger.w { "INFINITE LOOP DETECTED: Model trying to call '$toolName' again" }
+
+// Returns instead:
+Message.Assistant(
+    "I have the information from $toolName: ${result}.
+     Let me provide you with the answer based on that."
+)
+```
+
+This prevents context overflow and provides a graceful fallback.
+
+---
+
 ## Conclusion
 
 The simplified protocol is a **pragmatic solution** for Gemma 3n's limitations. It works well for:
 - ✅ Simple, single-tool use cases
 - ✅ Rapid prototyping
 - ✅ On-device inference scenarios
+- ✅ Protected against infinite loops with safety mechanisms
 
 But it **should not be used** for:
 - ❌ Complex tool workflows
@@ -356,4 +383,5 @@ For production use with complex tool calling, consider:
 - Using larger models (Gemma 7B+, or cloud models)
 - Redesigning tools to be parameter-free
 - Implementing custom orchestration logic
+- Enabling safety mechanisms (like infinite loop detection)
 - Or accepting the limitations and working within them

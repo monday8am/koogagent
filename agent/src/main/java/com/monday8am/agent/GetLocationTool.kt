@@ -23,9 +23,9 @@ class GetLocationTool(
     override suspend fun doExecute(args: Unit): String =
         try {
             val result = locationProvider.getLocation()
-            "Location: latitude ${result.latitude}, longitude: ${result.longitude}"
+            "location: latitude ${result.latitude}, longitude: ${result.longitude}"
         } catch (e: Exception) {
             logger.e { "GetLocationTool: Error fetching location: ${e.message}" }
-            "Location: error - ${e.message}"
+            "location: error - ${e.message}"
         }
 }

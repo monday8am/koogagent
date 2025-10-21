@@ -4,6 +4,7 @@ import ai.koog.agents.core.tools.ToolDescriptor
 import ai.koog.prompt.dsl.ModerationResult
 import ai.koog.prompt.dsl.Prompt
 import ai.koog.prompt.executor.clients.LLMClient
+import ai.koog.prompt.llm.LLMCapability
 import ai.koog.prompt.llm.LLMProvider
 import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.message.Message
@@ -41,7 +42,10 @@ internal class GemmaLLMClient(
         model: LLModel,
         tools: List<ToolDescriptor>,
     ): List<Message.Response> {
-        logger.d { "Executing prompt with ${tools.size} tools available" }
+        logger.d { "Executing prompt: $prompt with tools: $tools and model: $model" }
+        require(model.capabilities.contains(LLMCapability.Tools)) {
+            "Model ${model.id} does not support tools"
+        }
 
         // 1. Build the full prompt with tool instructions
         val fullPrompt = buildFullPrompt(prompt, tools)
@@ -62,11 +66,44 @@ internal class GemmaLLMClient(
         logger.d { response }
         logger.d { "=======================" }
 
-        // 3. Parse response
-        val parsedMessages = parseResponse(response, tools)
+        // 3. Parse response (with loop detection)
+        val parsedMessages = parseResponse(response, tools, prompt.messages)
         logger.i { "Parsed ${parsedMessages.size} messages from response" }
 
         return parsedMessages
+    }
+
+    internal fun buildFullPrompt(
+        prompt: Prompt,
+        tools: List<ToolDescriptor>
+    ): String {
+        // Extract system message
+        val systemMessage = prompt.messages
+            .filterIsInstance<Message.System>()
+            .firstOrNull()?.content ?: ""
+
+        // Build conversation history
+        val conversation = buildConversationHistory(prompt.messages)
+
+        // Build tool instructions
+        val toolInstructions = buildToolInstructions(tools)
+
+        return buildString {
+            // System prompt first
+            if (systemMessage.isNotEmpty()) {
+                appendLine(systemMessage)
+                appendLine()
+            }
+
+            // Tool instructions (if any)
+            if (toolInstructions.isNotEmpty()) {
+                appendLine(toolInstructions)
+                appendLine()
+            }
+
+            // Conversation history
+            append(conversation)
+        }
     }
 
     /**
@@ -101,49 +138,24 @@ internal class GemmaLLMClient(
             Available tools:
             $toolsList
 
-            To call a tool, respond ONLY with: {"tool":"ToolName"}. Tool names start with uppercase.
-            To skip tools and answer directly, respond with: {"tool":"none"} followed by your answer.
+            INSTRUCTIONS:
+            - To call a tool, respond ONLY with: {"tool":"ToolName"}
+            - After receiving a tool result, answer the user's question using that information
+            - Use {"tool":"none"} followed by your answer when you have the information you need
+            - DO NOT call the same tool repeatedly
 
             Examples:
-            User: What's the weather?
-            Assistant: {"tool":"GetWeatherTool"}
 
+            Example 1 - Using a tool:
+            User: Where am I?
+            Assistant: {"tool":"GetLocationTool"}
+            [Tool returns: location: latitude 40.4168, longitude: -3.7038]
+            Assistant: {"tool":"none"} You are currently at latitude 40.4168, longitude -3.7038.
+
+            Example 2 - Direct answer:
             User: Tell me a joke
             Assistant: {"tool":"none"} Why did the chicken cross the road? To get to the other side!
             """.trimIndent()
-    }
-
-    internal fun buildFullPrompt(
-        prompt: Prompt,
-        tools: List<ToolDescriptor>
-    ): String {
-        // Extract system message
-        val systemMessage = prompt.messages
-            .filterIsInstance<Message.System>()
-            .firstOrNull()?.content ?: ""
-
-        // Build conversation history
-        val conversation = buildConversationHistory(prompt.messages)
-
-        // Build tool instructions
-        val toolInstructions = buildToolInstructions(tools)
-
-        return buildString {
-            // System prompt first
-            if (systemMessage.isNotEmpty()) {
-                appendLine(systemMessage)
-                appendLine()
-            }
-
-            // Tool instructions (if any)
-            if (toolInstructions.isNotEmpty()) {
-                appendLine(toolInstructions)
-                appendLine()
-            }
-
-            // Conversation history
-            append(conversation)
-        }
     }
 
     /**
@@ -206,10 +218,11 @@ internal class GemmaLLMClient(
      *
      * ## Parsing Logic:
      * 1. Search for `{"tool":"X"}` pattern using regex
-     * 2. If found "none" → Strip marker and return text as Assistant message
-     * 3. If found valid tool → Return Tool.Call message
-     * 4. If found invalid tool → Return error message as Assistant
-     * 5. If no pattern → Return raw text as Assistant message
+     * 2. Detect infinite loops (calling same tool repeatedly)
+     * 3. If found "none" → Strip marker and return text as Assistant message
+     * 4. If found valid tool → Return Tool.Call message
+     * 5. If found invalid tool → Return error message as Assistant
+     * 6. If no pattern → Return raw text as Assistant message
      *
      * ## Potential Failure Scenarios:
      * - **Malformed JSON**: Model writes `{tool: "X"}` or `{"tool":"X"` (missing quote/brace)
@@ -217,22 +230,26 @@ internal class GemmaLLMClient(
      * - **Mixed output**: Model writes `Let me check {"tool":"X"} for you` (ambiguous)
      * - **Hallucinated tools**: Model invents tool names not in the available list
      * - **Case sensitivity**: Model writes `{"Tool":"X"}` or `{"TOOL":"X"}`
+     * - **Infinite loops**: Model calls same tool repeatedly after receiving result
      *
      * ## Current Handling:
      * - Regex is flexible with whitespace around JSON structure
      * - Trims whitespace from extracted tool name (handles `{"tool":" toolName "}`)
      * - Finds first match only (ignores multiple tool attempts)
      * - Validates tool name against available tools
+     * - Detects infinite loops and breaks them with error message
      * - Returns helpful error for hallucinated tools
      * - Falls back to treating response as regular text if no pattern found
      *
      * @param response Raw text response from Gemma
      * @param tools List of available tools for validation
+     * @param conversationHistory List of messages in the conversation for loop detection
      * @return List of parsed messages (typically one message)
      */
     internal fun parseResponse(
         response: String,
-        tools: List<ToolDescriptor>
+        tools: List<ToolDescriptor>,
+        conversationHistory: List<Message> = emptyList()
     ): List<Message.Response> {
 
         // Look for {"tool":"X"} pattern
@@ -242,6 +259,23 @@ internal class GemmaLLMClient(
         return if (match != null) {
             val toolName = match.groupValues[1].trim()
             logger.d { "Found tool pattern in response: tool='$toolName'" }
+
+            // SAFETY: Detect infinite loop - model calling same tool after getting result
+            val lastToolResult = conversationHistory
+                .filterIsInstance<Message.Tool.Result>()
+                .lastOrNull()
+
+            if (lastToolResult != null && lastToolResult.tool == toolName) {
+                logger.w { "INFINITE LOOP DETECTED: Model trying to call '$toolName' again after receiving result" }
+                logger.w { "Last tool result: ${lastToolResult.content}" }
+                return listOf(
+                    Message.Assistant(
+                        content = "I have the information from $toolName: ${lastToolResult.content}. " +
+                                "Let me provide you with the answer based on that.",
+                        metaInfo = ResponseMetaInfo.Empty
+                    )
+                )
+            }
 
             if (toolName == "none") {
                 // Model chose not to use tools - return text response
@@ -279,7 +313,7 @@ internal class GemmaLLMClient(
                         Message.Tool.Call(
                             id = java.util.UUID.randomUUID().toString(),
                             tool = toolName,
-                            content = "{}", // Empty JSON - Gemma 3n can't provide args
+                            content = "{}", // CRITICAL: Empty JSON - Gemma 3n can't provide args
                             metaInfo = ResponseMetaInfo.Empty
                         )
                     )
