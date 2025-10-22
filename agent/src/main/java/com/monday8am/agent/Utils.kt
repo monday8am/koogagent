@@ -6,14 +6,18 @@ import co.touchlab.kermit.Logger
 import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
 
-const val DEFAULT_MAX_TOKEN = 1024
+// Gemma 3n-1b-it context lengths: 1280, 2048, or 4096 tokens
+// We use 4096 as the total context window (input + output combined)
+const val DEFAULT_CONTEXT_LENGTH = 4096
+const val DEFAULT_MAX_OUTPUT_TOKENS = 512  // Leave ~3584 tokens for input
 const val DEFAULT_TOPK = 40
 const val DEFAULT_TOPP = 0.9f
 const val DEFAULT_TEMPERATURE = 0.5f
 
 data class LocalLLModel(
     val path: String,
-    val maxToken: Int = DEFAULT_MAX_TOKEN,
+    val contextLength: Int = DEFAULT_CONTEXT_LENGTH,  // Total tokens (input + output)
+    val maxOutputTokens: Int = DEFAULT_MAX_OUTPUT_TOKENS,  // Max tokens to generate
     val topK: Int = DEFAULT_TOPK,
     val topP: Float = DEFAULT_TOPP,
     val temperature: Float = DEFAULT_TEMPERATURE,

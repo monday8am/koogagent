@@ -43,10 +43,10 @@ internal class GemmaToolCallingTest(
         try {
             val tests = listOf(
                 ::testBasicToolCall,
-                // ::testNoToolNeeded,
-                // ::testToolHallucination,
-                // ::testWeatherTool,
-                // ::testMultiTurnSequence
+                ::testNoToolNeeded,
+                ::testToolHallucination,
+                ::testWeatherTool,
+                ::testMultiTurnSequence
             )
 
             tests.forEach { test ->
@@ -80,7 +80,7 @@ internal class GemmaToolCallingTest(
         val queries = listOf(
             "Where am I?" to "short query",
             "What is my current location?" to "explicit query",
-            // "Can you tell me my coordinates?" to "coordinate query"
+            "Can you tell me my coordinates?" to "coordinate query"
         )
 
         var passCount = 0
@@ -89,10 +89,10 @@ internal class GemmaToolCallingTest(
             val startTime = System.currentTimeMillis()
             output.appendLine("Query ($description): $query")
 
-            val agent = GemmaAgent(instance = instance)
-            agent.initializeWithTools(toolRegistry)
-
             try {
+                val agent = GemmaAgent(instance = instance)
+                agent.initializeWithTools(toolRegistry)
+
                 val result = agent.generateMessage(
                     systemPrompt = "You are a helpful assistant that can access the user's location.",
                     userPrompt = query
@@ -139,9 +139,6 @@ internal class GemmaToolCallingTest(
             tool(GetLocationTool(MockLocationProvider()))
         }
 
-        val agent = GemmaAgent(instance = instance)
-        agent.initializeWithTools(toolRegistry)
-
         val queries = listOf(
             "Hello! How are you?",
             "Tell me a joke",
@@ -155,6 +152,9 @@ internal class GemmaToolCallingTest(
             output.appendLine("Query: $query")
 
             try {
+                val agent = GemmaAgent(instance = instance)
+                agent.initializeWithTools(toolRegistry)
+
                 val result = agent.generateMessage(
                     systemPrompt = "You are a helpful assistant. Only use tools when specifically asked about location.",
                     userPrompt = query
@@ -200,15 +200,15 @@ internal class GemmaToolCallingTest(
             tool(GetLocationTool(MockLocationProvider()))
         }
 
-        val agent = GemmaAgent(instance = instance)
-        agent.initializeWithTools(toolRegistry)
-
         val query = "What's the weather like?"
 
         val startTime = System.currentTimeMillis()
         output.appendLine("Query: $query")
 
         try {
+            val agent = GemmaAgent(instance = instance)
+            agent.initializeWithTools(toolRegistry)
+
             val result = agent.generateMessage(
                 systemPrompt = "You are a helpful assistant. ONLY use tools that are explicitly available to you.",
                 userPrompt = query
@@ -248,9 +248,6 @@ internal class GemmaToolCallingTest(
             tool(GetWeatherTool(OpenMeteoWeatherProvider()))
         }
 
-        val agent = GemmaAgent(instance = instance)
-        agent.initializeWithTools(toolRegistry)
-
         // Note: Weather tool needs coordinates, but Gemma can't pass parameters
         // So this tests if the tool uses default/context coordinates
         val query = "What's the weather?"
@@ -261,6 +258,9 @@ internal class GemmaToolCallingTest(
         output.appendLine()
 
         try {
+            val agent = GemmaAgent(instance = instance)
+            agent.initializeWithTools(toolRegistry)
+
             val result = agent.generateMessage(
                 systemPrompt = "You are a helpful weather assistant. Use GetWeatherTool to check current weather.",
                 userPrompt = query
@@ -302,15 +302,15 @@ internal class GemmaToolCallingTest(
             tool(GetWeatherTool(OpenMeteoWeatherProvider()))
         }
 
-        val agent = GemmaAgent(instance = instance)
-        agent.initializeWithTools(toolRegistry)
-
         val query = "What's the weather where I am?"
 
         output.appendLine("Query: $query")
         output.appendLine()
 
         try {
+            val agent = GemmaAgent(instance = instance)
+            agent.initializeWithTools(toolRegistry)
+
             // Turn 1: Should trigger location tool (hopefully)
             val turn1Start = System.currentTimeMillis()
             val result = agent.generateMessage(

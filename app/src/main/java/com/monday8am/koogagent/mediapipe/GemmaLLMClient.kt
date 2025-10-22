@@ -141,7 +141,6 @@ internal class GemmaLLMClient(
             INSTRUCTIONS:
             - To call a tool, respond ONLY with: {"tool":"ToolName"}
             - After receiving a tool result, answer the user's question using that information
-            - Use {"tool":"none"} followed by your answer when you have the information you need
             - DO NOT call the same tool repeatedly
 
             Examples:
@@ -150,11 +149,11 @@ internal class GemmaLLMClient(
             User: Where am I?
             Assistant: {"tool":"GetLocationTool"}
             [Tool returns: location: latitude 40.4168, longitude: -3.7038]
-            Assistant: {"tool":"none"} You are currently at latitude 40.4168, longitude -3.7038.
+            Assistant: You are currently at latitude 40.4168, longitude -3.7038.
 
             Example 2 - Direct answer:
             User: Tell me a joke
-            Assistant: {"tool":"none"} Why did the chicken cross the road? To get to the other side!
+            Assistant: Why did the chicken cross the road? To get to the other side!
             """.trimIndent()
     }
 

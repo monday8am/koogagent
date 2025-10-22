@@ -181,9 +181,16 @@ Not enabled for release builds (prototype phase)
 - Parser in `NotificationGenerator.parseResponse()` expects specific keys
 
 ### Changing Model Parameters
-- Defaults: `DEFAULT_MAX_TOKEN = 1024`, `DEFAULT_TEMPERATURE = 0.5f`, `DEFAULT_TOPK = 40`, `DEFAULT_TOPP = 0.9f`
+- Defaults:
+  - `DEFAULT_CONTEXT_LENGTH = 4096` (total tokens for input + output)
+  - `DEFAULT_MAX_OUTPUT_TOKENS = 512` (max tokens to generate, leaves ~3584 for input)
+  - `DEFAULT_TEMPERATURE = 0.5f`
+  - `DEFAULT_TOPK = 40`
+  - `DEFAULT_TOPP = 0.9f`
 - Override in `LocalLLModel` data class
 - `NotificationViewModel` sets temperature to 0.8f for Gemma model
+- **Note**: Gemma 3n-1b-it supports 1280, 2048, or 4096 token context windows
+- MediaPipe's `setMaxTokens()` sets the TOTAL context (input + output combined)
 
 ### Working with MediaPipe Sessions
 - Sessions maintain conversation state across multiple queries

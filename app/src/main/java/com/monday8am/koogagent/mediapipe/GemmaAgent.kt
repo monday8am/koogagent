@@ -8,7 +8,8 @@ import ai.koog.prompt.llm.LLMCapability
 import ai.koog.prompt.llm.LLMProvider
 import ai.koog.prompt.llm.LLModel
 import co.touchlab.kermit.Logger
-import com.monday8am.agent.DEFAULT_MAX_TOKEN
+import com.monday8am.agent.DEFAULT_CONTEXT_LENGTH
+import com.monday8am.agent.DEFAULT_MAX_OUTPUT_TOKENS
 import com.monday8am.agent.NotificationAgent
 import com.monday8am.agent.installCommonEventHandling
 
@@ -22,8 +23,8 @@ private val gemmaModel =
                 LLMCapability.Tools,
                 LLMCapability.Schema.JSON.Standard,
             ),
-        maxOutputTokens = DEFAULT_MAX_TOKEN.toLong(),
-        contextLength = 128_000,
+        maxOutputTokens = DEFAULT_MAX_OUTPUT_TOKENS.toLong(),
+        contextLength = DEFAULT_CONTEXT_LENGTH.toLong(),  // Actual Gemma 3n-1b-it context: 4096 tokens
     )
 
 class GemmaAgent(
