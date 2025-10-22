@@ -63,7 +63,7 @@ class MainActivity : ComponentActivity() {
                         notificationContext = state.context,
                         onNotificationContextChange = { viewModel.updateContext(it) },
                         onClickDownload = { viewModel.downloadModel() },
-                        onClickNotification = { viewModel.runToolTests() }, //viewModel.processAndShowNotification() },
+                        onClickNotification = { viewModel.runToolTests() }, // viewModel.processAndShowNotification() },
                         modifier = Modifier.padding(innerPadding),
                     )
                 }

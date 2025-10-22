@@ -24,7 +24,7 @@ private val gemmaModel =
                 LLMCapability.Schema.JSON.Standard,
             ),
         maxOutputTokens = DEFAULT_MAX_OUTPUT_TOKENS.toLong(),
-        contextLength = DEFAULT_CONTEXT_LENGTH.toLong(),  // Actual Gemma 3n-1b-it context: 4096 tokens
+        contextLength = DEFAULT_CONTEXT_LENGTH.toLong(), // Actual Gemma 3n-1b-it context: 4096 tokens
     )
 
 class GemmaAgent(
@@ -50,20 +50,23 @@ class GemmaAgent(
             "Error generating message"
         }
 
-    private fun getAIAgent(systemPrompt: String): AIAgent<String, String> = AIAgent(
-        promptExecutor = SimpleGemmaAIExecutor(
-            llmClient = GemmaLLMClient(
-                promptMediaPipe = { fullPrompt ->
-                    LocalInferenceUtils.prompt(instance, fullPrompt).getOrNull()
-                }
-            )
-        ),
-        systemPrompt = systemPrompt,
-        temperature = 0.7,
-        llmModel = gemmaModel,
-        toolRegistry = registry ?: ToolRegistry.EMPTY,
-        installFeatures = installCommonEventHandling,
-    )
+    private fun getAIAgent(systemPrompt: String): AIAgent<String, String> =
+        AIAgent(
+            promptExecutor =
+                SimpleGemmaAIExecutor(
+                    llmClient =
+                        GemmaLLMClient(
+                            promptMediaPipe = { fullPrompt ->
+                                LocalInferenceUtils.prompt(instance, fullPrompt).getOrNull()
+                            },
+                        ),
+                ),
+            systemPrompt = systemPrompt,
+            temperature = 0.7,
+            llmModel = gemmaModel,
+            toolRegistry = registry ?: ToolRegistry.EMPTY,
+            installFeatures = installCommonEventHandling,
+        )
 }
 
 private class SimpleGemmaAIExecutor(

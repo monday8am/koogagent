@@ -29,59 +29,62 @@ internal class GemmaToolCallingTest(
     private val logger = Logger.withTag("GemmaToolCallingTest")
     private val testIterations = 5
 
-    suspend fun runAllTests(): String = withContext(Dispatchers.IO) {
-        val output = StringBuilder()
+    suspend fun runAllTests(): String =
+        withContext(Dispatchers.IO) {
+            val output = StringBuilder()
 
-        // Enable verbose logging for tests
-        Logger.setMinSeverity(Severity.Debug)
+            // Enable verbose logging for tests
+            Logger.setMinSeverity(Severity.Debug)
 
-        output.appendLine("=== GEMMA TOOL CALLING TESTS ===")
-        output.appendLine("Model: Gemma 3n-1b-it-int4")
-        output.appendLine("Protocol: Simplified JSON (single tool, no parameters)")
-        output.appendLine()
+            output.appendLine("=== GEMMA TOOL CALLING TESTS ===")
+            output.appendLine("Model: Gemma 3n-1b-it-int4")
+            output.appendLine("Protocol: Simplified JSON (single tool, no parameters)")
+            output.appendLine()
 
-        try {
-            val tests = listOf(
-                ::testBasicToolCall,
-                ::testNoToolNeeded,
-                ::testToolHallucination,
-                ::testWeatherTool,
-                ::testMultiTurnSequence
-            )
+            try {
+                val tests =
+                    listOf(
+                        ::testBasicToolCall,
+                        ::testNoToolNeeded,
+                        ::testToolHallucination,
+                        ::testWeatherTool,
+                        ::testMultiTurnSequence,
+                    )
 
-            tests.forEach { test ->
-                output.appendLine(test(instance))
-                output.appendLine()
+                tests.forEach { test ->
+                    output.appendLine(test(instance))
+                    output.appendLine()
+                }
+            } catch (e: Exception) {
+                output.appendLine("FATAL ERROR: ${e.message}")
+                logger.e(e) { "Test suite failed" }
+            } finally {
+                LocalInferenceUtils.close(instance)
             }
 
-        } catch (e: Exception) {
-            output.appendLine("FATAL ERROR: ${e.message}")
-            logger.e(e) { "Test suite failed" }
-        } finally {
-            LocalInferenceUtils.close(instance)
+            output.appendLine("=== TESTS COMPLETE ===")
+
+            return@withContext output.toString()
         }
-
-        output.appendLine("=== TESTS COMPLETE ===")
-
-        return@withContext output.toString()
-    }
 
     private suspend fun testBasicToolCall(instance: LlmModelInstance): String {
         val output = StringBuilder()
         output.appendLine("TEST 1: Basic Location Tool Call")
         output.appendLine("─".repeat(testIterations))
 
-        val toolRegistry = ToolRegistry {
-            tool(GetLocationTool(MockLocationProvider()))
-        }
+        val toolRegistry =
+            ToolRegistry {
+                tool(GetLocationTool(MockLocationProvider()))
+            }
 
         logger.d { "Tool registry: ${toolRegistry.tools.forEach { it.name }}\n" }
 
-        val queries = listOf(
-            "Where am I?" to "short query",
-            "What is my current location?" to "explicit query",
-            "Can you tell me my coordinates?" to "coordinate query"
-        )
+        val queries =
+            listOf(
+                "Where am I?" to "short query",
+                "What is my current location?" to "explicit query",
+                "Can you tell me my coordinates?" to "coordinate query",
+            )
 
         var passCount = 0
 
@@ -93,10 +96,11 @@ internal class GemmaToolCallingTest(
                 val agent = GemmaAgent(instance = instance)
                 agent.initializeWithTools(toolRegistry)
 
-                val result = agent.generateMessage(
-                    systemPrompt = "You are a helpful assistant that can access the user's location.",
-                    userPrompt = query
-                )
+                val result =
+                    agent.generateMessage(
+                        systemPrompt = "You are a helpful assistant that can access the user's location.",
+                        userPrompt = query,
+                    )
 
                 val duration = System.currentTimeMillis() - startTime
                 output.appendLine("Result: $result")
@@ -105,7 +109,8 @@ internal class GemmaToolCallingTest(
                 // Check for Madrid coordinates from MockLocationProvider
                 val hasMadridLat = result.contains("40.4") || result.contains("40°")
                 val hasMadridLon = result.contains("3.7") || result.contains("3°") || result.contains("-3.7")
-                val hasLocationKeyword = result.contains("location", ignoreCase = true) ||
+                val hasLocationKeyword =
+                    result.contains("location", ignoreCase = true) ||
                         result.contains("latitude", ignoreCase = true) ||
                         result.contains("longitude", ignoreCase = true)
 
@@ -135,15 +140,17 @@ internal class GemmaToolCallingTest(
         output.appendLine("TEST 2: No Tool Needed (Normal Conversation)")
         output.appendLine("─".repeat(testIterations))
 
-        val toolRegistry = ToolRegistry {
-            tool(GetLocationTool(MockLocationProvider()))
-        }
+        val toolRegistry =
+            ToolRegistry {
+                tool(GetLocationTool(MockLocationProvider()))
+            }
 
-        val queries = listOf(
-            "Hello! How are you?",
-            "Tell me a joke",
-            "What is 2 + 2?"
-        )
+        val queries =
+            listOf(
+                "Hello! How are you?",
+                "Tell me a joke",
+                "What is 2 + 2?",
+            )
 
         var passCount = 0
 
@@ -155,17 +162,19 @@ internal class GemmaToolCallingTest(
                 val agent = GemmaAgent(instance = instance)
                 agent.initializeWithTools(toolRegistry)
 
-                val result = agent.generateMessage(
-                    systemPrompt = "You are a helpful assistant. Only use tools when specifically asked about location.",
-                    userPrompt = query
-                )
+                val result =
+                    agent.generateMessage(
+                        systemPrompt = "You are a helpful assistant. Only use tools when specifically asked about location.",
+                        userPrompt = query,
+                    )
 
                 val duration = System.currentTimeMillis() - startTime
                 output.appendLine("Result: $result")
                 output.appendLine("Duration: ${duration}ms")
 
                 // Should NOT mention tools or call GetLocationTool
-                val inappropriateToolUse = result.contains("{\"tool\"", ignoreCase = true) ||
+                val inappropriateToolUse =
+                    result.contains("{\"tool\"", ignoreCase = true) ||
                         result.contains("GetLocationTool", ignoreCase = true) ||
                         result.contains("latitude", ignoreCase = true)
 
@@ -196,9 +205,10 @@ internal class GemmaToolCallingTest(
         output.appendLine("Expected: Model should NOT hallucinate GetWeatherTool")
         output.appendLine()
 
-        val toolRegistry = ToolRegistry {
-            tool(GetLocationTool(MockLocationProvider()))
-        }
+        val toolRegistry =
+            ToolRegistry {
+                tool(GetLocationTool(MockLocationProvider()))
+            }
 
         val query = "What's the weather like?"
 
@@ -209,17 +219,19 @@ internal class GemmaToolCallingTest(
             val agent = GemmaAgent(instance = instance)
             agent.initializeWithTools(toolRegistry)
 
-            val result = agent.generateMessage(
-                systemPrompt = "You are a helpful assistant. ONLY use tools that are explicitly available to you.",
-                userPrompt = query
-            )
+            val result =
+                agent.generateMessage(
+                    systemPrompt = "You are a helpful assistant. ONLY use tools that are explicitly available to you.",
+                    userPrompt = query,
+                )
 
             val duration = System.currentTimeMillis() - startTime
             output.appendLine("Result: $result")
             output.appendLine("Duration: ${duration}ms")
 
             // Check if model handled unavailable tool gracefully
-            val apologizes = result.contains("can't", ignoreCase = true) ||
+            val apologizes =
+                result.contains("can't", ignoreCase = true) ||
                     result.contains("unable", ignoreCase = true) ||
                     result.contains("don't have", ignoreCase = true) ||
                     result.contains("doesn't exist", ignoreCase = true)
@@ -244,9 +256,10 @@ internal class GemmaToolCallingTest(
         output.appendLine("TEST 4: Weather Tool Execution")
         output.appendLine("─".repeat(testIterations))
 
-        val toolRegistry = ToolRegistry {
-            tool(GetWeatherTool(OpenMeteoWeatherProvider()))
-        }
+        val toolRegistry =
+            ToolRegistry {
+                tool(GetWeatherTool(OpenMeteoWeatherProvider()))
+            }
 
         // Note: Weather tool needs coordinates, but Gemma can't pass parameters
         // So this tests if the tool uses default/context coordinates
@@ -261,16 +274,18 @@ internal class GemmaToolCallingTest(
             val agent = GemmaAgent(instance = instance)
             agent.initializeWithTools(toolRegistry)
 
-            val result = agent.generateMessage(
-                systemPrompt = "You are a helpful weather assistant. Use GetWeatherTool to check current weather.",
-                userPrompt = query
-            )
+            val result =
+                agent.generateMessage(
+                    systemPrompt = "You are a helpful weather assistant. Use GetWeatherTool to check current weather.",
+                    userPrompt = query,
+                )
 
             val duration = System.currentTimeMillis() - startTime
             output.appendLine("Result: $result")
             output.appendLine("Duration: ${duration}ms")
 
-            val hasWeatherInfo = result.contains("temperature", ignoreCase = true) ||
+            val hasWeatherInfo =
+                result.contains("temperature", ignoreCase = true) ||
                     result.contains("weather", ignoreCase = true) ||
                     result.contains("sunny", ignoreCase = true) ||
                     result.contains("cloudy", ignoreCase = true) ||
@@ -297,10 +312,11 @@ internal class GemmaToolCallingTest(
         output.appendLine("  Must use separate turns for location → weather")
         output.appendLine()
 
-        val toolRegistry = ToolRegistry {
-            tool(GetLocationTool(MockLocationProvider()))
-            tool(GetWeatherTool(OpenMeteoWeatherProvider()))
-        }
+        val toolRegistry =
+            ToolRegistry {
+                tool(GetLocationTool(MockLocationProvider()))
+                tool(GetWeatherTool(OpenMeteoWeatherProvider()))
+            }
 
         val query = "What's the weather where I am?"
 
@@ -313,14 +329,16 @@ internal class GemmaToolCallingTest(
 
             // Turn 1: Should trigger location tool (hopefully)
             val turn1Start = System.currentTimeMillis()
-            val result = agent.generateMessage(
-                systemPrompt = """
-                    You are a helpful assistant.
-                    To answer weather questions, you need the user's location first.
-                    Use GetLocationTool, then GetWeatherTool.
-                    """.trimIndent(),
-                userPrompt = query
-            )
+            val result =
+                agent.generateMessage(
+                    systemPrompt =
+                        """
+                        You are a helpful assistant.
+                        To answer weather questions, you need the user's location first.
+                        Use GetLocationTool, then GetWeatherTool.
+                        """.trimIndent(),
+                    userPrompt = query,
+                )
             val turn1Duration = System.currentTimeMillis() - turn1Start
 
             output.appendLine("Turn 1 Result: $result")
@@ -328,11 +346,13 @@ internal class GemmaToolCallingTest(
             output.appendLine()
 
             // Check if it contains weather info (unlikely in one turn with current protocol)
-            val hasWeather = result.contains("temperature", ignoreCase = true) ||
+            val hasWeather =
+                result.contains("temperature", ignoreCase = true) ||
                     result.contains("sunny", ignoreCase = true) ||
                     result.contains("cloudy", ignoreCase = true)
 
-            val hasLocation = result.contains("latitude", ignoreCase = true) ||
+            val hasLocation =
+                result.contains("latitude", ignoreCase = true) ||
                     result.contains("longitude", ignoreCase = true)
 
             when {
@@ -353,7 +373,6 @@ internal class GemmaToolCallingTest(
                     output.appendLine("✗ FAIL: No location or weather information")
                 }
             }
-
         } catch (e: Exception) {
             output.appendLine("✗ ERROR: ${e.message}")
         }

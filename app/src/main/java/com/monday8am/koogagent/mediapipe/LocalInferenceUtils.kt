@@ -34,7 +34,7 @@ object LocalInferenceUtils {
                     LlmInference.LlmInferenceOptions
                         .builder()
                         .setModelPath(model.path)
-                        .setMaxTokens(model.contextLength)  // Total context window (input + output)
+                        .setMaxTokens(model.contextLength) // Total context window (input + output)
                         .setPreferredBackend(preferredBackend)
                         .build()
 

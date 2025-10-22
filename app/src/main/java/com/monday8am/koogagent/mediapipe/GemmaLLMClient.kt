@@ -34,7 +34,6 @@ import co.touchlab.kermit.Logger
 internal class GemmaLLMClient(
     private val promptMediaPipe: suspend (String) -> String?,
 ) : LLMClient {
-
     private val logger = Logger.withTag("GemmaLLMClient")
 
     override suspend fun execute(
@@ -75,12 +74,14 @@ internal class GemmaLLMClient(
 
     internal fun buildFullPrompt(
         prompt: Prompt,
-        tools: List<ToolDescriptor>
+        tools: List<ToolDescriptor>,
     ): String {
         // Extract system message
-        val systemMessage = prompt.messages
-            .filterIsInstance<Message.System>()
-            .firstOrNull()?.content ?: ""
+        val systemMessage =
+            prompt.messages
+                .filterIsInstance<Message.System>()
+                .firstOrNull()
+                ?.content ?: ""
 
         // Build conversation history
         val conversation = buildConversationHistory(prompt.messages)
@@ -130,9 +131,10 @@ internal class GemmaLLMClient(
         logger.d { "Building tool instructions for ${tools.size} tools: ${tools.map { it.name }}" }
 
         // For Gemma 3n: Keep it SIMPLE - no parameters
-        val toolsList = tools.joinToString("\n") { tool ->
-            "- ${tool.name}: ${tool.description}"
-        }
+        val toolsList =
+            tools.joinToString("\n") { tool ->
+                "- ${tool.name}: ${tool.description}"
+            }
 
         return """
             Available tools:
@@ -176,38 +178,39 @@ internal class GemmaLLMClient(
      * @return Formatted conversation history
      */
     internal fun buildConversationHistory(messages: List<Message>): String {
-        val formattedMessages = messages
-            .filterNot { it is Message.System }
-            .mapNotNull { message ->
-                when (message) {
-                    is Message.User -> {
-                        "User: ${message.content}"
-                    }
+        val formattedMessages =
+            messages
+                .filterNot { it is Message.System }
+                .mapNotNull { message ->
+                    when (message) {
+                        is Message.User -> {
+                            "User: ${message.content}"
+                        }
 
-                    is Message.Assistant -> {
-                        "Assistant: ${message.content}"
-                    }
+                        is Message.Assistant -> {
+                            "Assistant: ${message.content}"
+                        }
 
-                    // CRITICAL: Handle tool call requests
-                    is Message.Tool.Call -> {
-                        // The assistant previously requested a tool call
-                        logger.v { "Including tool call in history: ${message.tool}" }
-                        "Assistant: {\"tool\":\"${message.tool}\"}"
-                    }
+                        // CRITICAL: Handle tool call requests
+                        is Message.Tool.Call -> {
+                            // The assistant previously requested a tool call
+                            logger.v { "Including tool call in history: ${message.tool}" }
+                            "Assistant: {\"tool\":\"${message.tool}\"}"
+                        }
 
-                    // CRITICAL: Handle tool results
-                    is Message.Tool.Result -> {
-                        // Tool results come back as "user" messages showing what the tool returned
-                        logger.v { "Including tool result in history: ${message.tool} -> ${message.content}" }
-                        "Tool '${message.tool}' returned: ${message.content}"
-                    }
+                        // CRITICAL: Handle tool results
+                        is Message.Tool.Result -> {
+                            // Tool results come back as "user" messages showing what the tool returned
+                            logger.v { "Including tool result in history: ${message.tool} -> ${message.content}" }
+                            "Tool '${message.tool}' returned: ${message.content}"
+                        }
 
-                    else -> {
-                        logger.w { "Encountered unexpected message type: ${message::class.simpleName}" }
-                        null
+                        else -> {
+                            logger.w { "Encountered unexpected message type: ${message::class.simpleName}" }
+                            null
+                        }
                     }
                 }
-            }
 
         return formattedMessages.joinToString("\n\n")
     }
@@ -248,9 +251,8 @@ internal class GemmaLLMClient(
     internal fun parseResponse(
         response: String,
         tools: List<ToolDescriptor>,
-        conversationHistory: List<Message> = emptyList()
+        conversationHistory: List<Message> = emptyList(),
     ): List<Message.Response> {
-
         // Look for {"tool":"X"} pattern
         val toolCallRegex = """\{\s*"tool"\s*:\s*"([^"]+)"\s*\}""".toRegex()
         val match = toolCallRegex.find(response)
@@ -260,34 +262,37 @@ internal class GemmaLLMClient(
             logger.d { "Found tool pattern in response: tool='$toolName'" }
 
             // SAFETY: Detect infinite loop - model calling same tool after getting result
-            val lastToolResult = conversationHistory
-                .filterIsInstance<Message.Tool.Result>()
-                .lastOrNull()
+            val lastToolResult =
+                conversationHistory
+                    .filterIsInstance<Message.Tool.Result>()
+                    .lastOrNull()
 
             if (lastToolResult != null && lastToolResult.tool == toolName) {
                 logger.w { "INFINITE LOOP DETECTED: Model trying to call '$toolName' again after receiving result" }
                 logger.w { "Last tool result: ${lastToolResult.content}" }
                 return listOf(
                     Message.Assistant(
-                        content = "I have the information from $toolName: ${lastToolResult.content}. " +
+                        content =
+                            "I have the information from $toolName: ${lastToolResult.content}. " +
                                 "Let me provide you with the answer based on that.",
-                        metaInfo = ResponseMetaInfo.Empty
-                    )
+                        metaInfo = ResponseMetaInfo.Empty,
+                    ),
                 )
             }
 
             if (toolName == "none") {
                 // Model chose not to use tools - return text response
-                val cleanResponse = response
-                    .replace(toolCallRegex, "")
-                    .trim()
+                val cleanResponse =
+                    response
+                        .replace(toolCallRegex, "")
+                        .trim()
 
                 logger.i { "Model chose not to use tools, returning text response" }
                 listOf(
                     Message.Assistant(
                         content = cleanResponse,
-                        metaInfo = ResponseMetaInfo.Empty
-                    )
+                        metaInfo = ResponseMetaInfo.Empty,
+                    ),
                 )
             } else {
                 // Model wants to call a tool
@@ -302,19 +307,22 @@ internal class GemmaLLMClient(
                     listOf(
                         Message.Assistant(
                             content = "I tried to use a tool called '$toolName' but it doesn't exist. Let me try to help you another way.",
-                            metaInfo = ResponseMetaInfo.Empty
-                        )
+                            metaInfo = ResponseMetaInfo.Empty,
+                        ),
                     )
                 } else {
                     // Valid tool call
                     logger.i { "Model requested valid tool: '$toolName'" }
                     listOf(
                         Message.Tool.Call(
-                            id = java.util.UUID.randomUUID().toString(),
+                            id =
+                                java.util.UUID
+                                    .randomUUID()
+                                    .toString(),
                             tool = toolName,
                             content = "{}", // CRITICAL: Empty JSON - Gemma 3n can't provide args
-                            metaInfo = ResponseMetaInfo.Empty
-                        )
+                            metaInfo = ResponseMetaInfo.Empty,
+                        ),
                     )
                 }
             }
@@ -324,8 +332,8 @@ internal class GemmaLLMClient(
             listOf(
                 Message.Assistant(
                     content = response,
-                    metaInfo = ResponseMetaInfo.Empty
-                )
+                    metaInfo = ResponseMetaInfo.Empty,
+                ),
             )
         }
     }
