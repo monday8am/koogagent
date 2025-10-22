@@ -14,16 +14,16 @@ class NotificationGenerator(
     private val systemPrompt =
         """
         You are a tool-calling assistant.
-        
+
         Available tool:
-        - getLocationTool (no parameters needed)
-        
-        Rule: If the user needs location information, output exactly: {"tool":"getLocationTool"}
+        - GetLocationTool (no parameters needed)
+
+        Rule: If the user needs location information, output exactly: {"tool":"GetLocationTool"}
         If not needed, output exactly: {"tool":"none"}
-        
+
         Example:
         For the question: Where am I right now?
-        The answer is: {"tool":"getLocationTool"}
+        The answer is: {"tool":"GetLocationTool"}
         """.trimIndent()
 
     suspend fun generate(context: NotificationContext): NotificationResult {

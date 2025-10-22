@@ -2,6 +2,7 @@ package com.monday8am.koogagent.mediapipe
 
 import ai.koog.agents.core.tools.ToolDescriptor
 import ai.koog.prompt.dsl.Prompt
+import ai.koog.prompt.llm.LLMCapability
 import ai.koog.prompt.llm.LLMProvider
 import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.message.Message
@@ -15,6 +16,21 @@ import org.junit.Test
 // Vibe code for good vibes: Claude Desktop!
 class GemmaLLMClientTest {
     private lateinit var client: GemmaLLMClient
+
+    // Shared tool definitions to avoid repetition
+    private val getWeatherTool = ToolDescriptor(
+        name = "GetWeather",
+        description = "Gets current weather",
+        requiredParameters = emptyList(),
+        optionalParameters = emptyList(),
+    )
+
+    private val getLocationTool = ToolDescriptor(
+        name = "GetLocation",
+        description = "Gets current location",
+        requiredParameters = emptyList(),
+        optionalParameters = emptyList(),
+    )
 
     @Before
     fun setup() {
@@ -30,46 +46,24 @@ class GemmaLLMClientTest {
 
     @Test
     fun `buildToolInstructions formats single tool correctly`() {
-        val tools =
-            listOf(
-                ToolDescriptor(
-                    name = "getWeather",
-                    description = "Gets current weather",
-                    requiredParameters = emptyList(),
-                    optionalParameters = emptyList(),
-                ),
-            )
+        val tools = listOf(getWeatherTool)
 
         val result = client.buildToolInstructions(tools)
 
         assertTrue(result.contains("Available tools:"))
-        assertTrue(result.contains("- getWeather: Gets current weather"))
-        assertTrue(result.contains("""{"tool":"toolName"}"""))
+        assertTrue(result.contains("- GetWeather: Gets current weather"))
+        assertTrue(result.contains("""{"tool":"ToolName"}"""))
         assertTrue(result.contains("""{"tool":"none"}"""))
     }
 
     @Test
     fun `buildToolInstructions formats multiple tools correctly`() {
-        val tools =
-            listOf(
-                ToolDescriptor(
-                    name = "getWeather",
-                    description = "Gets current weather",
-                    requiredParameters = emptyList(),
-                    optionalParameters = emptyList(),
-                ),
-                ToolDescriptor(
-                    name = "getLocation",
-                    description = "Gets current location",
-                    requiredParameters = emptyList(),
-                    optionalParameters = emptyList(),
-                ),
-            )
+        val tools = listOf(getWeatherTool, getLocationTool)
 
         val result = client.buildToolInstructions(tools)
 
-        assertTrue(result.contains("- getWeather: Gets current weather"))
-        assertTrue(result.contains("- getLocation: Gets current location"))
+        assertTrue(result.contains("- GetWeather: Gets current weather"))
+        assertTrue(result.contains("- GetLocation: Gets current location"))
     }
 
     @Test
@@ -102,7 +96,7 @@ class GemmaLLMClientTest {
             listOf(
                 Message.Tool.Call(
                     id = "123",
-                    tool = "getWeather",
+                    tool = "GetWeather",
                     content = "{}",
                     metaInfo = ResponseMetaInfo.Empty,
                 ),
@@ -110,7 +104,7 @@ class GemmaLLMClientTest {
 
         val result = client.buildConversationHistory(messages)
 
-        assertEquals("""Assistant: {"tool":"getWeather"}""", result)
+        assertEquals("""Assistant: {"tool":"GetWeather"}""", result)
     }
 
     @Test
@@ -119,7 +113,7 @@ class GemmaLLMClientTest {
             listOf(
                 Message.Tool.Result(
                     id = "123",
-                    tool = "getWeather",
+                    tool = "GetWeather",
                     content = "Sunny, 72°F",
                     metaInfo = RequestMetaInfo.Empty,
                 ),
@@ -127,7 +121,7 @@ class GemmaLLMClientTest {
 
         val result = client.buildConversationHistory(messages)
 
-        assertEquals("Tool 'getWeather' returned: Sunny, 72°F", result)
+        assertEquals("Tool 'GetWeather' returned: Sunny, 72°F", result)
     }
 
     @Test
@@ -164,13 +158,13 @@ class GemmaLLMClientTest {
                 Message.User(content = "What's the weather?", metaInfo = RequestMetaInfo.Empty),
                 Message.Tool.Call(
                     id = "1",
-                    tool = "getWeather",
+                    tool = "GetWeather",
                     content = "{}",
                     metaInfo = ResponseMetaInfo.Empty,
                 ),
                 Message.Tool.Result(
                     id = "1",
-                    tool = "getWeather",
+                    tool = "GetWeather",
                     content = "Sunny, 72°F",
                     metaInfo = RequestMetaInfo.Empty,
                 ),
@@ -180,8 +174,8 @@ class GemmaLLMClientTest {
         val result = client.buildConversationHistory(messages)
 
         assertTrue(result.contains("User: What's the weather?"))
-        assertTrue(result.contains("""Assistant: {"tool":"getWeather"}"""))
-        assertTrue(result.contains("Tool 'getWeather' returned: Sunny, 72°F"))
+        assertTrue(result.contains("""Assistant: {"tool":"GetWeather"}"""))
+        assertTrue(result.contains("Tool 'GetWeather' returned: Sunny, 72°F"))
         assertTrue(result.contains("Assistant: It's sunny and 72 degrees!"))
     }
 
@@ -216,21 +210,12 @@ class GemmaLLMClientTest {
                         Message.User(content = "What's the weather?", metaInfo = RequestMetaInfo.Empty),
                     ),
             )
-        val tools =
-            listOf(
-                ToolDescriptor(
-                    name = "getWeather",
-                    description = "Gets weather",
-                    requiredParameters = emptyList(),
-                    optionalParameters = emptyList(),
-                ),
-            )
 
-        val result = client.buildFullPrompt(prompt, tools)
+        val result = client.buildFullPrompt(prompt, listOf(getWeatherTool))
 
         assertTrue(result.contains("You are helpful"))
         assertTrue(result.contains("Available tools:"))
-        assertTrue(result.contains("- getWeather: Gets weather"))
+        assertTrue(result.contains("- GetWeather: Gets current weather"))
         assertTrue(result.contains("User: What's the weather?"))
     }
 
@@ -252,22 +237,12 @@ class GemmaLLMClientTest {
 
     @Test
     fun `parseResponse detects tool call`() {
-        val tools =
-            listOf(
-                ToolDescriptor(
-                    name = "getWeather",
-                    description = "Gets weather",
-                    requiredParameters = emptyList(),
-                    optionalParameters = emptyList(),
-                ),
-            )
-
-        val result = client.parseResponse("""{"tool":"getWeather"}""", tools)
+        val result = client.parseResponse("""{"tool":"GetWeather"}""", listOf(getWeatherTool))
 
         assertEquals(1, result.size)
         val message = result[0]
         assertTrue(message is Message.Tool.Call)
-        assertEquals("getWeather", (message as Message.Tool.Call).tool)
+        assertEquals("GetWeather", (message as Message.Tool.Call).tool)
         assertEquals("{}", message.content)
     }
 
@@ -290,17 +265,7 @@ class GemmaLLMClientTest {
 
     @Test
     fun `parseResponse handles non-existent tool gracefully`() {
-        val tools =
-            listOf(
-                ToolDescriptor(
-                    name = "getWeather",
-                    description = "Gets weather",
-                    requiredParameters = emptyList(),
-                    optionalParameters = emptyList(),
-                ),
-            )
-
-        val result = client.parseResponse("""{"tool":"getLocation"}""", tools)
+        val result = client.parseResponse("""{"tool":"GetLocation"}""", listOf(getWeatherTool))
 
         assertEquals(1, result.size)
         val message = result[0]
@@ -320,68 +285,38 @@ class GemmaLLMClientTest {
 
     @Test
     fun `parseResponse handles tool pattern with extra whitespace`() {
-        val tools =
-            listOf(
-                ToolDescriptor(
-                    name = "getWeather",
-                    description = "Gets weather",
-                    requiredParameters = emptyList(),
-                    optionalParameters = emptyList(),
-                ),
-            )
-
-        val result = client.parseResponse("""{ "tool" : "getWeather" }""", tools)
+        val result = client.parseResponse("""{ "tool" : "GetWeather" }""", listOf(getWeatherTool))
 
         assertEquals(1, result.size)
         val message = result[0]
         assertTrue(message is Message.Tool.Call)
-        assertEquals("getWeather", (message as Message.Tool.Call).tool)
+        assertEquals("GetWeather", (message as Message.Tool.Call).tool)
     }
 
     @Test
     fun `parseResponse trims whitespace from tool name value`() {
-        val tools =
-            listOf(
-                ToolDescriptor(
-                    name = "getWeather",
-                    description = "Gets weather",
-                    requiredParameters = emptyList(),
-                    optionalParameters = emptyList(),
-                ),
-            )
-
         // Model might add leading/trailing space in the value
-        val result = client.parseResponse("""{"tool":" getWeather "}""", tools)
+        val result = client.parseResponse("""{"tool":" GetWeather "}""", listOf(getWeatherTool))
 
         assertEquals(1, result.size)
         val message = result[0]
         assertTrue(message is Message.Tool.Call)
-        assertEquals("getWeather", (message as Message.Tool.Call).tool)
+        assertEquals("GetWeather", (message as Message.Tool.Call).tool)
     }
 
     @Test
     fun `parseResponse extracts tool name correctly from mixed content`() {
-        val tools =
-            listOf(
-                ToolDescriptor(
-                    name = "getWeather",
-                    description = "Gets weather",
-                    requiredParameters = emptyList(),
-                    optionalParameters = emptyList(),
-                ),
-            )
-
         // Model might add extra text
         val result =
             client.parseResponse(
-                """Let me check that for you. {"tool":"getWeather"}""",
-                tools,
+                """Let me check that for you. {"tool":"GetWeather"}""",
+                listOf(getWeatherTool),
             )
 
         assertEquals(1, result.size)
         val message = result[0]
         assertTrue(message is Message.Tool.Call)
-        assertEquals("getWeather", (message as Message.Tool.Call).tool)
+        assertEquals("GetWeather", (message as Message.Tool.Call).tool)
     }
 
     // ==================== End-to-End Integration Tests ====================
@@ -395,18 +330,8 @@ class GemmaLLMClientTest {
                     // Verify prompt contains tool instructions
                     assertTrue(prompt.contains("Available tools:"))
                     // Return a tool call
-                    """{"tool":"getWeather"}"""
+                    """{"tool":"GetWeather"}"""
                 })
-
-            val tools =
-                listOf(
-                    ToolDescriptor(
-                        name = "getWeather",
-                        description = "Gets weather",
-                        requiredParameters = emptyList(),
-                        optionalParameters = emptyList(),
-                    ),
-                )
 
             val prompt =
                 Prompt(
@@ -417,11 +342,11 @@ class GemmaLLMClientTest {
                         ),
                 )
 
-            val result = client.execute(prompt, mockModel(), tools)
+            val result = client.execute(prompt, mockModel(), listOf(getWeatherTool))
 
             assertEquals(1, result.size)
             assertTrue(result[0] is Message.Tool.Call)
-            assertEquals("getWeather", (result[0] as Message.Tool.Call).tool)
+            assertEquals("GetWeather", (result[0] as Message.Tool.Call).tool)
         }
 
     @Test
@@ -480,16 +405,6 @@ class GemmaLLMClientTest {
                     """{"tool":"none"} Hello!"""
                 })
 
-            val tools =
-                listOf(
-                    ToolDescriptor(
-                        name = "getWeather",
-                        description = "Gets weather",
-                        requiredParameters = emptyList(),
-                        optionalParameters = emptyList(),
-                    ),
-                )
-
             val promptObj =
                 Prompt(
                     id = "test",
@@ -500,12 +415,12 @@ class GemmaLLMClientTest {
                         ),
                 )
 
-            client.execute(promptObj, mockModel(), tools)
+            client.execute(promptObj, mockModel(), listOf(getWeatherTool))
 
             // Verify the built prompt
             assertTrue(capturedPrompt.contains("You are helpful"))
             assertTrue(capturedPrompt.contains("Available tools:"))
-            assertTrue(capturedPrompt.contains("- getWeather: Gets weather"))
+            assertTrue(capturedPrompt.contains("- GetWeather: Gets current weather"))
             assertTrue(capturedPrompt.contains("User: Hi"))
         }
 
@@ -516,18 +431,8 @@ class GemmaLLMClientTest {
             val client =
                 GemmaLLMClient(promptMediaPipe = { prompt ->
                     capturedPrompt = prompt
-                    """{"tool":"getWeather"}"""
+                    """{"tool":"GetWeather"}"""
                 })
-
-            val tools =
-                listOf(
-                    ToolDescriptor(
-                        name = "getWeather",
-                        description = "Gets weather",
-                        requiredParameters = emptyList(),
-                        optionalParameters = emptyList(),
-                    ),
-                )
 
             val promptObj =
                 Prompt(
@@ -537,13 +442,13 @@ class GemmaLLMClientTest {
                             Message.User(content = "What's the weather?", metaInfo = RequestMetaInfo.Empty),
                             Message.Tool.Call(
                                 id = "1",
-                                tool = "getWeather",
+                                tool = "GetWeather",
                                 content = "{}",
                                 metaInfo = ResponseMetaInfo.Empty,
                             ),
                             Message.Tool.Result(
                                 id = "1",
-                                tool = "getWeather",
+                                tool = "GetWeather",
                                 content = "Sunny, 72°F",
                                 metaInfo = RequestMetaInfo.Empty,
                             ),
@@ -551,12 +456,12 @@ class GemmaLLMClientTest {
                         ),
                 )
 
-            client.execute(promptObj, mockModel(), tools)
+            client.execute(promptObj, mockModel(), listOf(getWeatherTool))
 
             // Verify conversation history is included
             assertTrue(capturedPrompt.contains("User: What's the weather?"))
-            assertTrue(capturedPrompt.contains("""Assistant: {"tool":"getWeather"}"""))
-            assertTrue(capturedPrompt.contains("Tool 'getWeather' returned: Sunny, 72°F"))
+            assertTrue(capturedPrompt.contains("""Assistant: {"tool":"GetWeather"}"""))
+            assertTrue(capturedPrompt.contains("Tool 'GetWeather' returned: Sunny, 72°F"))
             assertTrue(capturedPrompt.contains("User: What about tomorrow?"))
         }
 
@@ -565,7 +470,7 @@ class GemmaLLMClientTest {
         LLModel(
             provider = LLMProvider.Google,
             id = "test-model",
-            capabilities = emptyList(),
+            capabilities = listOf(LLMCapability.Tools),
             maxOutputTokens = 1024,
             contextLength = 8192,
         )

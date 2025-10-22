@@ -198,15 +198,14 @@ Not enabled for release builds (prototype phase)
 - Must call `LocalInferenceUtils.close()` to free resources (done in ViewModel.onCleared())
 
 ### Tool Naming Convention
-- **All tool names must use camelCase** (e.g., `getLocationTool`, `getWeatherTool`)
-- Tool names follow JSON convention with lowercase first letter
-- This is critical for Gemma's simplified tool protocol: `{"tool":"toolName"}`
-- When creating new tools, set the `ToolDescriptor.name` field to camelCase
+- **All tool names must use PascalCase** (e.g., `GetLocationTool`, `GetWeatherTool`)
+- Tool names follow Koog's convention using class names with uppercase first letter
+- When creating new tools, set the `ToolDescriptor.name` field to PascalCase
 - Example:
   ```kotlin
   override val descriptor = ToolDescriptor(
-      name = "getLocationTool",  // ✅ Correct: camelCase
-      // NOT "GetLocationTool"   // ❌ Wrong: PascalCase
+      name = "GetLocationTool",  // ✅ Correct: PascalCase
+      // NOT "getLocationTool"   // ❌ Wrong: camelCase
       description = "Get the user location"
   )
   ```
