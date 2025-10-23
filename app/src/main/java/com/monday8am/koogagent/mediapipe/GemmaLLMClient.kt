@@ -150,8 +150,8 @@ internal class GemmaLLMClient(
             Example 1 - Using a tool:
             User: Where am I?
             Assistant: {"tool":"GetLocationTool"}
-            [Tool returns: location: latitude 40.4168, longitude: -3.7038]
-            Assistant: You are currently at latitude 40.4168, longitude -3.7038.
+            [Tool returns: location: latitude 48.8534, longitude: 2.3488]
+            Assistant: You are currently at latitude 48.8534, longitude 2.3488.
 
             Example 2 - Direct answer:
             User: Tell me a joke

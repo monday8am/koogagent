@@ -8,6 +8,7 @@ import androidx.lifecycle.application
 import androidx.lifecycle.viewModelScope
 import com.monday8am.agent.GetLocationTool
 import com.monday8am.agent.GetWeatherTool
+import com.monday8am.agent.GetWeatherToolFromLocation
 import com.monday8am.agent.LocalLLModel
 import com.monday8am.agent.NotificationGenerator
 import com.monday8am.koogagent.data.MealType
@@ -52,7 +53,7 @@ class NotificationViewModel(
     private val locationProvider = MockLocationProvider()
     private val toolRegistry =
         ToolRegistry {
-            tool(tool = GetWeatherTool(weatherProvider))
+            tool(tool = GetWeatherToolFromLocation(weatherProvider))
             tool(tool = GetLocationTool(locationProvider))
         }
 

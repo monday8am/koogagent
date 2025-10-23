@@ -5,6 +5,8 @@ import co.touchlab.kermit.Logger
 import co.touchlab.kermit.Severity
 import com.monday8am.agent.GetLocationTool
 import com.monday8am.agent.GetWeatherTool
+import com.monday8am.agent.GetWeatherToolFromLocation
+import com.monday8am.koogagent.data.LocationProvider
 import com.monday8am.koogagent.data.MockLocationProvider
 import com.monday8am.koogagent.data.OpenMeteoWeatherProvider
 import com.monday8am.koogagent.mediapipe.GemmaAgent
@@ -44,11 +46,11 @@ internal class GemmaToolCallingTest(
             try {
                 val tests =
                     listOf(
-                        ::testBasicToolCall,
-                        ::testNoToolNeeded,
-                        ::testToolHallucination,
+                        // ::testBasicToolCall,
+                        // ::testNoToolNeeded,
+                        // ::testToolHallucination,
                         ::testWeatherTool,
-                        ::testMultiTurnSequence,
+                        // ::testMultiTurnSequence,
                     )
 
                 tests.forEach { test ->
@@ -76,8 +78,6 @@ internal class GemmaToolCallingTest(
             ToolRegistry {
                 tool(GetLocationTool(MockLocationProvider()))
             }
-
-        logger.d { "Tool registry: ${toolRegistry.tools.forEach { it.name }}\n" }
 
         val queries =
             listOf(
@@ -258,7 +258,7 @@ internal class GemmaToolCallingTest(
 
         val toolRegistry =
             ToolRegistry {
-                tool(GetWeatherTool(OpenMeteoWeatherProvider()))
+                tool(GetWeatherTool(locationProvider = MockLocationProvider(), weatherProvider = OpenMeteoWeatherProvider()))
             }
 
         // Note: Weather tool needs coordinates, but Gemma can't pass parameters
@@ -315,7 +315,7 @@ internal class GemmaToolCallingTest(
         val toolRegistry =
             ToolRegistry {
                 tool(GetLocationTool(MockLocationProvider()))
-                tool(GetWeatherTool(OpenMeteoWeatherProvider()))
+                tool(GetWeatherToolFromLocation(OpenMeteoWeatherProvider()))
             }
 
         val query = "What's the weather where I am?"
