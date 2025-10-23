@@ -17,7 +17,6 @@ class GetWeatherTool(
     private val locationProvider: LocationProvider,
     private val weatherProvider: WeatherProvider,
 ) : SimpleTool<Unit>() {
-
     @Serializable
     private data class WeatherResult(
         val condition: String,

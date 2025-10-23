@@ -18,19 +18,21 @@ class GemmaLLMClientTest {
     private lateinit var client: GemmaLLMClient
 
     // Shared tool definitions to avoid repetition
-    private val getWeatherTool = ToolDescriptor(
-        name = "GetWeather",
-        description = "Gets current weather",
-        requiredParameters = emptyList(),
-        optionalParameters = emptyList(),
-    )
+    private val getWeatherTool =
+        ToolDescriptor(
+            name = "GetWeather",
+            description = "Gets current weather",
+            requiredParameters = emptyList(),
+            optionalParameters = emptyList(),
+        )
 
-    private val getLocationTool = ToolDescriptor(
-        name = "GetLocation",
-        description = "Gets current location",
-        requiredParameters = emptyList(),
-        optionalParameters = emptyList(),
-    )
+    private val getLocationTool =
+        ToolDescriptor(
+            name = "GetLocation",
+            description = "Gets current location",
+            requiredParameters = emptyList(),
+            optionalParameters = emptyList(),
+        )
 
     @Before
     fun setup() {

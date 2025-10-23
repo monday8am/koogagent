@@ -7,7 +7,6 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.application
 import androidx.lifecycle.viewModelScope
 import com.monday8am.agent.GetLocationTool
-import com.monday8am.agent.GetWeatherTool
 import com.monday8am.agent.GetWeatherToolFromLocation
 import com.monday8am.agent.LocalLLModel
 import com.monday8am.agent.NotificationGenerator

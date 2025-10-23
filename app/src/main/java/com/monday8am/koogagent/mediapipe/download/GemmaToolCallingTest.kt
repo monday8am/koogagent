@@ -6,7 +6,6 @@ import co.touchlab.kermit.Severity
 import com.monday8am.agent.GetLocationTool
 import com.monday8am.agent.GetWeatherTool
 import com.monday8am.agent.GetWeatherToolFromLocation
-import com.monday8am.koogagent.data.LocationProvider
 import com.monday8am.koogagent.data.MockLocationProvider
 import com.monday8am.koogagent.data.OpenMeteoWeatherProvider
 import com.monday8am.koogagent.mediapipe.GemmaAgent
