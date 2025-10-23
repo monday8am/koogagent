@@ -10,8 +10,8 @@ internal val logger = Logger.withTag("NotificationGenerator")
 class NotificationGenerator(
     private val agent: NotificationAgent,
 ) {
-    private val systemPromptOld = "You are an nutritionist that generates short, motivating reminders for logging meals or water intake."
-    private val systemPrompt =
+    private val systemPrompt = "You are an nutritionist that generates short, motivating reminders for logging meals or water intake."
+    private val systemPromptForToolTesting =
         """
         You are a tool-calling assistant.
 
@@ -51,7 +51,7 @@ class NotificationGenerator(
     // Consider weather when suggesting meals (e.g., hot soup on cold days, refreshing salads when hot, comfort food when rainy).
     // If weather information is relevant for this meal type, use the WeatherTool tool first to get current conditions, then tailor your suggestion accordingly.
 
-    private fun buildPromptOld(context: NotificationContext): String =
+    private fun buildPrompt(context: NotificationContext): String =
         """
         Context:
         - Meal type: ${context.mealType}
@@ -71,7 +71,9 @@ class NotificationGenerator(
         Say to user if you used the WeatherTool or not and why
         """.trimIndent()
 
-    private fun buildPrompt(context: NotificationContext): String = "I'm lost. I need to know my location"
+    // Build prompt for tool testing
+
+    private fun buildPromptForToolTesting(): String = "I'm lost. I need to know my location"
 
     private fun parseResponse(response: String): NotificationResult {
         val cleanJson = response.removePrefix("```json\n").removeSuffix("\n```")
