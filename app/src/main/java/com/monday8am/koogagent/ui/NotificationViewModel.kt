@@ -1,19 +1,26 @@
 package com.monday8am.koogagent.ui
 
+import ai.koog.agents.core.tools.ToolRegistry
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.application
 import androidx.lifecycle.viewModelScope
+import com.monday8am.agent.GetLocationTool
+import com.monday8am.agent.GetWeatherToolFromLocation
 import com.monday8am.agent.LocalLLModel
-import com.monday8am.agent.MealType
-import com.monday8am.agent.MotivationLevel
-import com.monday8am.agent.NotificationContext
 import com.monday8am.agent.NotificationGenerator
-import com.monday8am.agent.WeatherCondition
-import com.monday8am.koogagent.local.GemmaAgent
-import com.monday8am.koogagent.local.LlmModelInstance
-import com.monday8am.koogagent.local.LocalInferenceUtils
-import com.monday8am.koogagent.local.download.ModelDownloadManager
+import com.monday8am.koogagent.data.MealType
+import com.monday8am.koogagent.data.MockLocationProvider
+import com.monday8am.koogagent.data.MotivationLevel
+import com.monday8am.koogagent.data.NotificationContext
+import com.monday8am.koogagent.data.NotificationResult
+import com.monday8am.koogagent.data.OpenMeteoWeatherProvider
+import com.monday8am.koogagent.mediapipe.GemmaAgent
+import com.monday8am.koogagent.mediapipe.LlmModelInstance
+import com.monday8am.koogagent.mediapipe.LocalInferenceUtils
+import com.monday8am.koogagent.mediapipe.download.GemmaToolCallingTest
+import com.monday8am.koogagent.mediapipe.download.ModelDownloadManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -23,7 +30,6 @@ val defaultNotificationContext =
     NotificationContext(
         mealType = MealType.WATER,
         motivationLevel = MotivationLevel.HIGH,
-        weather = WeatherCondition.SUNNY,
         alreadyLogged = true,
         userLocale = "en-US",
         country = "ES",
@@ -41,8 +47,14 @@ private const val GemmaModelName = "gemma3-1b-it-int4.litertlm"
 class NotificationViewModel(
     application: Application,
 ) : AndroidViewModel(application) {
-
     private val modelManager = ModelDownloadManager(application)
+    private val weatherProvider = OpenMeteoWeatherProvider()
+    private val locationProvider = MockLocationProvider()
+    private val toolRegistry =
+        ToolRegistry {
+            tool(tool = GetWeatherToolFromLocation(weatherProvider))
+            tool(tool = GetLocationTool(locationProvider))
+        }
 
     private val _uiState = MutableStateFlow(UiState())
     val uiState = _uiState.asStateFlow()
@@ -89,16 +101,21 @@ class NotificationViewModel(
             return
         }
 
-        val deviceContext = DeviceContextUtil.getDeviceContext(application)
-        val currentContext = _uiState.value.context.copy(
-            userLocale = deviceContext.language,
-            country = deviceContext.country,
-        )
-
-        printLog("Prompting with context:\n ${currentContext.formatted}")
-
         instance?.let { instance ->
             viewModelScope.launch {
+                printLog("Generating notification with agentic tool-based approach...")
+                printLog("Agent will autonomously decide if weather data is needed...")
+
+                val deviceContext = DeviceContextUtil.getDeviceContext(application)
+                val currentContext =
+                    _uiState.value.context.copy(
+                        userLocale = deviceContext.language,
+                        country = deviceContext.country,
+                        // Note: weather is no longer set here - agent will fetch it via tool if needed
+                    )
+
+                printLog("Prompting with context:\n ${currentContext.formatted}")
+
                 val processedPayload = doExtraProcessing(instance = instance, context = currentContext)
                 with(processedPayload) {
                     if (isFallback) {
@@ -108,6 +125,23 @@ class NotificationViewModel(
                         NotificationUtils.showNotification(getApplication(), this)
                     }
                 }
+            }
+        }
+    }
+
+    fun runToolTests() {
+        if (_uiState.value.isModelReady.not()) {
+            printLog("Model isn't ready yet. Please wait.")
+            return
+        }
+
+        instance?.let { gemmaInstance ->
+            viewModelScope.launch {
+                printLog("Starting tool calling tests...\n")
+
+                val tester = GemmaToolCallingTest(instance = gemmaInstance)
+                val results = tester.runAllTests()
+                printLog(results)
             }
         }
     }
@@ -140,12 +174,14 @@ class NotificationViewModel(
     private suspend fun doExtraProcessing(
         instance: LlmModelInstance,
         context: NotificationContext,
-    ) = NotificationGenerator(
-        agent = GemmaAgent(instance = instance),
-    ).generate(context)
+    ): NotificationResult {
+        val agent = GemmaAgent(instance = instance)
+        agent.initializeWithTools(toolRegistry = toolRegistry)
+        return NotificationGenerator(agent = agent).generate(context)
+    }
 
     private fun printLog(log: String) {
         _uiState.update { it.copy(textLog = log) }
+        Log.d("NotificationViewModel", log)
     }
-
 }

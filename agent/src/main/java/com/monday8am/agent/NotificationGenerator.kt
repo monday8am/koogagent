@@ -1,38 +1,79 @@
 package com.monday8am.agent
 
+import co.touchlab.kermit.Logger
+import com.monday8am.koogagent.data.MealType
+import com.monday8am.koogagent.data.NotificationContext
+import com.monday8am.koogagent.data.NotificationResult
+
+internal val logger = Logger.withTag("NotificationGenerator")
+
 class NotificationGenerator(
     private val agent: NotificationAgent,
 ) {
     private val systemPrompt = "You are an nutritionist that generates short, motivating reminders for logging meals or water intake."
+    private val systemPromptForToolTesting =
+        """
+        You are a tool-calling assistant.
+
+        Available tool:
+        - GetLocationTool (no parameters needed)
+
+        Rule: If the user needs location information, output exactly: {"tool":"GetLocationTool"}
+        If not needed, output exactly: {"tool":"none"}
+
+        Example:
+        For the question: Where am I right now?
+        The answer is: {"tool":"GetLocationTool"}
+        """.trimIndent()
 
     suspend fun generate(context: NotificationContext): NotificationResult {
         val prompt = buildPrompt(context)
+        logger.d { "Built prompt: $prompt" }
+
         return try {
             val response =
                 agent.generateMessage(
                     systemPrompt = systemPrompt,
                     userPrompt = prompt,
                 )
-            parseResponse(response)
+            logger.d { "Agent response: $response" }
+            val result = parseResponse(response)
+            logger.i { "Successfully generated notification: title='${result.title}', confidence=${result.confidence}" }
+            result
         } catch (e: Exception) {
-            println("NotificationGenerator: Error generating notification ${e.message}")
-            fallback(context)
+            logger.e(e) { "Error generating notification: ${e.message}" }
+            val fallbackResult = fallback(context)
+            logger.w { "Using fallback notification: title='${fallbackResult.title}'" }
+            fallbackResult
         }
     }
+
+    // Consider weather when suggesting meals (e.g., hot soup on cold days, refreshing salads when hot, comfort food when rainy).
+    // If weather information is relevant for this meal type, use the WeatherTool tool first to get current conditions, then tailor your suggestion accordingly.
 
     private fun buildPrompt(context: NotificationContext): String =
         """
         Context:
         - Meal type: ${context.mealType}
         - Motivation level: ${context.motivationLevel}
-        - Weather: ${context.weather}
         - Already logged: ${context.alreadyLogged}
         - Language: ${context.userLocale}
         - Country: ${context.country}
+
+        Task: Generate a personalized meal notification.
+
+        You have access to tools:
+        - WeatherTool: Use this to fetch current weather conditions. Consider weather when suggesting meals (e.g., hot soup on cold days, refreshing salads when hot, comfort food when rainy).
+
         Generate a title (max 35 characters) and a body (max 160 characters) in plain JSON format: {"title":"...", "body":"...", "language":"en-US", "confidence":0.9}
-        Use the language and suggest a meal or drink based on the country provided.
-        ${if (context.alreadyLogged) "- The user has already logged something today." else "the user has not logged anything today."}
+        Use the language and suggest a meal or drink based on the country provided and the weather information obtained before.
+        ${if (context.alreadyLogged) "The user has already logged something today - encourage them to continue." else "The user has not logged anything today - motivate them to start."}
+        Say to user if you used the WeatherTool or not and why
         """.trimIndent()
+
+    // Build prompt for tool testing
+
+    private fun buildPromptForToolTesting(): String = "I'm lost. I need to know my location"
 
     private fun parseResponse(response: String): NotificationResult {
         val cleanJson = response.removePrefix("```json\n").removeSuffix("\n```")
