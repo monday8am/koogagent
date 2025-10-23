@@ -9,7 +9,7 @@ import com.monday8am.koogagent.data.MealType
 import com.monday8am.koogagent.data.MockLocationProvider
 import com.monday8am.koogagent.data.MotivationLevel
 import com.monday8am.koogagent.data.NotificationContext
-import com.monday8am.koogagent.data.OpenMeteoWeatherProvider
+import com.monday8am.koogagent.data.WeatherProviderImpl
 import kotlinx.coroutines.runBlocking
 
 private val logger = Logger.withTag("KoogAgentApp")
@@ -18,11 +18,11 @@ fun main() =
     runBlocking {
         logger.i { "Starting KoogAgent local test application" }
 
-        val weatherProvider = OpenMeteoWeatherProvider()
+        val weatherProvider = WeatherProviderImpl()
         val locationProvider = MockLocationProvider()
         val toolRegistry =
             ToolRegistry {
-                tool(tool = GetWeatherTool(weatherProvider))
+                tool(tool = GetWeatherTool(weatherProvider = weatherProvider, locationProvider = locationProvider))
                 tool(tool = GetLocationTool(locationProvider))
             }
 

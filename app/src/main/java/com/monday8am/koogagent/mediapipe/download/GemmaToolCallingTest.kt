@@ -7,7 +7,7 @@ import com.monday8am.agent.GetLocationTool
 import com.monday8am.agent.GetWeatherTool
 import com.monday8am.agent.GetWeatherToolFromLocation
 import com.monday8am.koogagent.data.MockLocationProvider
-import com.monday8am.koogagent.data.OpenMeteoWeatherProvider
+import com.monday8am.koogagent.data.WeatherProviderImpl
 import com.monday8am.koogagent.mediapipe.GemmaAgent
 import com.monday8am.koogagent.mediapipe.LlmModelInstance
 import com.monday8am.koogagent.mediapipe.LocalInferenceUtils
@@ -257,7 +257,7 @@ internal class GemmaToolCallingTest(
 
         val toolRegistry =
             ToolRegistry {
-                tool(GetWeatherTool(locationProvider = MockLocationProvider(), weatherProvider = OpenMeteoWeatherProvider()))
+                tool(GetWeatherTool(locationProvider = MockLocationProvider(), weatherProvider = WeatherProviderImpl()))
             }
 
         // Note: Weather tool needs coordinates, but Gemma can't pass parameters
@@ -314,7 +314,7 @@ internal class GemmaToolCallingTest(
         val toolRegistry =
             ToolRegistry {
                 tool(GetLocationTool(MockLocationProvider()))
-                tool(GetWeatherToolFromLocation(OpenMeteoWeatherProvider()))
+                tool(GetWeatherToolFromLocation(WeatherProviderImpl()))
             }
 
         val query = "What's the weather where I am?"

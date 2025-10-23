@@ -15,7 +15,7 @@ import com.monday8am.koogagent.data.MockLocationProvider
 import com.monday8am.koogagent.data.MotivationLevel
 import com.monday8am.koogagent.data.NotificationContext
 import com.monday8am.koogagent.data.NotificationResult
-import com.monday8am.koogagent.data.OpenMeteoWeatherProvider
+import com.monday8am.koogagent.data.WeatherProviderImpl
 import com.monday8am.koogagent.mediapipe.GemmaAgent
 import com.monday8am.koogagent.mediapipe.LlmModelInstance
 import com.monday8am.koogagent.mediapipe.LocalInferenceUtils
@@ -48,7 +48,7 @@ class NotificationViewModel(
     application: Application,
 ) : AndroidViewModel(application) {
     private val modelManager = ModelDownloadManager(application)
-    private val weatherProvider = OpenMeteoWeatherProvider()
+    private val weatherProvider = WeatherProviderImpl()
     private val locationProvider = MockLocationProvider()
     private val toolRegistry =
         ToolRegistry {

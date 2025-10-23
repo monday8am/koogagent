@@ -28,3 +28,8 @@ data class NotificationResult(
     val formatted: String
         get() = "Title:$title\nBody:$body\nLanguage:$language\nConfidence:$confidence"
 }
+
+data class Location(
+    val latitude: Double,
+    val longitude: Double,
+)

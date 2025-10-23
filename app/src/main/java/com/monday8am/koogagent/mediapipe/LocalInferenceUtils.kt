@@ -17,6 +17,12 @@ data class LlmModelInstance(
     var session: LlmInferenceSession,
 )
 
+interface LocalInferece {
+    suspend fun initialize(context: Context, model: LocalLLModel): Result<LlmModelInstance>
+    suspend fun prompt(instance: LlmModelInstance, prompt: String)
+    fun close()
+}
+
 object LocalInferenceUtils {
     suspend fun initialize(
         context: Context,

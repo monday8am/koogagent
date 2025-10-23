@@ -11,7 +11,7 @@ import org.json.JSONObject
  * Weather provider using Open-Meteo API (https://open-meteo.com/).
  * No API key required, free for non-commercial use.
  */
-class OpenMeteoWeatherProvider(
+class WeatherProviderImpl(
     private val client: OkHttpClient = OkHttpClient(),
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : WeatherProvider {
