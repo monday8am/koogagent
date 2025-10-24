@@ -14,14 +14,15 @@ import kotlinx.coroutines.flow.stateIn
 class AndroidNotificationViewModel(
     private val impl: NotificationViewModel,
     private val inferenceEngine: LocalInferenceEngine,
-) : ViewModel(), NotificationViewModel by impl {
-
+) : ViewModel(),
+    NotificationViewModel by impl {
     override val uiState: StateFlow<UiState>
-        get() = impl.uiState.stateIn(
-            viewModelScope,
-            started = SharingStarted.WhileSubscribed(300L),
-            initialValue = UiState()
-        )
+        get() =
+            impl.uiState.stateIn(
+                viewModelScope,
+                started = SharingStarted.WhileSubscribed(300L),
+                initialValue = UiState(),
+            )
 
     override fun onCleared() {
         super.onCleared()
@@ -36,20 +37,20 @@ class NotificationViewModelFactory(
     private val weatherProvider: WeatherProvider,
     private val locationProvider: LocationProvider,
     private val deviceContextProvider: DeviceContextProvider,
-    private val modelManager: ModelDownloadManager
+    private val modelManager: ModelDownloadManager,
 ) : ViewModelProvider.Factory {
-
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(AndroidNotificationViewModel::class.java)) {
-            val impl = NotificationViewModelImpl(
-                inferenceEngine = inferenceEngine,
-                notificationEngine = notificationEngine,
-                weatherProvider = weatherProvider,
-                locationProvider = locationProvider,
-                deviceContextProvider = deviceContextProvider,
-                modelManager = modelManager,
-            )
+            val impl =
+                NotificationViewModelImpl(
+                    inferenceEngine = inferenceEngine,
+                    notificationEngine = notificationEngine,
+                    weatherProvider = weatherProvider,
+                    locationProvider = locationProvider,
+                    deviceContextProvider = deviceContextProvider,
+                    modelManager = modelManager,
+                )
             return AndroidNotificationViewModel(impl, inferenceEngine) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")

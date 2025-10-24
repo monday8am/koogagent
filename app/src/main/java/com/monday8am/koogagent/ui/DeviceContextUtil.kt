@@ -8,7 +8,9 @@ interface DeviceContextProvider {
     fun getDeviceContext(): DeviceContext
 }
 
-class DeviceContextProviderImpl(private val context: Context): DeviceContextProvider {
+class DeviceContextProviderImpl(
+    private val context: Context,
+) : DeviceContextProvider {
     override fun getDeviceContext(): DeviceContext {
         val locale: Locale = context.resources.configuration.locales[0]
         val country = locale.country.ifEmpty { Locale.getDefault().country }

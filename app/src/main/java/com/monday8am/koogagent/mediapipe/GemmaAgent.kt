@@ -28,7 +28,7 @@ private val gemmaModel =
     )
 
 class GemmaAgent(
-    private val promptExecutor: suspend (String) -> String?
+    private val promptExecutor: suspend (String) -> String?,
 ) : NotificationAgent {
     private var registry: ToolRegistry? = null
     private val logger = Logger.withTag("GemmaAgent")

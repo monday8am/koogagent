@@ -20,9 +20,8 @@ interface NotificationEngine {
 }
 
 class NotificationEngineImpl(
-    val context: Context
+    val context: Context,
 ) : NotificationEngine {
-
     private var lastShownNotification: NotificationResult? = null
 
     override fun showNotification(result: NotificationResult) {

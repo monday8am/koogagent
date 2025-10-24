@@ -52,7 +52,6 @@ import com.monday8am.koogagent.ui.defaultNotificationContext
 import com.monday8am.koogagent.ui.theme.KoogAgentTheme
 
 class MainActivity : ComponentActivity() {
-
     private val notificationEngine: NotificationEngineImpl by lazy {
         NotificationEngineImpl(this.applicationContext)
     }
@@ -73,7 +72,7 @@ class MainActivity : ComponentActivity() {
             weatherProvider = weatherProvider,
             locationProvider = locationProvider,
             deviceContextProvider = deviceContextProvider,
-            modelManager = modelManager
+            modelManager = modelManager,
         )
     }
 
@@ -151,10 +150,13 @@ private fun LogPanel(
     textLog: String,
     modifier: Modifier = Modifier,
 ) {
-    Box(modifier = modifier
-        .fillMaxWidth()
-        .height(240.dp)
-        .background(Color(0xFF000080))) {
+    Box(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .height(240.dp)
+                .background(Color(0xFF000080)),
+    ) {
         Text(text = textLog, color = Color(0xFF00FF00), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
     }
 }
