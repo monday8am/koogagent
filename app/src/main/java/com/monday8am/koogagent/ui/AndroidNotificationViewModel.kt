@@ -2,19 +2,34 @@ package com.monday8am.koogagent.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
 import com.monday8am.koogagent.data.LocationProvider
 import com.monday8am.koogagent.data.WeatherProvider
 import com.monday8am.koogagent.mediapipe.LocalInferenceEngine
 import com.monday8am.koogagent.mediapipe.download.ModelDownloadManager
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.stateIn
 
-// This class remains the same - a simple wrapper.
 class AndroidNotificationViewModel(
-    private val impl: NotificationViewModel
-) : ViewModel(), NotificationViewModel by impl
+    private val impl: NotificationViewModel,
+    private val inferenceEngine: LocalInferenceEngine,
+) : ViewModel(), NotificationViewModel by impl {
 
-// The factory is now a separate, top-level class, which is cleaner.
+    override val uiState: StateFlow<UiState>
+        get() = impl.uiState.stateIn(
+            viewModelScope,
+            started = SharingStarted.WhileSubscribed(300L),
+            initialValue = UiState()
+        )
+
+    override fun onCleared() {
+        super.onCleared()
+        inferenceEngine.closeSession()
+    }
+}
+
 class NotificationViewModelFactory(
-    // It now declares the dependencies it needs, rather than creating them.
     private val inferenceEngine: LocalInferenceEngine,
     private val notificationEngine: NotificationEngine,
     private val weatherProvider: WeatherProvider,
@@ -26,7 +41,6 @@ class NotificationViewModelFactory(
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(AndroidNotificationViewModel::class.java)) {
-            // 1. Create the pure Kotlin implementation with the provided dependencies
             val impl = NotificationViewModelImpl(
                 inferenceEngine = inferenceEngine,
                 notificationEngine = notificationEngine,
@@ -35,8 +49,7 @@ class NotificationViewModelFactory(
                 deviceContextProvider = deviceContextProvider,
                 modelManager = modelManager
             )
-            // 2. Wrap it in the Android-specific ViewModel
-            return AndroidNotificationViewModel(impl) as T
+            return AndroidNotificationViewModel(impl, inferenceEngine) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
     }

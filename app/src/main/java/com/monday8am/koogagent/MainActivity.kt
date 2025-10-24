@@ -35,7 +35,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.monday8am.koogagent.data.MealType
 import com.monday8am.koogagent.data.MockLocationProvider
@@ -49,7 +48,6 @@ import com.monday8am.koogagent.ui.DeviceContextProviderImpl
 import com.monday8am.koogagent.ui.NotificationEngineImpl
 import com.monday8am.koogagent.ui.NotificationViewModelFactory
 import com.monday8am.koogagent.ui.UiAction
-import com.monday8am.koogagent.ui.UiState
 import com.monday8am.koogagent.ui.defaultNotificationContext
 import com.monday8am.koogagent.ui.theme.KoogAgentTheme
 
@@ -89,12 +87,7 @@ class MainActivity : ComponentActivity() {
         notificationEngine.requestNotificationPermission(this)
 
         setContent {
-            val localLifecycle = LocalLifecycleOwner.current
-            val state by viewModel.uiState.collectAsStateWithLifecycle(
-                initialValue = UiState(),
-                lifecycleOwner = localLifecycle
-            )
-
+            val state by viewModel.uiState.collectAsStateWithLifecycle()
             KoogAgentTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     MainScreen(

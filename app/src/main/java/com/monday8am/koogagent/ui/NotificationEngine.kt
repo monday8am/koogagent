@@ -22,7 +22,6 @@ interface NotificationEngine {
 class NotificationEngineImpl(
     val context: Context
 ) : NotificationEngine {
-
     override fun showNotification(result: NotificationResult) {
         val builder =
             NotificationCompat
