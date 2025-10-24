@@ -17,23 +17,47 @@ KoogAgent is an Android prototype that explores how agentic frameworks and on-de
 
 ## Module Architecture
 
-### Two-Module Structure
+### Four-Module Structure (KMP-Ready)
 
-1. **`:agent` module** (Pure Kotlin/JVM)
+1. **`:data` module** (Pure Kotlin)
+   - Data models: `NotificationContext`, `NotificationResult`, `MealType`, `MotivationLevel`, `WeatherCondition`
+   - Platform-agnostic interfaces: `WeatherProvider`, `LocationProvider`
+   - `DeviceContext` model
+   - No dependencies
+
+2. **`:agent` module** (Pure Kotlin/JVM)
    - Platform-agnostic notification generation logic
    - `NotificationGenerator` class orchestrates the AI agent
    - `NotificationAgent` interface abstracts LLM implementations
+   - `GemmaAgent` implementation (uses LLM executor abstraction)
    - `OllamaAgent` implementation for JVM testing with Ollama
-   - Data models: `NotificationContext`, `NotificationResult`, `LocalLLModel`
-   - No Android dependencies
+   - Core models: `LocalLLModel`, `LocalInferenceEngine` interface
+   - Tools: `GetLocationTool`, `GetWeatherToolFromLocation`
+   - Depends on `:data`
 
-2. **`:app` module** (Android Application)
-   - Android-specific implementation and UI
-   - `GemmaAgent` implementation using MediaPipe for on-device inference
-   - `LocalInferenceUtils` wraps MediaPipe LLM Inference API
-   - `ModelDownloadManager` handles model downloading and unzipping
-   - UI layer with Jetpack Compose (MainActivity, NotificationViewModel)
-   - Depends on `:agent` module
+3. **`:presentation` module** (Pure Kotlin - KMP-Ready) ✨ NEW
+   - **Package**: `com.monday8am.presentation.notifications`
+   - Platform-agnostic state management and business logic
+   - `NotificationViewModel` interface and `NotificationViewModelImpl`
+   - MVI pattern: `UiState`, `UiAction` sealed class, `ActionState` sealed interface
+   - Platform service interfaces (no implementations):
+     - `LocalInferenceEngine` (LLM inference)
+     - `ModelDownloadManager` (model downloading)
+     - `NotificationEngine` (showing notifications)
+     - `DeviceContextProvider` (device context)
+   - Owns its own coroutine scope for background operations
+   - Async notification generation with state updates
+   - Depends on `:data` and `:agent`
+
+4. **`:app` module** (Android Application)
+   - Android-specific implementations of presentation interfaces
+   - `LocalInferenceEngineImpl` wraps MediaPipe LLM Inference API
+   - `ModelDownloadManagerImpl` handles model downloading via WorkManager
+   - `NotificationEngineImpl` shows Android notifications (with idempotency check)
+   - `DeviceContextProviderImpl` extracts device locale/country
+   - `AndroidNotificationViewModel` wraps presentation ViewModel with Android lifecycle
+   - UI layer with Jetpack Compose (MainActivity, theme)
+   - Depends on `:data`, `:agent`, and `:presentation`
 
 ### Key Integration Points
 
@@ -52,12 +76,30 @@ KoogAgent is an Android prototype that explores how agentic frameworks and on-de
 - `LocalInferenceUtils.prompt()` adds query chunks and generates responses asynchronously
 - Custom `await()` extension for `ListenableFuture<T>` to bridge with coroutines
 
-**Data Flow:**
-1. UI sets `NotificationContext` (meal type, motivation, weather, etc.)
-2. `NotificationViewModel.processAndShowNotification()` merges device context (locale, country)
-3. `NotificationGenerator.generate()` builds prompt and calls agent
-4. Agent returns JSON: `{"title":"...", "body":"...", "language":"...", "confidence":...}`
-5. Fallback mechanism if LLM fails
+**Data Flow (MVI Pattern):**
+1. UI dispatches `UiAction.ShowNotification`
+2. `NotificationViewModelImpl` receives action and initializes LLM engine
+3. On success, launches background coroutine to create notification asynchronously
+4. `createNotification()` merges device context and calls `NotificationGenerator.generate()`
+5. Agent returns JSON: `{"title":"...", "body":"...", "language":"...", "confidence":...}`
+6. Dispatches `UiAction.NotificationReady` with result
+7. Reducer updates `UiState` with notification
+8. Side effect in flow shows notification via `NotificationEngine.showNotification()`
+9. Fallback mechanism if LLM fails
+
+**ViewModel Architecture:**
+- **NotificationViewModelImpl** (in `:presentation`):
+  - Pure Kotlin, platform-agnostic
+  - Owns coroutine scope: `CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)`
+  - Uses Flow operators for reactive state: `flatMapConcat`, `scan`, `distinctUntilChanged`
+  - `dispose()` method cancels scope
+  - Async notification generation to avoid blocking state updates
+
+- **AndroidNotificationViewModel** (in `:app`):
+  - Android wrapper using `ViewModel` from AndroidX
+  - Delegates to `NotificationViewModelImpl` via interface
+  - Converts Flow to StateFlow using `stateIn()` with `viewModelScope`
+  - `onCleared()` calls `impl.dispose()` and `inferenceEngine.closeSession()`
 
 ## Build & Development Commands
 
@@ -70,13 +112,16 @@ KoogAgent is an Android prototype that explores how agentic frameworks and on-de
 ```bash
 ./gradlew :app:build
 ./gradlew :agent:build
+./gradlew :presentation:build
+./gradlew :data:build
 ```
 
 ### Run Tests
 ```bash
-./gradlew test                    # All tests
-./gradlew :agent:test             # Agent module tests only
-./gradlew :app:testDebugUnitTest  # App module unit tests
+./gradlew test                         # All tests
+./gradlew :agent:test                  # Agent module tests only
+./gradlew :presentation:test           # Presentation module tests only
+./gradlew :app:testDebugUnitTest       # App module unit tests
 ```
 
 ### Android Instrumented Tests
@@ -103,10 +148,11 @@ KoogAgent is an Android prototype that explores how agentic frameworks and on-de
 ## Important Implementation Details
 
 ### Model Path Resolution
-- Models are downloaded to app's internal storage via `ModelDownloadManager`
+- Models are downloaded to app's internal storage via `ModelDownloadManagerImpl`
 - Default model: `gemma3-1b-it-int4.litertlm` (Gemma 3 1B parameters, int4 quantized)
-- Model URL in `NotificationViewModel`: GitHub release at `https://github.com/monday8am/koogagent/releases/download/0.0.1/gemma3-1b-it-int4.zip`
+- Model URL in `NotificationViewModelImpl`: GitHub release at `https://github.com/monday8am/koogagent/releases/download/0.0.1/gemma3-1b-it-int4.zip`
 - `ModelDownloadManager.getModelPath()` returns absolute path for MediaPipe
+- **Lazy evaluation**: `getLocalModel()` function evaluates path when needed, not at construction time
 
 ### LLM Client Bridges
 - `GemmaLLMClient` implements Koog's `LLMClient` interface to wrap MediaPipe
@@ -125,9 +171,10 @@ KoogAgent is an Android prototype that explores how agentic frameworks and on-de
 
 ### Notification Context
 - Real weather data from Open-Meteo API (replacing simulated inputs)
-- Device context: `DeviceContextUtil.getDeviceContext()` extracts locale and country
+- Device context: `DeviceContextProviderImpl.getDeviceContext()` extracts locale and country
 - Location from `MockLocationProvider` (can be replaced with real Android LocationManager)
-- Context merging happens in ViewModel before calling generator
+- Context merging happens in `createNotification()` before calling generator
+- **Idempotency**: `NotificationEngineImpl` tracks last shown notification to prevent duplicates
 
 ### Error Handling
 - Fallback notifications defined in `NotificationGenerator.fallback()`
@@ -143,7 +190,13 @@ KoogAgent is an Android prototype that explores how agentic frameworks and on-de
 ### Android SDK Levels
 - `minSdk`: 26 (Android 8.0)
 - `targetSdk` / `compileSdk`: 36
-- Java/Kotlin toolchain: Java 11
+- Java/Kotlin toolchain: Java 11 (for `:data`, `:agent`, `:presentation`) / Java 17 (for `:app`)
+
+### Java Version Compatibility
+- **Recommended**: Java 17 or Java 21
+- **Incompatible**: Java 25 (bleeding edge, not yet supported by Kotlin/Gradle)
+- Set Java version: `export JAVA_HOME=$(/usr/libexec/java_home -v 17)`
+- Or configure in `gradle.properties`: `org.gradle.java.home=/path/to/jdk-17`
 
 ### Version Catalog
 Dependencies managed in `gradle/libs.versions.toml`:
@@ -194,8 +247,49 @@ Not enabled for release builds (prototype phase)
 
 ### Working with MediaPipe Sessions
 - Sessions maintain conversation state across multiple queries
-- `LocalInferenceUtils.prompt()` adds chunks to existing session
-- Must call `LocalInferenceUtils.close()` to free resources (done in ViewModel.onCleared())
+- `LocalInferenceEngineImpl.prompt()` adds chunks to existing session
+- Must call `closeSession()` to free resources (done in `AndroidNotificationViewModel.onCleared()`)
+
+### MVI State Management Pattern
+
+The presentation layer uses MVI (Model-View-Intent) pattern:
+
+**UiState (Single Source of Truth):**
+```kotlin
+data class UiState(
+    val textLog: String = "Initializing!",
+    val context: NotificationContext = defaultNotificationContext,
+    val isModelReady: Boolean = false,
+    val notification: NotificationResult? = null,
+    val downloadStatus: ModelDownloadManager.Status = ModelDownloadManager.Status.Pending,
+)
+```
+
+**UiAction (User Intents):**
+```kotlin
+sealed class UiAction {
+    data object DownloadModel : UiAction()
+    data object ShowNotification : UiAction()
+    data class UpdateContext(val context: NotificationContext) : UiAction()
+    // Internal actions for async results
+    internal data object Initialize : UiAction()
+    internal data class NotificationReady(val content: NotificationResult): UiAction()
+}
+```
+
+**Flow Pipeline:**
+1. `userActions: MutableStateFlow<UiAction>` receives actions
+2. `flatMapConcat` executes action (download, initialize, etc.)
+3. `map` wraps results in `ActionState.Success/Error/Loading`
+4. `scan` reduces state via `reduce()` function
+5. `distinctUntilChanged` prevents duplicate emissions
+6. `onEach` triggers side effects (show notification)
+
+**Key Benefits:**
+- Unidirectional data flow
+- Testable reducers (pure functions)
+- Clear separation between sync state updates and async operations
+- Side effects isolated in `onEach`
 
 ### Tool Naming Convention
 - **All tool names must use PascalCase** (e.g., `GetLocationTool`, `GetWeatherTool`)
@@ -212,10 +306,43 @@ Not enabled for release builds (prototype phase)
 
 ## Architecture Decisions
 
-### Why Two Modules?
-- `:agent` can be tested on JVM without Android emulator
-- `:agent` logic is reusable for potential iOS Kotlin Multiplatform support
-- Clean separation between LLM orchestration and Android UI
+### Why Four Modules?
+
+**Separation Rationale:**
+- **`:data`**: Shared data models across all layers, no dependencies
+- **`:agent`**: AI agent logic testable on JVM without Android
+- **`:presentation`**: Platform-agnostic ViewModels, KMP-ready for iOS/Desktop
+- **`:app`**: Android-specific implementations only
+
+**Benefits:**
+1. **KMP-Ready**: `:data`, `:agent`, and `:presentation` have zero Android dependencies
+2. **Testability**: Can test business logic on JVM without emulator
+3. **Reusability**: Same ViewModels for Android, iOS (future), Desktop (future)
+4. **Clear Boundaries**: Each module has single responsibility
+5. **Dependency Flow**: Unidirectional (data ← agent ← presentation ← app)
+
+**Why Split Presentation from App?**
+- ViewModel state management is platform-agnostic
+- Only implementations (MediaPipe, WorkManager, Android notifications) are platform-specific
+- Allows testing presentation logic without Android framework
+- Enables sharing business logic across platforms
+
+**Module Dependency Graph:**
+```
+:data (no dependencies)
+  ↑
+:agent (depends on :data)
+  ↑
+:presentation (depends on :data, :agent)
+  ↑
+:app (depends on :data, :agent, :presentation)
+```
+
+**What Lives Where:**
+- **Interfaces**: `:data` (domain), `:presentation` (platform services)
+- **Business Logic**: `:agent` (AI), `:presentation` (state management)
+- **Implementations**: `:app` (Android-specific)
+- **Models**: `:data` (shared everywhere)
 
 ### Why Koog?
 - Provides agentic framework with tool support (though not heavily used here)
@@ -229,19 +356,39 @@ Not enabled for release builds (prototype phase)
 
 ## Common Patterns (continued)
 
+### ViewModel Lifecycle & Resource Management
+
+**Scope Management:**
+- `NotificationViewModelImpl` owns: `CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)`
+- `AndroidNotificationViewModel` owns: `viewModelScope` (from AndroidX ViewModel)
+- Separation allows platform-agnostic cleanup via `dispose()`
+
+**Cleanup Chain:**
+```kotlin
+AndroidNotificationViewModel.onCleared() {
+    impl.dispose()                    // Cancels presentation scope
+    inferenceEngine.closeSession()    // Frees MediaPipe resources
+}
+```
+
+**Why SupervisorJob?**
+- If one background operation (e.g., notification generation) fails, others continue
+- Parent scope cancellation still cancels all children
+
 ### Implementing Real Location Provider
 Currently using `MockLocationProvider` with hardcoded coordinates. To add real location:
 1. Add location permissions to AndroidManifest.xml
-2. Create `AndroidLocationProvider` implementing `LocationProvider` interface
+2. Create `AndroidLocationProvider` implementing `LocationProvider` interface (from `:data`)
 3. Use `FusedLocationProviderClient` or `LocationManager`
-4. Inject into `NotificationViewModel` constructor
+4. Inject into `NotificationViewModelFactory` constructor
 5. Handle location permission requests in MainActivity
 
 ### Adding New Weather Providers
 To add alternative weather sources (e.g., OpenWeatherMap, WeatherAPI):
-1. Implement `WeatherProvider` interface in app/weather/
+1. Implement `WeatherProvider` interface (from `:data`) in `:app` module
 2. Map API response to `WeatherCondition` enum
-3. Swap provider in `NotificationViewModel` initialization
+3. Inject provider via `NotificationViewModelFactory` constructor
+4. No changes needed in `:presentation` module (uses interface only)
 
 ## Known Limitations
 
