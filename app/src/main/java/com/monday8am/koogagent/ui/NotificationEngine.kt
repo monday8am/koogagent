@@ -22,7 +22,14 @@ interface NotificationEngine {
 class NotificationEngineImpl(
     val context: Context
 ) : NotificationEngine {
+
+    private var lastShownNotification: NotificationResult? = null
+
     override fun showNotification(result: NotificationResult) {
+        if (result == lastShownNotification) {
+            return
+        }
+
         val builder =
             NotificationCompat
                 .Builder(context, CHANNEL_ID)
@@ -32,6 +39,8 @@ class NotificationEngineImpl(
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         manager.notify(1, builder.build())
+
+        lastShownNotification = result
     }
 
     fun requestNotificationPermission(activity: Activity) {

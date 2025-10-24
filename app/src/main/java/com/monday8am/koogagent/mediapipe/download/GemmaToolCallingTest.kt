@@ -9,6 +9,7 @@ import com.monday8am.agent.GetWeatherToolFromLocation
 import com.monday8am.koogagent.data.MockLocationProvider
 import com.monday8am.koogagent.data.WeatherProviderImpl
 import com.monday8am.koogagent.mediapipe.GemmaAgent
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -24,12 +25,13 @@ import kotlinx.coroutines.withContext
  */
 internal class GemmaToolCallingTest(
     private val promptExecutor: suspend (String) -> String?,
+    private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
     private val logger = Logger.withTag("GemmaToolCallingTest")
     private val testIterations = 5
 
     suspend fun runAllTests(): String =
-        withContext(Dispatchers.IO) {
+        withContext(dispatcher) {
             val output = StringBuilder()
 
             // Enable verbose logging for tests

@@ -100,7 +100,6 @@ class NotificationViewModelImpl(
                 UiAction.DownloadModel -> modelManager.downloadModel(url = GemmaModelUrl, modelName = GemmaModelName)
                 UiAction.ShowNotification,
                 UiAction.RunModelTests -> inferenceEngine.initializeAsFlow(localModel)
-
                 is UiAction.UpdateContext -> flowOf(action.context)
             }
 
