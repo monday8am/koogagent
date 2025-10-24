@@ -6,6 +6,11 @@ enum class MealType { BREAKFAST, LUNCH, DINNER, SNACK, WATER }
 
 enum class MotivationLevel { LOW, MEDIUM, HIGH }
 
+data class DeviceContext(
+    val country: String,
+    val language: String,
+)
+
 data class NotificationContext(
     val mealType: MealType,
     val motivationLevel: MotivationLevel,

@@ -11,26 +11,19 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.monday8am.koogagent.data.NotificationResult
 
-object NotificationUtils {
-    private const val CHANNEL_ID = "meal_reminder"
-    private const val CHANNEL_NAME = "Meal Reminder"
-    private const val REQUEST_CODE = 1001
+private const val CHANNEL_ID = "meal_reminder"
+private const val CHANNEL_NAME = "Meal Reminder"
+private const val REQUEST_CODE = 1001
 
-    fun createChannel(context: Context) {
-        val channel =
-            NotificationChannel(
-                CHANNEL_ID,
-                CHANNEL_NAME,
-                NotificationManager.IMPORTANCE_DEFAULT,
-            )
-        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        manager.createNotificationChannel(channel)
-    }
+interface NotificationEngine {
+    fun showNotification(result: NotificationResult)
+}
 
-    fun showNotification(
-        context: Context,
-        result: NotificationResult,
-    ) {
+class NotificationEngineImpl(
+    val context: Context
+) : NotificationEngine {
+
+    override fun showNotification(result: NotificationResult) {
         val builder =
             NotificationCompat
                 .Builder(context, CHANNEL_ID)
@@ -56,5 +49,16 @@ object NotificationUtils {
                 )
             }
         }
+    }
+
+    fun createChannel() {
+        val channel =
+            NotificationChannel(
+                CHANNEL_ID,
+                CHANNEL_NAME,
+                NotificationManager.IMPORTANCE_DEFAULT,
+            )
+        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        manager.createNotificationChannel(channel)
     }
 }

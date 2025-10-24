@@ -21,25 +21,11 @@ import com.monday8am.koogagent.mediapipe.LlmModelInstance
 import com.monday8am.koogagent.mediapipe.LocalInferenceUtils
 import com.monday8am.koogagent.mediapipe.download.GemmaToolCallingTest
 import com.monday8am.koogagent.mediapipe.download.ModelDownloadManager
+import com.monday8am.koogagent.mediapipe.download.ModelDownloadManagerImpl
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-
-val defaultNotificationContext =
-    NotificationContext(
-        mealType = MealType.WATER,
-        motivationLevel = MotivationLevel.HIGH,
-        alreadyLogged = true,
-        userLocale = "en-US",
-        country = "ES",
-    )
-
-data class UiState(
-    val textLog: String = "Initializing!",
-    val context: NotificationContext = defaultNotificationContext,
-    val isModelReady: Boolean = false,
-)
 
 private const val GemmaModelUrl = "https://github.com/monday8am/koogagent/releases/download/0.0.1/gemma3-1b-it-int4.zip"
 private const val GemmaModelName = "gemma3-1b-it-int4.litertlm"
@@ -47,7 +33,7 @@ private const val GemmaModelName = "gemma3-1b-it-int4.litertlm"
 class NotificationViewModel(
     application: Application,
 ) : AndroidViewModel(application) {
-    private val modelManager = ModelDownloadManager(application)
+    private val modelManager = ModelDownloadManagerImpl(application)
     private val weatherProvider = WeatherProviderImpl()
     private val locationProvider = MockLocationProvider()
     private val toolRegistry =
@@ -78,16 +64,16 @@ class NotificationViewModel(
         viewModelScope.launch {
             modelManager.downloadModel(url = GemmaModelUrl, modelName = GemmaModelName).collect { status ->
                 when (status) {
-                    ModelDownloadManager.DownloadStatus.Pending -> { }
-                    ModelDownloadManager.DownloadStatus.Cancelled -> { }
-                    is ModelDownloadManager.DownloadStatus.Completed -> {
+                    ModelDownloadManager.Status.Pending -> { }
+                    ModelDownloadManager.Status.Cancelled -> { }
+                    is ModelDownloadManager.Status.Completed -> {
                         printLog("Download ready!")
                         initGemmaModel()
                     }
-                    is ModelDownloadManager.DownloadStatus.Failed -> {
+                    is ModelDownloadManager.Status.Failed -> {
                         printLog("Download failed with error: ${status.message}")
                     }
-                    is ModelDownloadManager.DownloadStatus.InProgress -> {
+                    is ModelDownloadManager.Status.InProgress -> {
                         printLog("Download in progress: ${String.format("%.2f", status.progress ?: 0.00)}%")
                     }
                 }
@@ -106,7 +92,7 @@ class NotificationViewModel(
                 printLog("Generating notification with agentic tool-based approach...")
                 printLog("Agent will autonomously decide if weather data is needed...")
 
-                val deviceContext = DeviceContextUtil.getDeviceContext(application)
+                val deviceContext = DeviceContextProviderImpl(application).getDeviceContext()
                 val currentContext =
                     _uiState.value.context.copy(
                         userLocale = deviceContext.language,
@@ -122,7 +108,7 @@ class NotificationViewModel(
                         printLog("Failed with error: ${errorMessage}\nFallback message:\n $formatted")
                     } else {
                         printLog("Notification:\n $formatted")
-                        NotificationUtils.showNotification(getApplication(), this)
+                        // NotificationUtils.showNotification(getApplication(), this)
                     }
                 }
             }

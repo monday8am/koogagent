@@ -17,27 +17,52 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 
-class ModelDownloadManager(
+interface ModelDownloadManager {
+
+    sealed interface Status {
+        data object Pending : Status
+
+        data class InProgress(
+            val progress: Float?,
+        ) : Status // progress typically 0-100
+
+        data class Completed(
+            val file: File,
+        ) : Status
+
+        data class Failed(
+            val message: String,
+        ) : Status
+
+        data object Cancelled : Status
+    }
+
+    fun getModelPath(modelName: String): String
+    fun modelExists(modelName: String): Boolean
+    fun downloadModel(url: String, modelName: String): Flow<Status>
+}
+
+class ModelDownloadManagerImpl(
     context: Context,
     private val workManager: WorkManager = WorkManager.getInstance(context),
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
-) {
+) : ModelDownloadManager {
     val modelDestinationPath = "${context.applicationContext.filesDir}/data/local/tmp/slm/"
 
-    fun getModelPath(modelName: String) = "$modelDestinationPath$modelName"
+    override fun getModelPath(modelName: String) = "$modelDestinationPath$modelName"
 
-    fun modelExists(modelName: String) = File(getModelPath(modelName)).exists()
+    override fun modelExists(modelName: String) = File(getModelPath(modelName)).exists()
 
-    fun downloadModel(
+    override fun downloadModel(
         url: String,
         modelName: String,
-    ): Flow<DownloadStatus> =
+    ): Flow<ModelDownloadManager.Status> =
         channelFlow {
             val destinationPath = "$modelDestinationPath$modelName"
             val destinationFile = File(destinationPath)
 
             if (destinationFile.exists()) {
-                send(DownloadStatus.Completed(destinationFile))
+                send(ModelDownloadManager.Status.Completed(destinationFile))
                 close() // Close flow on early completion
                 return@channelFlow
             }
@@ -56,7 +81,7 @@ class ModelDownloadManager(
                     .build()
 
             workManager.enqueueUniqueWork(WORK_NAME, ExistingWorkPolicy.REPLACE, workRequest)
-            send(DownloadStatus.Pending) // Send pending after enqueueing
+            send(ModelDownloadManager.Status.Pending) // Send pending after enqueueing
 
             val job =
                 launch {
@@ -64,7 +89,7 @@ class ModelDownloadManager(
                         .getWorkInfoByIdFlow(workRequest.id)
                         .mapNotNull { it } // Filter out null WorkInfo initially
                         .collectLatest { info ->
-                            send(info.toDownloadStatus(destinationFile))
+                            send(info.toModelDownloadManagerStatus(destinationFile))
                             if (info.state.isFinished) {
                                 close()
                             }
@@ -81,39 +106,23 @@ class ModelDownloadManager(
             }
         }
 
-    private fun WorkInfo.toDownloadStatus(file: File): DownloadStatus =
+    private fun WorkInfo.toModelDownloadManagerStatus(file: File): ModelDownloadManager.Status =
         when (state) {
-            WorkInfo.State.ENQUEUED, WorkInfo.State.BLOCKED -> DownloadStatus.Pending
+            WorkInfo.State.ENQUEUED, WorkInfo.State.BLOCKED -> ModelDownloadManager.Status.Pending
             WorkInfo.State.RUNNING -> {
                 val progress = progress.getFloat(DownloadUnzipWorker.KEY_PROGRESS, 0f)
-                DownloadStatus.InProgress(progress.takeIf { it in 0f..100f })
+                ModelDownloadManager.Status.InProgress(progress.takeIf { it in 0f..100f })
             }
-            WorkInfo.State.SUCCEEDED -> DownloadStatus.Completed(file)
+
+            WorkInfo.State.SUCCEEDED -> ModelDownloadManager.Status.Completed(file)
             WorkInfo.State.FAILED ->
-                DownloadStatus.Failed(
+                ModelDownloadManager.Status.Failed(
                     outputData.getString(DownloadUnzipWorker.KEY_ERROR_MESSAGE)
                         ?: "Download failed due to an unknown error.", // Slightly more descriptive
                 )
-            WorkInfo.State.CANCELLED -> DownloadStatus.Cancelled
+
+            WorkInfo.State.CANCELLED -> ModelDownloadManager.Status.Cancelled
         }
-
-    sealed interface DownloadStatus {
-        data object Pending : DownloadStatus
-
-        data class InProgress(
-            val progress: Float?,
-        ) : DownloadStatus // progress typically 0-100
-
-        data class Completed(
-            val file: File,
-        ) : DownloadStatus
-
-        data class Failed(
-            val message: String,
-        ) : DownloadStatus
-
-        data object Cancelled : DownloadStatus
-    }
 
     companion object {
         private const val WORK_NAME = "gemma-model-download"

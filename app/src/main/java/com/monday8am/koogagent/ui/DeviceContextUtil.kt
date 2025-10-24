@@ -1,15 +1,15 @@
 package com.monday8am.koogagent.ui
 
 import android.content.Context
+import com.monday8am.koogagent.data.DeviceContext
 import java.util.Locale
 
-data class DeviceContext(
-    val country: String,
-    val language: String,
-)
+interface DeviceContextProvider {
+    fun getDeviceContext(): DeviceContext
+}
 
-object DeviceContextUtil {
-    fun getDeviceContext(context: Context): DeviceContext {
+class DeviceContextProviderImpl(private val context: Context): DeviceContextProvider {
+    override fun getDeviceContext(): DeviceContext {
         val locale: Locale = context.resources.configuration.locales[0]
         val country = locale.country.ifEmpty { Locale.getDefault().country }
         val language = locale.language.ifEmpty { Locale.getDefault().language }

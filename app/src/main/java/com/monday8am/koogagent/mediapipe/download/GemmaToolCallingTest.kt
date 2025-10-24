@@ -9,8 +9,6 @@ import com.monday8am.agent.GetWeatherToolFromLocation
 import com.monday8am.koogagent.data.MockLocationProvider
 import com.monday8am.koogagent.data.WeatherProviderImpl
 import com.monday8am.koogagent.mediapipe.GemmaAgent
-import com.monday8am.koogagent.mediapipe.LlmModelInstance
-import com.monday8am.koogagent.mediapipe.LocalInferenceUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -25,7 +23,7 @@ import kotlinx.coroutines.withContext
  * - Clear expectations documentation
  */
 internal class GemmaToolCallingTest(
-    private val instance: LlmModelInstance,
+    private val promptModel: suspend (String) -> String?,
 ) {
     private val logger = Logger.withTag("GemmaToolCallingTest")
     private val testIterations = 5
@@ -53,14 +51,12 @@ internal class GemmaToolCallingTest(
                     )
 
                 tests.forEach { test ->
-                    output.appendLine(test(instance))
+                    output.appendLine(test())
                     output.appendLine()
                 }
             } catch (e: Exception) {
                 output.appendLine("FATAL ERROR: ${e.message}")
                 logger.e(e) { "Test suite failed" }
-            } finally {
-                LocalInferenceUtils.close(instance)
             }
 
             output.appendLine("=== TESTS COMPLETE ===")
@@ -68,7 +64,7 @@ internal class GemmaToolCallingTest(
             return@withContext output.toString()
         }
 
-    private suspend fun testBasicToolCall(instance: LlmModelInstance): String {
+    private suspend fun testBasicToolCall(): String {
         val output = StringBuilder()
         output.appendLine("TEST 1: Basic Location Tool Call")
         output.appendLine("─".repeat(testIterations))
@@ -92,7 +88,7 @@ internal class GemmaToolCallingTest(
             output.appendLine("Query ($description): $query")
 
             try {
-                val agent = GemmaAgent(instance = instance)
+                val agent = GemmaAgent(promptModel = promptModel)
                 agent.initializeWithTools(toolRegistry)
 
                 val result =
@@ -134,7 +130,7 @@ internal class GemmaToolCallingTest(
         return output.toString()
     }
 
-    private suspend fun testNoToolNeeded(instance: LlmModelInstance): String {
+    private suspend fun testNoToolNeeded(): String {
         val output = StringBuilder()
         output.appendLine("TEST 2: No Tool Needed (Normal Conversation)")
         output.appendLine("─".repeat(testIterations))
@@ -158,7 +154,7 @@ internal class GemmaToolCallingTest(
             output.appendLine("Query: $query")
 
             try {
-                val agent = GemmaAgent(instance = instance)
+                val agent = GemmaAgent(promptModel = promptModel)
                 agent.initializeWithTools(toolRegistry)
 
                 val result =
@@ -195,7 +191,7 @@ internal class GemmaToolCallingTest(
         return output.toString()
     }
 
-    private suspend fun testToolHallucination(instance: LlmModelInstance): String {
+    private suspend fun testToolHallucination(): String {
         val output = StringBuilder()
         output.appendLine("TEST 3: Tool Hallucination Prevention")
         output.appendLine("─".repeat(testIterations))
@@ -215,7 +211,7 @@ internal class GemmaToolCallingTest(
         output.appendLine("Query: $query")
 
         try {
-            val agent = GemmaAgent(instance = instance)
+            val agent = GemmaAgent(promptModel = promptModel)
             agent.initializeWithTools(toolRegistry)
 
             val result =
@@ -250,7 +246,7 @@ internal class GemmaToolCallingTest(
         return output.toString()
     }
 
-    private suspend fun testWeatherTool(instance: LlmModelInstance): String {
+    private suspend fun testWeatherTool(): String {
         val output = StringBuilder()
         output.appendLine("TEST 4: Weather Tool Execution")
         output.appendLine("─".repeat(testIterations))
@@ -270,7 +266,7 @@ internal class GemmaToolCallingTest(
         output.appendLine()
 
         try {
-            val agent = GemmaAgent(instance = instance)
+            val agent = GemmaAgent(promptModel = promptModel)
             agent.initializeWithTools(toolRegistry)
 
             val result =
@@ -302,7 +298,7 @@ internal class GemmaToolCallingTest(
         return output.toString()
     }
 
-    private suspend fun testMultiTurnSequence(instance: LlmModelInstance): String {
+    private suspend fun testMultiTurnSequence(): String {
         val output = StringBuilder()
         output.appendLine("TEST 5: Multi-Turn Tool Sequence")
         output.appendLine("─".repeat(testIterations))
@@ -323,7 +319,7 @@ internal class GemmaToolCallingTest(
         output.appendLine()
 
         try {
-            val agent = GemmaAgent(instance = instance)
+            val agent = GemmaAgent(promptModel = promptModel)
             agent.initializeWithTools(toolRegistry)
 
             // Turn 1: Should trigger location tool (hopefully)
