@@ -25,6 +25,7 @@ class AndroidNotificationViewModel(
 
     override fun onCleared() {
         super.onCleared()
+        impl.dispose()
         inferenceEngine.closeSession()
     }
 }
@@ -47,7 +48,7 @@ class NotificationViewModelFactory(
                 weatherProvider = weatherProvider,
                 locationProvider = locationProvider,
                 deviceContextProvider = deviceContextProvider,
-                modelManager = modelManager
+                modelManager = modelManager,
             )
             return AndroidNotificationViewModel(impl, inferenceEngine) as T
         }

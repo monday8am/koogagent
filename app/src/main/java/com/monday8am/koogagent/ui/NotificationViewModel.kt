@@ -13,15 +13,16 @@ import com.monday8am.koogagent.data.NotificationResult
 import com.monday8am.koogagent.data.WeatherProvider
 import com.monday8am.koogagent.mediapipe.GemmaAgent
 import com.monday8am.koogagent.mediapipe.LocalInferenceEngine
-import com.monday8am.koogagent.mediapipe.download.GemmaToolCallingTest
 import com.monday8am.koogagent.mediapipe.download.ModelDownloadManager
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapConcat
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
@@ -30,6 +31,7 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.scan
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 val defaultNotificationContext =
     NotificationContext(
@@ -48,18 +50,19 @@ data class UiState(
     val downloadStatus: ModelDownloadManager.Status = ModelDownloadManager.Status.Pending,
 )
 
-private sealed interface ActionState {
+internal sealed interface ActionState {
     data object Loading : ActionState
     data class Success(val result: Any) : ActionState
     data class Error(val throwable: Throwable) : ActionState
 }
 
-sealed interface UiAction {
-    data object Initialize : UiAction
-    data object DownloadModel : UiAction
-    data object ShowNotification : UiAction
-    data class UpdateContext(val context: NotificationContext) : UiAction
-    data object RunModelTests : UiAction
+sealed class UiAction {
+    data object DownloadModel : UiAction()
+    data object ShowNotification : UiAction()
+    data class UpdateContext(val context: NotificationContext) : UiAction()
+
+    internal data object Initialize : UiAction()
+    internal data class NotificationReady(val content: NotificationResult): UiAction()
 }
 
 private const val GemmaModelUrl = "https://github.com/monday8am/koogagent/releases/download/0.0.1/gemma3-1b-it-int4.zip"
@@ -68,6 +71,7 @@ private const val GemmaModelName = "gemma3-1b-it-int4.litertlm"
 interface NotificationViewModel {
     val uiState: Flow<UiState>
     fun onUiAction(uiAction: UiAction)
+    fun dispose()
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -80,35 +84,30 @@ class NotificationViewModelImpl(
     private val modelManager: ModelDownloadManager,
 ) : NotificationViewModel {
 
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
     private val toolRegistry =
         ToolRegistry {
             tool(tool = GetWeatherToolFromLocation(weatherProvider))
             tool(tool = GetLocationTool(locationProvider))
         }
 
-    private val localModel =
-        LocalLLModel(
-            path = modelManager.getModelPath(GemmaModelName),
-            temperature = 0.8f,
-        )
-
     internal val userActions: MutableStateFlow<UiAction> = MutableStateFlow(UiAction.Initialize)
 
     override val uiState = userActions
         .flatMapConcat { action ->
             val actionFlow = when (action) {
-                UiAction.DownloadModel -> modelManager.downloadModel(url = GemmaModelUrl, modelName = GemmaModelName)
-                UiAction.ShowNotification,
-                UiAction.RunModelTests -> inferenceEngine.initializeAsFlow(localModel)
-
-                is UiAction.UpdateContext -> flowOf(action.context)
                 UiAction.Initialize -> flowOf(modelManager.modelExists(modelName = GemmaModelName))
+                UiAction.DownloadModel -> modelManager.downloadModel(url = GemmaModelUrl, modelName = GemmaModelName)
+                UiAction.ShowNotification -> inferenceEngine.initializeAsFlow(model = getLocalModel())
+                is UiAction.UpdateContext -> flowOf(action.context)
+                is UiAction.NotificationReady -> flowOf(value = action.content)
             }
 
             actionFlow
                 .map<Any, ActionState> { result -> ActionState.Success(result) }
                 .onStart {
-                    if (action is UiAction.DownloadModel || action is UiAction.ShowNotification || action is UiAction.RunModelTests) {
+                    if (action is UiAction.DownloadModel || action is UiAction.ShowNotification) {
                         emit(ActionState.Loading)
                     }
                 }
@@ -128,13 +127,16 @@ class NotificationViewModelImpl(
 
     override fun onUiAction(uiAction: UiAction) = userActions.update { uiAction }
 
-    private suspend fun reduce(state: UiState, action: UiAction, actionState: ActionState): UiState {
+    override fun dispose() {
+        scope.cancel()
+    }
+
+    private fun reduce(state: UiState, action: UiAction, actionState: ActionState): UiState {
         return when (actionState) {
             is ActionState.Loading -> {
                 when (action) {
                     UiAction.DownloadModel -> state.copy(downloadStatus = ModelDownloadManager.Status.InProgress(0f))
                     UiAction.ShowNotification -> state.copy(textLog = "Initializing model for notification...")
-                    UiAction.RunModelTests -> state.copy(textLog = "Starting model tests...")
                     else -> state
                 }
             }
@@ -156,15 +158,15 @@ class NotificationViewModelImpl(
                     }
 
                     is UiAction.ShowNotification -> {
-                        val notification = createNotification(promptExecutor = inferenceEngine::prompt, uiState = state)
-                        state.copy(notification = notification, textLog = "Notification generated!")
+                        createNotification(promptExecutor = inferenceEngine::prompt, context = state.context)
+                        state.copy(textLog = "Prompting with context:\n ${state.context.formatted}")
                     }
 
-                    is UiAction.RunModelTests -> {
-                        val tester = GemmaToolCallingTest(promptExecutor = { prompt ->
-                            inferenceEngine.prompt(prompt).getOrThrow()
-                        })
-                        state.copy(textLog = tester.runAllTests())
+                    is UiAction.NotificationReady -> {
+                        state.copy(
+                            textLog = "Notification:\n ${action.content.formatted}",
+                            notification = action.content
+                        )
                     }
 
                     is UiAction.UpdateContext -> {
@@ -175,9 +177,9 @@ class NotificationViewModelImpl(
                         val isModelReady = actionState.result as Boolean
                         state.copy(
                             textLog = if (isModelReady) {
-                                "Welcome to Yazio notificator :)\\nInitialized with model $GemmaModelName"
+                                "Welcome to Yazio notificator :)\nInitialized with model $GemmaModelName"
                             } else {
-                                "Welcome!\\nPress download model button. It's a one time operation and it will take close to 4 minutes."
+                                "Welcome!\nPress download model button. It's a one time operation and it will take close to 4 minutes."
                             },
                             isModelReady = isModelReady
                         )
@@ -191,20 +193,27 @@ class NotificationViewModelImpl(
         }
     }
 
-    private suspend fun createNotification(promptExecutor: suspend (String) -> Result<String>, uiState: UiState): NotificationResult {
-        val deviceContext = deviceContextProvider.getDeviceContext()
-        val notificationContext =
-            uiState.context.copy(
-                userLocale = deviceContext.language,
-                country = deviceContext.country,
-            )
+    private fun createNotification(promptExecutor: suspend (String) -> Result<String>, context: NotificationContext) {
+        scope.launch {
+            val deviceContext = deviceContextProvider.getDeviceContext()
+            val notificationContext = context.copy(
+                    userLocale = deviceContext.language,
+                    country = deviceContext.country,
+                )
 
-        val agent = GemmaAgent(
-            promptExecutor = { prompt ->
-                promptExecutor(prompt).getOrThrow()
-            }
-        )
-        agent.initializeWithTools(toolRegistry = toolRegistry)
-        return NotificationGenerator(agent = agent).generate(notificationContext)
+            val agent = GemmaAgent(
+                promptExecutor = { prompt ->
+                    promptExecutor(prompt).getOrThrow()
+                }
+            )
+            agent.initializeWithTools(toolRegistry = toolRegistry)
+            val content = NotificationGenerator(agent = agent).generate(notificationContext)
+            onUiAction(uiAction = UiAction.NotificationReady(content = content))
+        }
     }
+
+    private fun getLocalModel() = LocalLLModel(
+        path = modelManager.getModelPath(GemmaModelName),
+        temperature = 0.8f,
+    )
 }
