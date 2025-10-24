@@ -23,7 +23,7 @@ import kotlinx.coroutines.withContext
  * - Clear expectations documentation
  */
 internal class GemmaToolCallingTest(
-    private val promptModel: suspend (String) -> String?,
+    private val promptExecutor: suspend (String) -> String?,
 ) {
     private val logger = Logger.withTag("GemmaToolCallingTest")
     private val testIterations = 5
@@ -88,7 +88,7 @@ internal class GemmaToolCallingTest(
             output.appendLine("Query ($description): $query")
 
             try {
-                val agent = GemmaAgent(promptModel = promptModel)
+                val agent = GemmaAgent(promptExecutor = promptExecutor)
                 agent.initializeWithTools(toolRegistry)
 
                 val result =
@@ -154,7 +154,7 @@ internal class GemmaToolCallingTest(
             output.appendLine("Query: $query")
 
             try {
-                val agent = GemmaAgent(promptModel = promptModel)
+                val agent = GemmaAgent(promptExecutor = promptExecutor)
                 agent.initializeWithTools(toolRegistry)
 
                 val result =
@@ -211,7 +211,7 @@ internal class GemmaToolCallingTest(
         output.appendLine("Query: $query")
 
         try {
-            val agent = GemmaAgent(promptModel = promptModel)
+            val agent = GemmaAgent(promptExecutor = promptExecutor)
             agent.initializeWithTools(toolRegistry)
 
             val result =
@@ -266,7 +266,7 @@ internal class GemmaToolCallingTest(
         output.appendLine()
 
         try {
-            val agent = GemmaAgent(promptModel = promptModel)
+            val agent = GemmaAgent(promptExecutor = promptExecutor)
             agent.initializeWithTools(toolRegistry)
 
             val result =
@@ -319,7 +319,7 @@ internal class GemmaToolCallingTest(
         output.appendLine()
 
         try {
-            val agent = GemmaAgent(promptModel = promptModel)
+            val agent = GemmaAgent(promptExecutor = promptExecutor)
             agent.initializeWithTools(toolRegistry)
 
             // Turn 1: Should trigger location tool (hopefully)

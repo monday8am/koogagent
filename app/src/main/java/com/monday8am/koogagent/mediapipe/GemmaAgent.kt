@@ -28,7 +28,7 @@ private val gemmaModel =
     )
 
 class GemmaAgent(
-    private val promptModel: suspend (String) -> String?
+    private val promptExecutor: suspend (String) -> String?
 ) : NotificationAgent {
     private var registry: ToolRegistry? = null
     private val logger = Logger.withTag("GemmaAgent")
@@ -54,7 +54,7 @@ class GemmaAgent(
         AIAgent(
             promptExecutor =
                 SimpleGemmaAIExecutor(
-                    llmClient = GemmaLLMClient(promptMediaPipe = promptModel),
+                    llmClient = GemmaLLMClient(promptExecutor = promptExecutor),
                 ),
             systemPrompt = systemPrompt,
             temperature = 0.7,

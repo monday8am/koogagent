@@ -32,7 +32,7 @@ import co.touchlab.kermit.Logger
  * See [buildToolInstructions] for the protocol specification.
  */
 internal class GemmaLLMClient(
-    private val promptMediaPipe: suspend (String) -> String?,
+    private val promptExecutor: suspend (String) -> String?,
 ) : LLMClient {
     private val logger = Logger.withTag("GemmaLLMClient")
 
@@ -54,7 +54,7 @@ internal class GemmaLLMClient(
         logger.d { "===================" }
 
         // 2. Execute inference
-        val response = promptMediaPipe(fullPrompt)
+        val response = promptExecutor(fullPrompt)
 
         if (response == null) {
             logger.w { "MediaPipe returned null response" }

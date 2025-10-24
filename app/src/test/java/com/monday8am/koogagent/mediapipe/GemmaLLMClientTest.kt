@@ -37,7 +37,7 @@ class GemmaLLMClientTest {
     @Before
     fun setup() {
         // Create a dummy instance - we won't call execute() in these tests
-        client = GemmaLLMClient(promptMediaPipe = { "result!" })
+        client = GemmaLLMClient(promptExecutor = { "result!" })
     }
 
     @Test
@@ -328,7 +328,7 @@ class GemmaLLMClientTest {
         runBlockingTest {
             // Mock the LLM to return a tool call
             val client =
-                GemmaLLMClient(promptMediaPipe = { prompt ->
+                GemmaLLMClient(promptExecutor = { prompt ->
                     // Verify prompt contains tool instructions
                     assertTrue(prompt.contains("Available tools:"))
                     // Return a tool call
@@ -355,7 +355,7 @@ class GemmaLLMClientTest {
     fun `execute returns assistant message when model responds with none`() =
         runBlockingTest {
             val client =
-                GemmaLLMClient(promptMediaPipe = {
+                GemmaLLMClient(promptExecutor = {
                     """
                     {"tool":"none"}
                     The weather is sunny today!
@@ -381,7 +381,7 @@ class GemmaLLMClientTest {
     @Test
     fun `execute handles model returning null`() =
         runBlockingTest {
-            val client = GemmaLLMClient(promptMediaPipe = { null })
+            val client = GemmaLLMClient(promptExecutor = { null })
 
             val prompt =
                 Prompt(
@@ -402,7 +402,7 @@ class GemmaLLMClientTest {
         runBlockingTest {
             var capturedPrompt = ""
             val client =
-                GemmaLLMClient(promptMediaPipe = { prompt ->
+                GemmaLLMClient(promptExecutor = { prompt ->
                     capturedPrompt = prompt
                     """{"tool":"none"} Hello!"""
                 })
@@ -431,7 +431,7 @@ class GemmaLLMClientTest {
         runBlockingTest {
             var capturedPrompt = ""
             val client =
-                GemmaLLMClient(promptMediaPipe = { prompt ->
+                GemmaLLMClient(promptExecutor = { prompt ->
                     capturedPrompt = prompt
                     """{"tool":"GetWeather"}"""
                 })
