@@ -1,4 +1,4 @@
-package com.monday8am.koogagent.mediapipe
+package com.monday8am.agent
 
 import ai.koog.agents.core.agent.AIAgent
 import ai.koog.agents.core.tools.ToolRegistry
@@ -8,10 +8,6 @@ import ai.koog.prompt.llm.LLMCapability
 import ai.koog.prompt.llm.LLMProvider
 import ai.koog.prompt.llm.LLModel
 import co.touchlab.kermit.Logger
-import com.monday8am.agent.DEFAULT_CONTEXT_LENGTH
-import com.monday8am.agent.DEFAULT_MAX_OUTPUT_TOKENS
-import com.monday8am.agent.NotificationAgent
-import com.monday8am.agent.installCommonEventHandling
 
 private val gemmaModel =
     LLModel(

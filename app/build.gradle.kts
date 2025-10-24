@@ -48,6 +48,7 @@ android {
 dependencies {
     implementation(project(":data"))
     implementation(project(":agent"))
+    implementation(project(":presentation"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -59,7 +60,6 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.work.runtime.ktx)
-    implementation(libs.kermit)
 
     implementation(libs.mediapipe.tasks.text)
     implementation(libs.mediapipe.tasks.genai)

@@ -1,14 +1,14 @@
-package com.monday8am.koogagent.mediapipe.download
+package com.monday8am.presentation.testing
 
 import ai.koog.agents.core.tools.ToolRegistry
 import co.touchlab.kermit.Logger
 import co.touchlab.kermit.Severity
+import com.monday8am.agent.GemmaAgent
 import com.monday8am.agent.GetLocationTool
 import com.monday8am.agent.GetWeatherTool
 import com.monday8am.agent.GetWeatherToolFromLocation
 import com.monday8am.koogagent.data.MockLocationProvider
 import com.monday8am.koogagent.data.WeatherProviderImpl
-import com.monday8am.koogagent.mediapipe.GemmaAgent
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -27,7 +27,7 @@ internal class GemmaToolCallingTest(
     private val promptExecutor: suspend (String) -> String?,
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
-    private val logger = Logger.withTag("GemmaToolCallingTest")
+    private val logger = Logger.Companion.withTag("GemmaToolCallingTest")
     private val testIterations = 5
 
     suspend fun runAllTests(): String =
@@ -35,7 +35,7 @@ internal class GemmaToolCallingTest(
             val output = StringBuilder()
 
             // Enable verbose logging for tests
-            Logger.setMinSeverity(Severity.Debug)
+            Logger.Companion.setMinSeverity(Severity.Debug)
 
             output.appendLine("=== GEMMA TOOL CALLING TESTS ===")
             output.appendLine("Model: Gemma 3n-1b-it-int4")
@@ -72,7 +72,7 @@ internal class GemmaToolCallingTest(
         output.appendLine("─".repeat(testIterations))
 
         val toolRegistry =
-            ToolRegistry {
+            ToolRegistry.Companion {
                 tool(GetLocationTool(MockLocationProvider()))
             }
 
@@ -138,7 +138,7 @@ internal class GemmaToolCallingTest(
         output.appendLine("─".repeat(testIterations))
 
         val toolRegistry =
-            ToolRegistry {
+            ToolRegistry.Companion {
                 tool(GetLocationTool(MockLocationProvider()))
             }
 
@@ -203,7 +203,7 @@ internal class GemmaToolCallingTest(
         output.appendLine()
 
         val toolRegistry =
-            ToolRegistry {
+            ToolRegistry.Companion {
                 tool(GetLocationTool(MockLocationProvider()))
             }
 
@@ -254,7 +254,7 @@ internal class GemmaToolCallingTest(
         output.appendLine("─".repeat(testIterations))
 
         val toolRegistry =
-            ToolRegistry {
+            ToolRegistry.Companion {
                 tool(GetWeatherTool(locationProvider = MockLocationProvider(), weatherProvider = WeatherProviderImpl()))
             }
 
@@ -310,7 +310,7 @@ internal class GemmaToolCallingTest(
         output.appendLine()
 
         val toolRegistry =
-            ToolRegistry {
+            ToolRegistry.Companion {
                 tool(GetLocationTool(MockLocationProvider()))
                 tool(GetWeatherToolFromLocation(WeatherProviderImpl()))
             }

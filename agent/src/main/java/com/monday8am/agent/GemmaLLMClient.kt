@@ -1,4 +1,4 @@
-package com.monday8am.koogagent.mediapipe
+package com.monday8am.agent
 
 import ai.koog.agents.core.tools.ToolDescriptor
 import ai.koog.prompt.dsl.ModerationResult
@@ -10,6 +10,7 @@ import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.message.ResponseMetaInfo
 import co.touchlab.kermit.Logger
+import java.util.UUID
 
 /**
  * LLM Client implementation for Gemma models using MediaPipe for local inference.
@@ -275,7 +276,7 @@ internal class GemmaLLMClient(
                         content =
                             "I have the information from $toolName: ${lastToolResult.content}. " +
                                 "Let me provide you with the answer based on that.",
-                        metaInfo = ResponseMetaInfo.Empty,
+                        metaInfo = ResponseMetaInfo.Companion.Empty,
                     ),
                 )
             }
@@ -291,7 +292,7 @@ internal class GemmaLLMClient(
                 listOf(
                     Message.Assistant(
                         content = cleanResponse,
-                        metaInfo = ResponseMetaInfo.Empty,
+                        metaInfo = ResponseMetaInfo.Companion.Empty,
                     ),
                 )
             } else {
@@ -307,7 +308,7 @@ internal class GemmaLLMClient(
                     listOf(
                         Message.Assistant(
                             content = "I tried to use a tool called '$toolName' but it doesn't exist. Let me try to help you another way.",
-                            metaInfo = ResponseMetaInfo.Empty,
+                            metaInfo = ResponseMetaInfo.Companion.Empty,
                         ),
                     )
                 } else {
@@ -316,12 +317,12 @@ internal class GemmaLLMClient(
                     listOf(
                         Message.Tool.Call(
                             id =
-                                java.util.UUID
+                                UUID
                                     .randomUUID()
                                     .toString(),
                             tool = toolName,
                             content = "{}", // CRITICAL: Empty JSON - Gemma 3n can't provide args
-                            metaInfo = ResponseMetaInfo.Empty,
+                            metaInfo = ResponseMetaInfo.Companion.Empty,
                         ),
                     )
                 }
@@ -332,7 +333,7 @@ internal class GemmaLLMClient(
             listOf(
                 Message.Assistant(
                     content = response,
-                    metaInfo = ResponseMetaInfo.Empty,
+                    metaInfo = ResponseMetaInfo.Companion.Empty,
                 ),
             )
         }

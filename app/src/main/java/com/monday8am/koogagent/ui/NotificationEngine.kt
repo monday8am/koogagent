@@ -10,14 +10,11 @@ import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.monday8am.koogagent.data.NotificationResult
+import com.monday8am.presentation.notifications.NotificationEngine
 
 private const val CHANNEL_ID = "meal_reminder"
 private const val CHANNEL_NAME = "Meal Reminder"
 private const val REQUEST_CODE = 1001
-
-interface NotificationEngine {
-    fun showNotification(result: NotificationResult)
-}
 
 class NotificationEngineImpl(
     val context: Context,

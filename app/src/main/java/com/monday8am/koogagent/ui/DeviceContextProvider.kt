@@ -2,11 +2,8 @@ package com.monday8am.koogagent.ui
 
 import android.content.Context
 import com.monday8am.koogagent.data.DeviceContext
+import com.monday8am.presentation.notifications.DeviceContextProvider
 import java.util.Locale
-
-interface DeviceContextProvider {
-    fun getDeviceContext(): DeviceContext
-}
 
 class DeviceContextProviderImpl(
     private val context: Context,

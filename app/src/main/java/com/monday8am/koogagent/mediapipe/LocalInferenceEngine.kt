@@ -5,6 +5,7 @@ import com.google.common.util.concurrent.ListenableFuture
 import com.google.mediapipe.tasks.genai.llminference.LlmInference
 import com.google.mediapipe.tasks.genai.llminference.LlmInferenceSession
 import com.monday8am.agent.LocalLLModel
+import com.monday8am.agent.LocalInferenceEngine
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -15,20 +16,10 @@ import java.io.File
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
-data class LlmModelInstance(
+private data class LlmModelInstance(
     val engine: LlmInference,
     var session: LlmInferenceSession,
 )
-
-interface LocalInferenceEngine {
-    suspend fun initialize(model: LocalLLModel): Result<Unit>
-
-    suspend fun prompt(prompt: String): Result<String>
-
-    fun initializeAsFlow(model: LocalLLModel): Flow<LocalInferenceEngine>
-
-    fun closeSession(): Result<Unit>
-}
 
 class LocalInferenceEngineImpl(
     private val context: Context,

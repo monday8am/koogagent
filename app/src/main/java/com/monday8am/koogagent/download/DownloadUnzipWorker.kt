@@ -1,4 +1,4 @@
-package com.monday8am.koogagent.mediapipe.download
+package com.monday8am.koogagent.download
 
 import android.content.Context
 import androidx.work.CoroutineWorker

@@ -20,7 +20,6 @@ dependencies {
     implementation(project(":agent"))
     implementation(project(":data"))
     implementation(libs.kotlinx.coroutines.android)
-    implementation(libs.kermit)
 }
 
 application {

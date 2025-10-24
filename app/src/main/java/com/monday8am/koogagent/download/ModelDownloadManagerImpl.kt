@@ -1,4 +1,4 @@
-package com.monday8am.koogagent.mediapipe.download
+package com.monday8am.koogagent.download
 
 import android.content.Context
 import androidx.work.ExistingWorkPolicy
@@ -6,6 +6,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.workDataOf
+import com.monday8am.presentation.notifications.ModelDownloadManager
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
@@ -16,35 +17,6 @@ import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
-
-interface ModelDownloadManager {
-    sealed interface Status {
-        data object Pending : Status
-
-        data class InProgress(
-            val progress: Float?,
-        ) : Status // progress typically 0-100
-
-        data class Completed(
-            val file: File,
-        ) : Status
-
-        data class Failed(
-            val message: String,
-        ) : Status
-
-        data object Cancelled : Status
-    }
-
-    fun getModelPath(modelName: String): String
-
-    fun modelExists(modelName: String): Boolean
-
-    fun downloadModel(
-        url: String,
-        modelName: String,
-    ): Flow<Status>
-}
 
 class ModelDownloadManagerImpl(
     context: Context,

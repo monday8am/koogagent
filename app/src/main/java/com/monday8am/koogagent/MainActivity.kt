@@ -42,13 +42,13 @@ import com.monday8am.koogagent.data.MotivationLevel
 import com.monday8am.koogagent.data.NotificationContext
 import com.monday8am.koogagent.data.WeatherProviderImpl
 import com.monday8am.koogagent.mediapipe.LocalInferenceEngineImpl
-import com.monday8am.koogagent.mediapipe.download.ModelDownloadManagerImpl
+import com.monday8am.koogagent.download.ModelDownloadManagerImpl
 import com.monday8am.koogagent.ui.AndroidNotificationViewModel
 import com.monday8am.koogagent.ui.DeviceContextProviderImpl
 import com.monday8am.koogagent.ui.NotificationEngineImpl
 import com.monday8am.koogagent.ui.NotificationViewModelFactory
-import com.monday8am.koogagent.ui.UiAction
-import com.monday8am.koogagent.ui.defaultNotificationContext
+import com.monday8am.presentation.notifications.UiAction
+import com.monday8am.presentation.notifications.defaultNotificationContext
 import com.monday8am.koogagent.ui.theme.KoogAgentTheme
 
 class MainActivity : ComponentActivity() {

@@ -1,6 +1,7 @@
-package com.monday8am.koogagent.ui
+package com.monday8am.presentation.notifications
 
 import ai.koog.agents.core.tools.ToolRegistry
+import com.monday8am.agent.GemmaAgent
 import com.monday8am.agent.GetLocationTool
 import com.monday8am.agent.GetWeatherToolFromLocation
 import com.monday8am.agent.LocalLLModel
@@ -11,9 +12,7 @@ import com.monday8am.koogagent.data.MotivationLevel
 import com.monday8am.koogagent.data.NotificationContext
 import com.monday8am.koogagent.data.NotificationResult
 import com.monday8am.koogagent.data.WeatherProvider
-import com.monday8am.koogagent.mediapipe.GemmaAgent
-import com.monday8am.koogagent.mediapipe.LocalInferenceEngine
-import com.monday8am.koogagent.mediapipe.download.ModelDownloadManager
+import com.monday8am.agent.LocalInferenceEngine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -52,30 +51,17 @@ data class UiState(
 
 internal sealed interface ActionState {
     data object Loading : ActionState
-
-    data class Success(
-        val result: Any,
-    ) : ActionState
-
-    data class Error(
-        val throwable: Throwable,
-    ) : ActionState
+    data class Success(val result: Any) : ActionState
+    data class Error(val throwable: Throwable) : ActionState
 }
 
 sealed class UiAction {
     data object DownloadModel : UiAction()
-
     data object ShowNotification : UiAction()
-
-    data class UpdateContext(
-        val context: NotificationContext,
-    ) : UiAction()
+    data class UpdateContext(val context: NotificationContext) : UiAction()
 
     internal data object Initialize : UiAction()
-
-    internal data class NotificationReady(
-        val content: NotificationResult,
-    ) : UiAction()
+    internal data class NotificationReady(val content: NotificationResult): UiAction()
 }
 
 private const val GemmaModelUrl = "https://github.com/monday8am/koogagent/releases/download/0.0.1/gemma3-1b-it-int4.zip"
@@ -83,9 +69,7 @@ private const val GemmaModelName = "gemma3-1b-it-int4.litertlm"
 
 interface NotificationViewModel {
     val uiState: Flow<UiState>
-
     fun onUiAction(uiAction: UiAction)
-
     fun dispose()
 }
 
@@ -98,6 +82,7 @@ class NotificationViewModelImpl(
     private val deviceContextProvider: DeviceContextProvider,
     private val modelManager: ModelDownloadManager,
 ) : NotificationViewModel {
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     private val toolRegistry =
@@ -108,36 +93,36 @@ class NotificationViewModelImpl(
 
     internal val userActions: MutableStateFlow<UiAction> = MutableStateFlow(UiAction.Initialize)
 
-    override val uiState =
-        userActions
-            .flatMapConcat { action ->
-                val actionFlow =
-                    when (action) {
-                        UiAction.Initialize -> flowOf(modelManager.modelExists(modelName = GemmaModelName))
-                        UiAction.DownloadModel -> modelManager.downloadModel(url = GemmaModelUrl, modelName = GemmaModelName)
-                        UiAction.ShowNotification -> inferenceEngine.initializeAsFlow(model = getLocalModel())
-                        is UiAction.UpdateContext -> flowOf(action.context)
-                        is UiAction.NotificationReady -> flowOf(value = action.content)
-                    }
-
-                actionFlow
-                    .map<Any, ActionState> { result -> ActionState.Success(result) }
-                    .onStart {
-                        if (action is UiAction.DownloadModel || action is UiAction.ShowNotification) {
-                            emit(ActionState.Loading)
-                        }
-                    }.catch { throwable -> emit(ActionState.Error(throwable)) }
-                    .map { actionState -> action to actionState }
-            }.flowOn(Dispatchers.IO)
-            .scan(UiState()) { previousState, (action, actionState) ->
-                reduce(state = previousState, action = action, actionState = actionState)
-            }.distinctUntilChanged()
-            .onEach { state ->
-                // Side effects!
-                if (state.notification != null) {
-                    notificationEngine.showNotification(state.notification)
-                }
+    override val uiState = userActions
+        .flatMapConcat { action ->
+            val actionFlow = when (action) {
+                UiAction.Initialize -> flowOf(modelManager.modelExists(modelName = GemmaModelName))
+                UiAction.DownloadModel -> modelManager.downloadModel(url = GemmaModelUrl, modelName = GemmaModelName)
+                UiAction.ShowNotification -> inferenceEngine.initializeAsFlow(model = getLocalModel())
+                is UiAction.UpdateContext -> flowOf(action.context)
+                is UiAction.NotificationReady -> flowOf(value = action.content)
             }
+
+            actionFlow
+                .map<Any, ActionState> { result -> ActionState.Success(result) }
+                .onStart {
+                    if (action is UiAction.DownloadModel || action is UiAction.ShowNotification) {
+                        emit(ActionState.Loading)
+                    }
+                }
+                .catch { throwable -> emit(ActionState.Error(throwable)) }
+                .map { actionState -> action to actionState }
+        }
+        .flowOn(Dispatchers.IO)
+        .scan(UiState()) { previousState, (action, actionState) ->
+            reduce(state = previousState, action = action, actionState = actionState)
+        }
+        .distinctUntilChanged()
+        .onEach { state -> // Side effects!
+            if (state.notification != null) {
+                notificationEngine.showNotification(state.notification)
+            }
+        }
 
     override fun onUiAction(uiAction: UiAction) = userActions.update { uiAction }
 
@@ -145,12 +130,8 @@ class NotificationViewModelImpl(
         scope.cancel()
     }
 
-    private fun reduce(
-        state: UiState,
-        action: UiAction,
-        actionState: ActionState,
-    ): UiState =
-        when (actionState) {
+    private fun reduce(state: UiState, action: UiAction, actionState: ActionState): UiState {
+        return when (actionState) {
             is ActionState.Loading -> {
                 when (action) {
                     UiAction.DownloadModel -> state.copy(downloadStatus = ModelDownloadManager.Status.InProgress(0f))
@@ -163,16 +144,15 @@ class NotificationViewModelImpl(
                 when (action) {
                     is UiAction.DownloadModel -> {
                         val status = actionState.result as ModelDownloadManager.Status
-                        val logMessage =
-                            when (status) {
-                                is ModelDownloadManager.Status.InProgress -> "Downloading: ${"%.1f".format(status.progress?.times(100))}%"
-                                is ModelDownloadManager.Status.Completed -> "Download complete! Model is ready."
-                                else -> "Download finished."
-                            }
+                        val logMessage = when (status) {
+                            is ModelDownloadManager.Status.InProgress -> "Downloading: ${"%.1f".format(status.progress?.times(100))}%"
+                            is ModelDownloadManager.Status.Completed -> "Download complete! Model is ready."
+                            else -> "Download finished."
+                        }
                         state.copy(
                             downloadStatus = status,
                             textLog = logMessage,
-                            isModelReady = status is ModelDownloadManager.Status.Completed,
+                            isModelReady = status is ModelDownloadManager.Status.Completed
                         )
                     }
 
@@ -184,7 +164,7 @@ class NotificationViewModelImpl(
                     is UiAction.NotificationReady -> {
                         state.copy(
                             textLog = "Notification:\n ${action.content.formatted}",
-                            notification = action.content,
+                            notification = action.content
                         )
                     }
 
@@ -195,13 +175,12 @@ class NotificationViewModelImpl(
                     is UiAction.Initialize -> {
                         val isModelReady = actionState.result as Boolean
                         state.copy(
-                            textLog =
-                                if (isModelReady) {
-                                    "Welcome to Yazio notificator :)\nInitialized with model $GemmaModelName"
-                                } else {
-                                    "Welcome!\nPress download model button. It's a one time operation and it will take close to 4 minutes."
-                                },
-                            isModelReady = isModelReady,
+                            textLog = if (isModelReady) {
+                                "Welcome to Yazio notificator :)\nInitialized with model $GemmaModelName"
+                            } else {
+                                "Welcome!\nPress download model button. It's a one time operation and it will take close to 4 minutes."
+                            },
+                            isModelReady = isModelReady
                         )
                     }
                 }
@@ -211,34 +190,29 @@ class NotificationViewModelImpl(
                 state.copy(textLog = "An error occurred: ${actionState.throwable.message}")
             }
         }
+    }
 
-    private fun createNotification(
-        promptExecutor: suspend (String) -> Result<String>,
-        context: NotificationContext,
-    ) {
+    private fun createNotification(promptExecutor: suspend (String) -> Result<String>, context: NotificationContext) {
         scope.launch {
             val deviceContext = deviceContextProvider.getDeviceContext()
-            val notificationContext =
-                context.copy(
+            val notificationContext = context.copy(
                     userLocale = deviceContext.language,
                     country = deviceContext.country,
                 )
 
-            val agent =
-                GemmaAgent(
-                    promptExecutor = { prompt ->
-                        promptExecutor(prompt).getOrThrow()
-                    },
-                )
+            val agent = GemmaAgent(
+                promptExecutor = { prompt ->
+                    promptExecutor(prompt).getOrThrow()
+                }
+            )
             agent.initializeWithTools(toolRegistry = toolRegistry)
             val content = NotificationGenerator(agent = agent).generate(notificationContext)
             onUiAction(uiAction = UiAction.NotificationReady(content = content))
         }
     }
 
-    private fun getLocalModel() =
-        LocalLLModel(
-            path = modelManager.getModelPath(GemmaModelName),
-            temperature = 0.8f,
-        )
+    private fun getLocalModel() = LocalLLModel(
+        path = modelManager.getModelPath(GemmaModelName),
+        temperature = 0.8f,
+    )
 }

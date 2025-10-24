@@ -1,8 +1,8 @@
 plugins {
     id("java-library")
     alias(libs.plugins.jetbrains.kotlin.jvm)
-    id("org.jetbrains.kotlin.plugin.serialization") version "2.2.20"
 }
+
 java {
     sourceCompatibility = JavaVersion.VERSION_11
     targetCompatibility = JavaVersion.VERSION_11
@@ -10,14 +10,19 @@ java {
 
 kotlin {
     jvmToolchain(11)
+
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11
+    }
 }
 
 dependencies {
+    // Project dependencies
     implementation(project(":data"))
-    api(libs.koog.agents) {
-        // Exclude to avoid duplicate classes with kotlin-sdk-client
-        exclude(group = "io.modelcontextprotocol", module = "kotlin-sdk-core-jvm")
-    }
-    api(libs.kermit)
+    implementation(project(":agent"))
+
+    implementation(libs.kotlinx.coroutines.android)
+
+    // Testing
     testImplementation(kotlin("test"))
 }
