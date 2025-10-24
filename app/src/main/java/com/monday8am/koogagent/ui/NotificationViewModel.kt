@@ -48,13 +48,14 @@ data class UiState(
     val downloadStatus: ModelDownloadManager.Status = ModelDownloadManager.Status.Pending,
 )
 
-sealed interface ActionState {
+private sealed interface ActionState {
     data object Loading : ActionState
     data class Success(val result: Any) : ActionState
     data class Error(val throwable: Throwable) : ActionState
 }
 
 sealed interface UiAction {
+    data object Initialize : UiAction
     data object DownloadModel : UiAction
     data object ShowNotification : UiAction
     data class UpdateContext(val context: NotificationContext) : UiAction
@@ -91,16 +92,17 @@ class NotificationViewModelImpl(
             temperature = 0.8f,
         )
 
-    internal val userActions: MutableStateFlow<UiAction?> = MutableStateFlow(null)
+    internal val userActions: MutableStateFlow<UiAction> = MutableStateFlow(UiAction.Initialize)
 
     override val uiState = userActions
-        .filterNotNull()
         .flatMapConcat { action ->
             val actionFlow = when (action) {
                 UiAction.DownloadModel -> modelManager.downloadModel(url = GemmaModelUrl, modelName = GemmaModelName)
                 UiAction.ShowNotification,
                 UiAction.RunModelTests -> inferenceEngine.initializeAsFlow(localModel)
+
                 is UiAction.UpdateContext -> flowOf(action.context)
+                UiAction.Initialize -> flowOf(modelManager.modelExists(modelName = GemmaModelName))
             }
 
             actionFlow
@@ -167,6 +169,18 @@ class NotificationViewModelImpl(
 
                     is UiAction.UpdateContext -> {
                         state.copy(context = action.context)
+                    }
+
+                    is UiAction.Initialize -> {
+                        val isModelReady = actionState.result as Boolean
+                        state.copy(
+                            textLog = if (isModelReady) {
+                                "Welcome to Yazio notificator :)\\nInitialized with model $GemmaModelName"
+                            } else {
+                                "Welcome!\\nPress download model button. It's a one time operation and it will take close to 4 minutes."
+                            },
+                            isModelReady = isModelReady
+                        )
                     }
                 }
             }
