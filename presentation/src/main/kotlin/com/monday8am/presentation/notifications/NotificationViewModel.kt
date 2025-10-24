@@ -1,18 +1,18 @@
 package com.monday8am.presentation.notifications
 
 import ai.koog.agents.core.tools.ToolRegistry
-import com.monday8am.agent.GemmaAgent
-import com.monday8am.agent.GetLocationTool
-import com.monday8am.agent.GetWeatherToolFromLocation
-import com.monday8am.agent.LocalLLModel
-import com.monday8am.agent.NotificationGenerator
+import com.monday8am.agent.gemma.GemmaAgent
+import com.monday8am.agent.tools.GetLocationTool
+import com.monday8am.agent.tools.GetWeatherToolFromLocation
+import com.monday8am.agent.core.LocalLLModel
+import com.monday8am.agent.core.NotificationGenerator
 import com.monday8am.koogagent.data.LocationProvider
 import com.monday8am.koogagent.data.MealType
 import com.monday8am.koogagent.data.MotivationLevel
 import com.monday8am.koogagent.data.NotificationContext
 import com.monday8am.koogagent.data.NotificationResult
 import com.monday8am.koogagent.data.WeatherProvider
-import com.monday8am.agent.LocalInferenceEngine
+import com.monday8am.agent.core.LocalInferenceEngine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

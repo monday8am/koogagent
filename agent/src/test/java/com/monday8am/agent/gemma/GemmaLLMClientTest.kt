@@ -1,4 +1,4 @@
-package com.monday8am.koogagent.mediapipe
+package com.monday8am.agent.gemma
 
 import ai.koog.agents.core.tools.ToolDescriptor
 import ai.koog.prompt.dsl.Prompt
@@ -8,7 +8,7 @@ import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.message.RequestMetaInfo
 import ai.koog.prompt.message.ResponseMetaInfo
-import com.monday8am.agent.GemmaLLMClient
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -480,7 +480,7 @@ class GemmaLLMClientTest {
 
     // Helper for running suspending functions in tests
     private fun runBlockingTest(block: suspend () -> Unit) {
-        kotlinx.coroutines.runBlocking {
+        runBlocking {
             block()
         }
     }

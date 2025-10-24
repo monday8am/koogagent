@@ -1,4 +1,4 @@
-package com.monday8am.agent
+package com.monday8am.agent.core
 
 import kotlinx.coroutines.flow.Flow
 

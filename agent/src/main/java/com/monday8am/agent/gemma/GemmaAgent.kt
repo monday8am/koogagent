@@ -1,4 +1,4 @@
-package com.monday8am.agent
+package com.monday8am.agent.gemma
 
 import ai.koog.agents.core.agent.AIAgent
 import ai.koog.agents.core.tools.ToolRegistry
@@ -8,6 +8,10 @@ import ai.koog.prompt.llm.LLMCapability
 import ai.koog.prompt.llm.LLMProvider
 import ai.koog.prompt.llm.LLModel
 import co.touchlab.kermit.Logger
+import com.monday8am.agent.core.DEFAULT_CONTEXT_LENGTH
+import com.monday8am.agent.core.DEFAULT_MAX_OUTPUT_TOKENS
+import com.monday8am.agent.core.NotificationAgent
+import com.monday8am.agent.core.installCommonEventHandling
 
 private val gemmaModel =
     LLModel(

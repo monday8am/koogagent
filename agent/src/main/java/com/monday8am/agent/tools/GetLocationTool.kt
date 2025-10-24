@@ -1,7 +1,8 @@
-package com.monday8am.agent
+package com.monday8am.agent.tools
 
 import ai.koog.agents.core.tools.SimpleTool
 import ai.koog.agents.core.tools.ToolDescriptor
+import com.monday8am.agent.core.logger
 import com.monday8am.koogagent.data.LocationProvider
 import kotlinx.serialization.builtins.serializer
 

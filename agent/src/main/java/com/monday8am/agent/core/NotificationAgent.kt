@@ -1,4 +1,4 @@
-package com.monday8am.agent
+package com.monday8am.agent.core
 
 import ai.koog.agents.core.tools.ToolRegistry
 

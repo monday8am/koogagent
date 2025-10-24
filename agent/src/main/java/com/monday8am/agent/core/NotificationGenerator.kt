@@ -1,9 +1,10 @@
-package com.monday8am.agent
+package com.monday8am.agent.core
 
 import co.touchlab.kermit.Logger
 import com.monday8am.koogagent.data.MealType
 import com.monday8am.koogagent.data.NotificationContext
 import com.monday8am.koogagent.data.NotificationResult
+import org.json.JSONObject
 
 internal val logger = Logger.withTag("NotificationGenerator")
 
@@ -77,7 +78,7 @@ class NotificationGenerator(
 
     private fun parseResponse(response: String): NotificationResult {
         val cleanJson = response.removePrefix("```json\n").removeSuffix("\n```")
-        val json = org.json.JSONObject(cleanJson)
+        val json = JSONObject(cleanJson)
         return NotificationResult(
             title = json.optString("title"),
             body = json.optString("body"),

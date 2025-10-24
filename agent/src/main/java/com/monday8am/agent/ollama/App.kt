@@ -1,10 +1,10 @@
-package com.monday8am.local
+package com.monday8am.agent.ollama
 
 import ai.koog.agents.core.tools.ToolRegistry
 import co.touchlab.kermit.Logger
-import com.monday8am.agent.GetLocationTool
-import com.monday8am.agent.GetWeatherTool
-import com.monday8am.agent.NotificationGenerator
+import com.monday8am.agent.tools.GetLocationTool
+import com.monday8am.agent.tools.GetWeatherTool
+import com.monday8am.agent.core.NotificationGenerator
 import com.monday8am.koogagent.data.MealType
 import com.monday8am.koogagent.data.MockLocationProvider
 import com.monday8am.koogagent.data.MotivationLevel

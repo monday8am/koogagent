@@ -1,4 +1,4 @@
-package com.monday8am.local
+package com.monday8am.agent.ollama
 
 import ai.koog.agents.core.agent.AIAgent
 import ai.koog.agents.core.agent.functionalStrategy
@@ -14,7 +14,7 @@ import ai.koog.prompt.executor.llms.all.simpleOllamaAIExecutor
 import ai.koog.prompt.executor.ollama.client.OllamaClient
 import ai.koog.prompt.executor.ollama.client.toLLModel
 import co.touchlab.kermit.Logger
-import com.monday8am.agent.NotificationAgent
+import com.monday8am.agent.core.NotificationAgent
 
 private val logger = Logger.withTag("OllamaAgent")
 

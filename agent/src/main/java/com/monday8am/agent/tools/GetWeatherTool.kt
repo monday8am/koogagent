@@ -1,30 +1,23 @@
-package com.monday8am.agent
+package com.monday8am.agent.tools
 
 import ai.koog.agents.core.tools.SimpleTool
 import ai.koog.agents.core.tools.ToolDescriptor
-import ai.koog.agents.core.tools.ToolParameterDescriptor
-import ai.koog.agents.core.tools.ToolParameterType
-import ai.koog.agents.core.tools.annotations.LLMDescription
+import com.monday8am.agent.core.logger
+import com.monday8am.koogagent.data.LocationProvider
 import com.monday8am.koogagent.data.WeatherCondition
 import com.monday8am.koogagent.data.WeatherProvider
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.serializer
 
 /**
  * Koog Tool for fetching weather information.
  * This tool allows the AI agent to autonomously request weather data
  * when it determines weather context is needed for notification generation.
  */
-class GetWeatherToolFromLocation(
+class GetWeatherTool(
+    private val locationProvider: LocationProvider,
     private val weatherProvider: WeatherProvider,
-) : SimpleTool<GetWeatherToolFromLocation.Args>() {
-    @Serializable
-    data class Args(
-        @property:LLMDescription("Latitude of the location in double format")
-        val latitude: Double,
-        @property:LLMDescription("Longitude of the location in double format")
-        val longitude: Double,
-    )
-
+) : SimpleTool<Unit>() {
     @Serializable
     private data class WeatherResult(
         val condition: String,
@@ -33,41 +26,38 @@ class GetWeatherToolFromLocation(
         val success: Boolean,
     )
 
-    override val argsSerializer = Args.serializer()
+    override val argsSerializer = Unit.serializer()
 
     override val description: String
-        get() = "Get the current weather from latitude and longitude parameters"
+        get() = "Get the current weather"
 
     override val descriptor =
         ToolDescriptor(
-            name = "GetWeatherToolFromLocation",
-            description = "Get the current weather from the provided latitude and longitude parameters",
-            requiredParameters =
-                listOf(
-                    ToolParameterDescriptor(name = "latitude", description = "geo latitude", type = ToolParameterType.String),
-                    ToolParameterDescriptor(name = "longitude", description = "geo longitude", type = ToolParameterType.String),
-                ),
+            name = "GetWeatherTool",
+            description = "Get the current weather",
+            requiredParameters = listOf(),
         )
 
     /**
      * Fetches current weather information for the user's location.
      * Use this tool when you need weather context to personalize meal or hydration suggestions.
      */
-    override suspend fun doExecute(args: Args): String =
+    override suspend fun doExecute(args: Unit): String =
         try {
-            val weather = weatherProvider.getCurrentWeather(latitude = args.latitude, longitude = args.longitude)
+            val location = locationProvider.getLocation()
+            val weather = weatherProvider.getCurrentWeather(latitude = location.latitude, longitude = location.longitude)
             if (weather != null) {
                 val temperature = getApproximateTemperature(weather)
                 val result =
                     WeatherResult(
                         condition = weather.name.lowercase(),
                         temperature = temperature,
-                        location = "${args.latitude}, ${args.longitude}",
+                        location = "${location.latitude}, ${location.longitude}",
                         success = true,
                     )
                 "Weather: ${result.condition}, Temperature: ${result.temperature}°C at ${result.location}"
             } else {
-                "Weather: unknown at ${args.latitude}, ${args.longitude}"
+                "Weather: unknown at ${location.latitude}, ${location.longitude}"
             }
         } catch (e: Exception) {
             logger.e { "GetWeatherTool: Error fetching weather: ${e.message}" }

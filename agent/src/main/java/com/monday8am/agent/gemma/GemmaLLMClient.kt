@@ -1,4 +1,4 @@
-package com.monday8am.agent
+package com.monday8am.agent.gemma
 
 import ai.koog.agents.core.tools.ToolDescriptor
 import ai.koog.prompt.dsl.ModerationResult

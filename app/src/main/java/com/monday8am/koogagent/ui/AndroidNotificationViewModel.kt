@@ -5,7 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.monday8am.koogagent.data.LocationProvider
 import com.monday8am.koogagent.data.WeatherProvider
-import com.monday8am.agent.LocalInferenceEngine
+import com.monday8am.agent.core.LocalInferenceEngine
 import com.monday8am.presentation.notifications.ModelDownloadManager
 import com.monday8am.presentation.notifications.NotificationViewModel
 import com.monday8am.presentation.notifications.NotificationViewModelImpl

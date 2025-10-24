@@ -1,4 +1,4 @@
-package com.monday8am.agent
+package com.monday8am.agent.core
 
 import ai.koog.agents.core.agent.GraphAIAgent.FeatureContext
 import ai.koog.agents.features.eventHandler.feature.handleEvents

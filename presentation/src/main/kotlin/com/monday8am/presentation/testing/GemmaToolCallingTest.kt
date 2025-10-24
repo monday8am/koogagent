@@ -3,10 +3,10 @@ package com.monday8am.presentation.testing
 import ai.koog.agents.core.tools.ToolRegistry
 import co.touchlab.kermit.Logger
 import co.touchlab.kermit.Severity
-import com.monday8am.agent.GemmaAgent
-import com.monday8am.agent.GetLocationTool
-import com.monday8am.agent.GetWeatherTool
-import com.monday8am.agent.GetWeatherToolFromLocation
+import com.monday8am.agent.gemma.GemmaAgent
+import com.monday8am.agent.tools.GetLocationTool
+import com.monday8am.agent.tools.GetWeatherTool
+import com.monday8am.agent.tools.GetWeatherToolFromLocation
 import com.monday8am.koogagent.data.MockLocationProvider
 import com.monday8am.koogagent.data.WeatherProviderImpl
 import kotlinx.coroutines.CoroutineDispatcher
