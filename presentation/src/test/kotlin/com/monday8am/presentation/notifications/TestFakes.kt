@@ -26,8 +26,7 @@ internal class FakeLocalInferenceEngine : LocalInferenceEngine {
         return flowOf(this)
     }
 
-    override suspend fun prompt(prompt: String): Result<String> =
-        Result.success("Test response")
+    override suspend fun prompt(prompt: String): Result<String> = Result.success("Test response")
 
     override fun closeSession(): Result<Unit> = Result.success(Unit)
 }
@@ -43,8 +42,10 @@ internal class FakeNotificationEngine : NotificationEngine {
 }
 
 internal class FakeWeatherProvider : WeatherProvider {
-    override suspend fun getCurrentWeather(latitude: Double, longitude: Double) =
-        WeatherCondition.SUNNY
+    override suspend fun getCurrentWeather(
+        latitude: Double,
+        longitude: Double,
+    ) = WeatherCondition.SUNNY
 }
 
 internal class FakeLocationProvider : LocationProvider {
@@ -60,8 +61,11 @@ internal class FakeModelDownloadManager(
     private val progressSteps: List<Float> = emptyList(),
     private val shouldFail: Boolean = false,
 ) : ModelDownloadManager {
-    override fun downloadModel(url: String, modelName: String): Flow<ModelDownloadManager.Status> {
-        return flow {
+    override fun downloadModel(
+        url: String,
+        modelName: String,
+    ): Flow<ModelDownloadManager.Status> =
+        flow {
             if (shouldFail) {
                 throw Exception("Download failed") // Throw inside flow builder to be caught by .catch { }
             }
@@ -71,7 +75,6 @@ internal class FakeModelDownloadManager(
             }
             emit(ModelDownloadManager.Status.Completed(File("/fake/path/$modelName")))
         }
-    }
 
     override fun modelExists(modelName: String): Boolean = modelExists
 

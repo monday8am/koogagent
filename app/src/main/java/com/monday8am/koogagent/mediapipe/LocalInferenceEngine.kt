@@ -4,8 +4,8 @@ import android.content.Context
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.mediapipe.tasks.genai.llminference.LlmInference
 import com.google.mediapipe.tasks.genai.llminference.LlmInferenceSession
-import com.monday8am.agent.core.LocalLLModel
 import com.monday8am.agent.core.LocalInferenceEngine
+import com.monday8am.agent.core.LocalLLModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
