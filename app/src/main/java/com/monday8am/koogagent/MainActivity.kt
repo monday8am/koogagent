@@ -37,33 +37,65 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.monday8am.koogagent.data.MealType
+import com.monday8am.koogagent.data.MockLocationProvider
 import com.monday8am.koogagent.data.MotivationLevel
 import com.monday8am.koogagent.data.NotificationContext
-import com.monday8am.koogagent.ui.NotificationUtils
-import com.monday8am.koogagent.ui.NotificationViewModel
-import com.monday8am.koogagent.ui.defaultNotificationContext
+import com.monday8am.koogagent.data.WeatherProviderImpl
+import com.monday8am.koogagent.download.ModelDownloadManagerImpl
+import com.monday8am.koogagent.mediapipe.LocalInferenceEngineImpl
+import com.monday8am.koogagent.ui.AndroidNotificationViewModel
+import com.monday8am.koogagent.ui.DeviceContextProviderImpl
+import com.monday8am.koogagent.ui.NotificationEngineImpl
+import com.monday8am.koogagent.ui.NotificationViewModelFactory
 import com.monday8am.koogagent.ui.theme.KoogAgentTheme
+import com.monday8am.koogagent.ui.toDisplayString
+import com.monday8am.presentation.notifications.UiAction
+import com.monday8am.presentation.notifications.defaultNotificationContext
 
 class MainActivity : ComponentActivity() {
+    private val notificationEngine: NotificationEngineImpl by lazy {
+        NotificationEngineImpl(this.applicationContext)
+    }
+
+    private val viewModelFactory: NotificationViewModelFactory by lazy {
+        val applicationContext = this.applicationContext
+
+        val inferenceEngine = LocalInferenceEngineImpl(applicationContext)
+        val notificationEngine = notificationEngine
+        val weatherProvider = WeatherProviderImpl()
+        val locationProvider = MockLocationProvider() // <-- using Mock for now.
+        val deviceContextProvider = DeviceContextProviderImpl(applicationContext)
+        val modelManager = ModelDownloadManagerImpl(applicationContext)
+
+        NotificationViewModelFactory(
+            inferenceEngine = inferenceEngine,
+            notificationEngine = notificationEngine,
+            weatherProvider = weatherProvider,
+            locationProvider = locationProvider,
+            deviceContextProvider = deviceContextProvider,
+            modelManager = modelManager,
+        )
+    }
+
+    private val viewModel: AndroidNotificationViewModel by viewModels { viewModelFactory }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        NotificationUtils.createChannel(this)
-        NotificationUtils.requestNotificationPermission(this)
+        notificationEngine.createChannel()
+        notificationEngine.requestNotificationPermission(this)
 
         setContent {
-            val viewModel: NotificationViewModel by viewModels()
             val state by viewModel.uiState.collectAsStateWithLifecycle()
-
             KoogAgentTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     MainScreen(
-                        log = state.textLog,
+                        log = state.statusMessage.toDisplayString(),
                         notificationContext = state.context,
-                        onNotificationContextChange = { viewModel.updateContext(it) },
-                        onClickDownload = { viewModel.downloadModel() },
-                        onClickNotification = { viewModel.processAndShowNotification() },
+                        onNotificationContextChange = { viewModel.onUiAction(UiAction.UpdateContext(context = it)) },
+                        onClickDownload = { viewModel.onUiAction(UiAction.DownloadModel) },
+                        onClickNotification = { viewModel.onUiAction(UiAction.ShowNotification) },
                         modifier = Modifier.padding(innerPadding),
                     )
                 }
@@ -119,7 +151,13 @@ private fun LogPanel(
     textLog: String,
     modifier: Modifier = Modifier,
 ) {
-    Box(modifier = modifier.fillMaxWidth().height(240.dp).background(Color(0xFF000080))) {
+    Box(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .height(240.dp)
+                .background(Color(0xFF000080)),
+    ) {
         Text(text = textLog, color = Color(0xFF00FF00), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
     }
 }

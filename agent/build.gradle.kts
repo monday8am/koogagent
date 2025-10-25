@@ -4,12 +4,12 @@ plugins {
     id("org.jetbrains.kotlin.plugin.serialization") version "2.2.20"
 }
 java {
-    sourceCompatibility = JavaVersion.VERSION_11
-    targetCompatibility = JavaVersion.VERSION_11
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
 }
 
 kotlin {
-    jvmToolchain(11)
+    jvmToolchain(21)
 }
 
 dependencies {
@@ -18,6 +18,6 @@ dependencies {
         // Exclude to avoid duplicate classes with kotlin-sdk-client
         exclude(group = "io.modelcontextprotocol", module = "kotlin-sdk-core-jvm")
     }
-    implementation(libs.kermit)
+    api(libs.kermit)
     testImplementation(kotlin("test"))
 }
