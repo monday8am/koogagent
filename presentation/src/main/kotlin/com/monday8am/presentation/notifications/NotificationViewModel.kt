@@ -42,7 +42,7 @@ val defaultNotificationContext =
     )
 
 data class UiState(
-    val textLog: String = "Initializing!",
+    val statusMessage: LogMessage = LogMessage.Initializing,
     val context: NotificationContext = defaultNotificationContext,
     val isModelReady: Boolean = false,
     val notification: NotificationResult? = null,
@@ -135,7 +135,7 @@ class NotificationViewModelImpl(
             is ActionState.Loading -> {
                 when (action) {
                     UiAction.DownloadModel -> state.copy(downloadStatus = ModelDownloadManager.Status.InProgress(0f))
-                    UiAction.ShowNotification -> state.copy(textLog = "Initializing model for notification...")
+                    UiAction.ShowNotification -> state.copy(statusMessage = LogMessage.InitializingModel)
                     else -> state
                 }
             }
@@ -145,25 +145,25 @@ class NotificationViewModelImpl(
                     is UiAction.DownloadModel -> {
                         val status = actionState.result as ModelDownloadManager.Status
                         val logMessage = when (status) {
-                            is ModelDownloadManager.Status.InProgress -> "Downloading: ${"%.1f".format(status.progress?.times(100))}%"
-                            is ModelDownloadManager.Status.Completed -> "Download complete! Model is ready."
-                            else -> "Download finished."
+                            is ModelDownloadManager.Status.InProgress -> LogMessage.Downloading(status.progress ?: 0f)
+                            is ModelDownloadManager.Status.Completed -> LogMessage.DownloadComplete
+                            else -> LogMessage.DownloadFinished
                         }
                         state.copy(
                             downloadStatus = status,
-                            textLog = logMessage,
+                            statusMessage = logMessage,
                             isModelReady = status is ModelDownloadManager.Status.Completed
                         )
                     }
 
                     is UiAction.ShowNotification -> {
                         createNotification(promptExecutor = inferenceEngine::prompt, context = state.context)
-                        state.copy(textLog = "Prompting with context:\n ${state.context.formatted}")
+                        state.copy(statusMessage = LogMessage.PromptingWithContext(state.context.formatted))
                     }
 
                     is UiAction.NotificationReady -> {
                         state.copy(
-                            textLog = "Notification:\n ${action.content.formatted}",
+                            statusMessage = LogMessage.NotificationGenerated(action.content.formatted),
                             notification = action.content
                         )
                     }
@@ -175,10 +175,10 @@ class NotificationViewModelImpl(
                     is UiAction.Initialize -> {
                         val isModelReady = actionState.result as Boolean
                         state.copy(
-                            textLog = if (isModelReady) {
-                                "Welcome to Yazio notificator :)\nInitialized with model $GemmaModelName"
+                            statusMessage = if (isModelReady) {
+                                LogMessage.WelcomeModelReady(GemmaModelName)
                             } else {
-                                "Welcome!\nPress download model button. It's a one time operation and it will take close to 4 minutes."
+                                LogMessage.WelcomeDownloadRequired
                             },
                             isModelReady = isModelReady
                         )
@@ -187,7 +187,7 @@ class NotificationViewModelImpl(
             }
 
             is ActionState.Error -> {
-                state.copy(textLog = "An error occurred: ${actionState.throwable.message}")
+                state.copy(statusMessage = LogMessage.Error(actionState.throwable.message ?: "Unknown error"))
             }
         }
     }

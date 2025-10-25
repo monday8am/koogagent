@@ -47,6 +47,7 @@ import com.monday8am.koogagent.ui.AndroidNotificationViewModel
 import com.monday8am.koogagent.ui.DeviceContextProviderImpl
 import com.monday8am.koogagent.ui.NotificationEngineImpl
 import com.monday8am.koogagent.ui.NotificationViewModelFactory
+import com.monday8am.koogagent.ui.toDisplayString
 import com.monday8am.presentation.notifications.UiAction
 import com.monday8am.presentation.notifications.defaultNotificationContext
 import com.monday8am.koogagent.ui.theme.KoogAgentTheme
@@ -90,7 +91,7 @@ class MainActivity : ComponentActivity() {
             KoogAgentTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     MainScreen(
-                        log = state.textLog,
+                        log = state.statusMessage.toDisplayString(),
                         notificationContext = state.context,
                         onNotificationContextChange = { viewModel.onUiAction(UiAction.UpdateContext(context = it)) },
                         onClickDownload = { viewModel.onUiAction(UiAction.DownloadModel) },
