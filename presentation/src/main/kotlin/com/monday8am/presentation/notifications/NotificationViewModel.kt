@@ -13,6 +13,7 @@ import com.monday8am.koogagent.data.NotificationContext
 import com.monday8am.koogagent.data.NotificationResult
 import com.monday8am.koogagent.data.WeatherProvider
 import com.monday8am.agent.core.LocalInferenceEngine
+import java.util.logging.Logger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -130,7 +131,7 @@ class NotificationViewModelImpl(
         scope.cancel()
     }
 
-    private fun reduce(state: UiState, action: UiAction, actionState: ActionState): UiState {
+    internal fun reduce(state: UiState, action: UiAction, actionState: ActionState): UiState {
         return when (actionState) {
             is ActionState.Loading -> {
                 when (action) {
