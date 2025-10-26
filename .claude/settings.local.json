@@ -7,7 +7,9 @@
       "Bash(./gradlew:*)",
       "Bash(find:*)",
       "Bash(java:*)",
-      "Read(//Users/anton/Projects/koog/prompt/prompt-executor/prompt-executor-clients/prompt-executor-anthropic-client/src/commonMain/kotlin/ai/koog/prompt/executor/clients/anthropic/**)"
+      "Read(//Users/anton/Projects/koog/prompt/prompt-executor/prompt-executor-clients/prompt-executor-anthropic-client/src/commonMain/kotlin/ai/koog/prompt/executor/clients/anthropic/**)",
+      "WebFetch(domain:gist.github.com)",
+      "WebFetch(domain:gist.githubusercontent.com)"
     ],
     "deny": [],
     "ask": []

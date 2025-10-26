@@ -18,7 +18,6 @@ import kotlinx.coroutines.flow.stateIn
 
 class AndroidNotificationViewModel(
     private val impl: NotificationViewModel,
-    private val inferenceEngine: LocalInferenceEngine,
 ) : ViewModel(),
     NotificationViewModel by impl {
     override val uiState: StateFlow<UiState>
@@ -32,7 +31,6 @@ class AndroidNotificationViewModel(
     override fun onCleared() {
         super.onCleared()
         impl.dispose()
-        inferenceEngine.closeSession()
     }
 }
 
@@ -56,7 +54,7 @@ class NotificationViewModelFactory(
                     deviceContextProvider = deviceContextProvider,
                     modelManager = modelManager,
                 )
-            return AndroidNotificationViewModel(impl, inferenceEngine) as T
+            return AndroidNotificationViewModel(impl) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
     }

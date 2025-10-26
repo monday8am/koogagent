@@ -141,6 +141,7 @@ class NotificationViewModelImpl(
     override fun onUiAction(uiAction: UiAction) = userActions.update { uiAction }
 
     override fun dispose() {
+        inferenceEngine.closeSession()
         scope.cancel()
     }
 
