@@ -1,6 +1,7 @@
 package com.monday8am.presentation.notifications
 
 import ai.koog.agents.core.tools.ToolRegistry
+import co.touchlab.kermit.Logger
 import com.monday8am.agent.core.LocalInferenceEngine
 import com.monday8am.agent.core.LocalLLModel
 import com.monday8am.agent.core.NotificationGenerator
@@ -19,7 +20,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapConcat
@@ -29,7 +30,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.scan
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 val defaultNotificationContext =
@@ -105,10 +105,13 @@ class NotificationViewModelImpl(
             tool(tool = GetLocationTool(locationProvider))
         }
 
-    internal val userActions: MutableStateFlow<UiAction> = MutableStateFlow(UiAction.Initialize)
+    internal val userActions = MutableSharedFlow<UiAction>(replay = 0)
 
     override val uiState =
         userActions
+            .onStart { emit(UiAction.Initialize) }
+            .distinctUntilChanged()
+            .onEach { action -> Logger.d("dispatched: $action") }
             .flatMapConcat { action ->
                 val actionFlow =
                     when (action) {
@@ -138,9 +141,14 @@ class NotificationViewModelImpl(
                 }
             }
 
-    override fun onUiAction(uiAction: UiAction) = userActions.update { uiAction }
+    override fun onUiAction(uiAction: UiAction) {
+        scope.launch {
+            userActions.emit(uiAction)
+        }
+    }
 
     override fun dispose() {
+        modelManager.cancelDownload()
         inferenceEngine.closeSession()
         scope.cancel()
     }

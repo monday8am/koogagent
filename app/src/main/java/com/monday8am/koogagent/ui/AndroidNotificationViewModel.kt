@@ -24,7 +24,7 @@ class AndroidNotificationViewModel(
         get() =
             impl.uiState.stateIn(
                 viewModelScope,
-                started = SharingStarted.WhileSubscribed(300L),
+                started = SharingStarted.WhileSubscribed(5000L),
                 initialValue = UiState(),
             )
 

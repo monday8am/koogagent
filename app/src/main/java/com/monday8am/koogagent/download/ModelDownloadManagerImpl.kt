@@ -6,6 +6,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.workDataOf
+import co.touchlab.kermit.Logger
 import com.monday8am.presentation.notifications.ModelDownloadManager
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -34,12 +35,33 @@ class ModelDownloadManagerImpl(
         modelName: String,
     ): Flow<ModelDownloadManager.Status> =
         channelFlow {
+            Logger.d("dispatched as tag: Started downloading!")
             val destinationPath = "$modelDestinationPath$modelName"
             val destinationFile = File(destinationPath)
 
             if (destinationFile.exists()) {
                 send(ModelDownloadManager.Status.Completed(destinationFile))
                 close() // Close flow on early completion
+                return@channelFlow
+            }
+
+            val existingWork = workManager.getWorkInfosForUniqueWork(WORK_NAME).get()
+            if (existingWork.any { it.state == WorkInfo.State.RUNNING || it.state == WorkInfo.State.ENQUEUED }) {
+                // Observe the existing work instead of creating new work
+                val existingWorkId = existingWork.first { it.state.isFinished.not() }.id
+                val job =
+                    launch {
+                        workManager
+                            .getWorkInfoByIdFlow(existingWorkId)
+                            .mapNotNull { it }
+                            .collectLatest { info ->
+                                send(info.toModelDownloadManagerStatus(destinationFile))
+                                if (info.state.isFinished) {
+                                    close()
+                                }
+                            }
+                    }
+                awaitClose { job.cancel() }
                 return@channelFlow
             }
 
@@ -56,7 +78,7 @@ class ModelDownloadManagerImpl(
                     ).addTag(WORK_TAG)
                     .build()
 
-            workManager.enqueueUniqueWork(WORK_NAME, ExistingWorkPolicy.REPLACE, workRequest)
+            workManager.enqueueUniqueWork(WORK_NAME, ExistingWorkPolicy.KEEP, workRequest)
             send(ModelDownloadManager.Status.Pending) // Send pending after enqueueing
 
             val job =
@@ -81,6 +103,10 @@ class ModelDownloadManagerImpl(
                 workManager.cancelWorkById(workRequest.id)
             }
         }
+
+    override fun cancelDownload() {
+        workManager.cancelUniqueWork(WORK_NAME)
+    }
 
     private fun WorkInfo.toModelDownloadManagerStatus(file: File): ModelDownloadManager.Status =
         when (state) {

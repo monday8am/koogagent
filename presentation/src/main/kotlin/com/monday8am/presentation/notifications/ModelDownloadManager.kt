@@ -30,4 +30,6 @@ interface ModelDownloadManager {
         url: String,
         modelName: String,
     ): Flow<Status>
+
+    fun cancelDownload()
 }
