@@ -1,7 +1,6 @@
 package com.monday8am.presentation.notifications
 
 import ai.koog.agents.core.tools.ToolRegistry
-import co.touchlab.kermit.Logger
 import com.monday8am.agent.core.LocalInferenceEngine
 import com.monday8am.agent.core.LocalLLModel
 import com.monday8am.agent.core.NotificationGenerator
@@ -32,6 +31,9 @@ import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.scan
 import kotlinx.coroutines.launch
 
+private const val MODEL_URL = "https://github.com/monday8am/koogagent/releases/download/0.0.1/gemma3-1b-it-int4.zip"
+private const val MODEL_NAME = "gemma3-1b-it-int4.litertlm"
+
 val defaultNotificationContext =
     NotificationContext(
         mealType = MealType.WATER,
@@ -49,18 +51,6 @@ data class UiState(
     val downloadStatus: ModelDownloadManager.Status = ModelDownloadManager.Status.Pending,
 )
 
-internal sealed interface ActionState {
-    data object Loading : ActionState
-
-    data class Success(
-        val result: Any,
-    ) : ActionState
-
-    data class Error(
-        val throwable: Throwable,
-    ) : ActionState
-}
-
 sealed class UiAction {
     data object DownloadModel : UiAction()
 
@@ -77,8 +67,17 @@ sealed class UiAction {
     ) : UiAction()
 }
 
-private const val GemmaModelUrl = "https://github.com/monday8am/koogagent/releases/download/0.0.1/gemma3-1b-it-int4.zip"
-private const val GemmaModelName = "gemma3-1b-it-int4.litertlm"
+internal sealed interface ActionState {
+    data object Loading : ActionState
+
+    data class Success(
+        val result: Any,
+    ) : ActionState
+
+    data class Error(
+        val throwable: Throwable,
+    ) : ActionState
+}
 
 interface NotificationViewModel {
     val uiState: Flow<UiState>
@@ -98,7 +97,6 @@ class NotificationViewModelImpl(
     private val modelManager: ModelDownloadManager,
 ) : NotificationViewModel {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-
     private val toolRegistry =
         ToolRegistry {
             tool(tool = GetWeatherToolFromLocation(weatherProvider))
@@ -111,12 +109,11 @@ class NotificationViewModelImpl(
         userActions
             .onStart { emit(UiAction.Initialize) }
             .distinctUntilChanged()
-            .onEach { action -> Logger.d("dispatched: $action") }
             .flatMapConcat { action ->
                 val actionFlow =
                     when (action) {
-                        UiAction.Initialize -> flowOf(modelManager.modelExists(modelName = GemmaModelName))
-                        UiAction.DownloadModel -> modelManager.downloadModel(url = GemmaModelUrl, modelName = GemmaModelName)
+                        UiAction.Initialize -> flowOf(modelManager.modelExists(modelName = MODEL_NAME))
+                        UiAction.DownloadModel -> modelManager.downloadModel(url = MODEL_URL, modelName = MODEL_NAME)
                         UiAction.ShowNotification -> inferenceEngine.initializeAsFlow(model = getLocalModel())
                         is UiAction.UpdateContext -> flowOf(action.context)
                         is UiAction.NotificationReady -> flowOf(value = action.content)
@@ -205,7 +202,7 @@ class NotificationViewModelImpl(
                         state.copy(
                             statusMessage =
                                 if (isModelReady) {
-                                    LogMessage.WelcomeModelReady(GemmaModelName)
+                                    LogMessage.WelcomeModelReady(MODEL_NAME)
                                 } else {
                                     LogMessage.WelcomeDownloadRequired
                                 },
@@ -246,7 +243,7 @@ class NotificationViewModelImpl(
 
     private fun getLocalModel() =
         LocalLLModel(
-            path = modelManager.getModelPath(GemmaModelName),
+            path = modelManager.getModelPath(MODEL_NAME),
             temperature = 0.8f,
         )
 }

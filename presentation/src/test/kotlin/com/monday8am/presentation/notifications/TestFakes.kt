@@ -76,7 +76,10 @@ internal class FakeModelDownloadManager(
             emit(ModelDownloadManager.Status.Completed(File("/fake/path/$modelName")))
         }
 
-    override fun modelExists(modelName: String): Boolean = modelExists
+    override fun cancelDownload() {
+    }
+
+    override suspend fun modelExists(modelName: String): Boolean = modelExists
 
     override fun getModelPath(modelName: String): String = "/fake/path/$modelName"
 }

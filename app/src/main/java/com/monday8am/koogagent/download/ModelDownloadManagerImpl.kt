@@ -28,14 +28,16 @@ class ModelDownloadManagerImpl(
 
     override fun getModelPath(modelName: String) = "$modelDestinationPath$modelName"
 
-    override fun modelExists(modelName: String) = File(getModelPath(modelName)).exists()
+    override suspend fun modelExists(modelName: String) =
+        withContext(dispatcher) {
+            File(getModelPath(modelName)).exists()
+        }
 
     override fun downloadModel(
         url: String,
         modelName: String,
     ): Flow<ModelDownloadManager.Status> =
         channelFlow {
-            Logger.d("dispatched as tag: Started downloading!")
             val destinationPath = "$modelDestinationPath$modelName"
             val destinationFile = File(destinationPath)
 
