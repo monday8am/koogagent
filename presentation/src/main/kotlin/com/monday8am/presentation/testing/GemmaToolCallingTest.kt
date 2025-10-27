@@ -7,10 +7,12 @@ import com.monday8am.agent.gemma.GemmaAgent
 import com.monday8am.agent.tools.GetLocationTool
 import com.monday8am.agent.tools.GetWeatherTool
 import com.monday8am.agent.tools.GetWeatherToolFromLocation
-import com.monday8am.koogagent.data.MockLocationProvider
-import com.monday8am.koogagent.data.WeatherProviderImpl
+import com.monday8am.koogagent.data.LocationProvider
+import com.monday8am.koogagent.data.WeatherProvider
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 
 /**
@@ -22,48 +24,53 @@ import kotlinx.coroutines.withContext
  * - Tool hallucination test
  * - Logging integration
  * - Clear expectations documentation
+ * - Progressive updates via Flow<String>
  */
 internal class GemmaToolCallingTest(
     private val promptExecutor: suspend (String) -> String?,
+    private val weatherProvider: WeatherProvider,
+    private val locationProvider: LocationProvider,
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
     private val logger = Logger.Companion.withTag("GemmaToolCallingTest")
     private val testIterations = 5
 
-    suspend fun runAllTests(): String =
-        withContext(dispatcher) {
-            val output = StringBuilder()
+    fun runAllTests(): Flow<String> =
+        flow {
+            withContext(dispatcher) {
+                // Enable verbose logging for tests
+                Logger.Companion.setMinSeverity(Severity.Debug)
 
-            // Enable verbose logging for tests
-            Logger.Companion.setMinSeverity(Severity.Debug)
+                emit("=== GEMMA TOOL CALLING TESTS ===")
+                emit("Model: Gemma 3n-1b-it-int4")
+                emit("Protocol: Simplified JSON (single tool, no parameters)")
+                emit("")
 
-            output.appendLine("=== GEMMA TOOL CALLING TESTS ===")
-            output.appendLine("Model: Gemma 3n-1b-it-int4")
-            output.appendLine("Protocol: Simplified JSON (single tool, no parameters)")
-            output.appendLine()
+                try {
+                    val tests =
+                        listOf(
+                            // ::testBasicToolCall,
+                            // ::testNoToolNeeded,
+                            // ::testToolHallucination,
+                            ::testWeatherTool,
+                            // ::testMultiTurnSequence,
+                        )
 
-            try {
-                val tests =
-                    listOf(
-                        // ::testBasicToolCall,
-                        // ::testNoToolNeeded,
-                        // ::testToolHallucination,
-                        ::testWeatherTool,
-                        // ::testMultiTurnSequence,
-                    )
-
-                tests.forEach { test ->
-                    output.appendLine(test())
-                    output.appendLine()
+                    tests.forEach { test ->
+                        val result = test()
+                        // Emit each line of the test result
+                        result.lines().forEach { line ->
+                            emit(line)
+                        }
+                        emit("")
+                    }
+                } catch (e: Exception) {
+                    emit("FATAL ERROR: ${e.message}")
+                    logger.e(e) { "Test suite failed" }
                 }
-            } catch (e: Exception) {
-                output.appendLine("FATAL ERROR: ${e.message}")
-                logger.e(e) { "Test suite failed" }
+
+                emit("=== TESTS COMPLETE ===")
             }
-
-            output.appendLine("=== TESTS COMPLETE ===")
-
-            return@withContext output.toString()
         }
 
     private suspend fun testBasicToolCall(): String {
@@ -73,7 +80,7 @@ internal class GemmaToolCallingTest(
 
         val toolRegistry =
             ToolRegistry.Companion {
-                tool(GetLocationTool(MockLocationProvider()))
+                tool(GetLocationTool(locationProvider))
             }
 
         val queries =
@@ -139,7 +146,7 @@ internal class GemmaToolCallingTest(
 
         val toolRegistry =
             ToolRegistry.Companion {
-                tool(GetLocationTool(MockLocationProvider()))
+                tool(GetLocationTool(locationProvider))
             }
 
         val queries =
@@ -204,7 +211,7 @@ internal class GemmaToolCallingTest(
 
         val toolRegistry =
             ToolRegistry.Companion {
-                tool(GetLocationTool(MockLocationProvider()))
+                tool(GetLocationTool(locationProvider))
             }
 
         val query = "What's the weather like?"
@@ -255,7 +262,7 @@ internal class GemmaToolCallingTest(
 
         val toolRegistry =
             ToolRegistry.Companion {
-                tool(GetWeatherTool(locationProvider = MockLocationProvider(), weatherProvider = WeatherProviderImpl()))
+                tool(GetWeatherTool(locationProvider = locationProvider, weatherProvider = weatherProvider))
             }
 
         // Note: Weather tool needs coordinates, but Gemma can't pass parameters
@@ -311,8 +318,8 @@ internal class GemmaToolCallingTest(
 
         val toolRegistry =
             ToolRegistry.Companion {
-                tool(GetLocationTool(MockLocationProvider()))
-                tool(GetWeatherToolFromLocation(WeatherProviderImpl()))
+                tool(GetLocationTool(locationProvider))
+                tool(GetWeatherToolFromLocation(weatherProvider))
             }
 
         val query = "What's the weather where I am?"
