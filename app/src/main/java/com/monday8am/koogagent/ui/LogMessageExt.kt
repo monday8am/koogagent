@@ -6,7 +6,7 @@ fun LogMessage.toDisplayString(): String =
     when (this) {
         is LogMessage.Initializing -> "Initializing!"
         is LogMessage.InitializingModel -> "Initializing model for notification..."
-        is LogMessage.Downloading -> "Downloading: ${"%.1f".format(progress * 100)}%"
+        is LogMessage.Downloading -> "Downloading: ${"%.2f".format(progress)}%"
         is LogMessage.DownloadComplete -> "Download complete! Model is ready."
         is LogMessage.DownloadFinished -> "Download finished."
         is LogMessage.PromptingWithContext -> "Prompting with context:\n $contextFormatted"

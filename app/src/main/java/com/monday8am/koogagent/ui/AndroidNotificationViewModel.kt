@@ -20,13 +20,12 @@ class AndroidNotificationViewModel(
     private val impl: NotificationViewModel,
 ) : ViewModel(),
     NotificationViewModel by impl {
-    override val uiState: StateFlow<UiState>
-        get() =
-            impl.uiState.stateIn(
-                viewModelScope,
-                started = SharingStarted.WhileSubscribed(300L),
-                initialValue = UiState(),
-            )
+    override val uiState: StateFlow<UiState> =
+        impl.uiState.stateIn(
+            viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000L),
+            initialValue = UiState(),
+        )
 
     override fun onCleared() {
         super.onCleared()

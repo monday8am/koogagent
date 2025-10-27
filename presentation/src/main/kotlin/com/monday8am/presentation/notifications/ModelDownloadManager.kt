@@ -24,10 +24,12 @@ interface ModelDownloadManager {
 
     fun getModelPath(modelName: String): String
 
-    fun modelExists(modelName: String): Boolean
+    suspend fun modelExists(modelName: String): Boolean
 
     fun downloadModel(
         url: String,
         modelName: String,
     ): Flow<Status>
+
+    fun cancelDownload()
 }

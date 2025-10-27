@@ -19,7 +19,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapConcat
@@ -29,8 +29,10 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.scan
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+
+private const val MODEL_URL = "https://github.com/monday8am/koogagent/releases/download/0.0.1/gemma3-1b-it-int4.zip"
+private const val MODEL_NAME = "gemma3-1b-it-int4.litertlm"
 
 val defaultNotificationContext =
     NotificationContext(
@@ -49,18 +51,6 @@ data class UiState(
     val downloadStatus: ModelDownloadManager.Status = ModelDownloadManager.Status.Pending,
 )
 
-internal sealed interface ActionState {
-    data object Loading : ActionState
-
-    data class Success(
-        val result: Any,
-    ) : ActionState
-
-    data class Error(
-        val throwable: Throwable,
-    ) : ActionState
-}
-
 sealed class UiAction {
     data object DownloadModel : UiAction()
 
@@ -77,8 +67,17 @@ sealed class UiAction {
     ) : UiAction()
 }
 
-private const val GemmaModelUrl = "https://github.com/monday8am/koogagent/releases/download/0.0.1/gemma3-1b-it-int4.zip"
-private const val GemmaModelName = "gemma3-1b-it-int4.litertlm"
+internal sealed interface ActionState {
+    data object Loading : ActionState
+
+    data class Success(
+        val result: Any,
+    ) : ActionState
+
+    data class Error(
+        val throwable: Throwable,
+    ) : ActionState
+}
 
 interface NotificationViewModel {
     val uiState: Flow<UiState>
@@ -98,22 +97,23 @@ class NotificationViewModelImpl(
     private val modelManager: ModelDownloadManager,
 ) : NotificationViewModel {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-
     private val toolRegistry =
         ToolRegistry {
             tool(tool = GetWeatherToolFromLocation(weatherProvider))
             tool(tool = GetLocationTool(locationProvider))
         }
 
-    internal val userActions: MutableStateFlow<UiAction> = MutableStateFlow(UiAction.Initialize)
+    internal val userActions = MutableSharedFlow<UiAction>(replay = 0)
 
     override val uiState =
         userActions
+            .onStart { emit(UiAction.Initialize) }
+            .distinctUntilChanged()
             .flatMapConcat { action ->
                 val actionFlow =
                     when (action) {
-                        UiAction.Initialize -> flowOf(modelManager.modelExists(modelName = GemmaModelName))
-                        UiAction.DownloadModel -> modelManager.downloadModel(url = GemmaModelUrl, modelName = GemmaModelName)
+                        UiAction.Initialize -> flowOf(modelManager.modelExists(modelName = MODEL_NAME))
+                        UiAction.DownloadModel -> modelManager.downloadModel(url = MODEL_URL, modelName = MODEL_NAME)
                         UiAction.ShowNotification -> inferenceEngine.initializeAsFlow(model = getLocalModel())
                         is UiAction.UpdateContext -> flowOf(action.context)
                         is UiAction.NotificationReady -> flowOf(value = action.content)
@@ -138,9 +138,14 @@ class NotificationViewModelImpl(
                 }
             }
 
-    override fun onUiAction(uiAction: UiAction) = userActions.update { uiAction }
+    override fun onUiAction(uiAction: UiAction) {
+        scope.launch {
+            userActions.emit(uiAction)
+        }
+    }
 
     override fun dispose() {
+        modelManager.cancelDownload()
         inferenceEngine.closeSession()
         scope.cancel()
     }
@@ -197,7 +202,7 @@ class NotificationViewModelImpl(
                         state.copy(
                             statusMessage =
                                 if (isModelReady) {
-                                    LogMessage.WelcomeModelReady(GemmaModelName)
+                                    LogMessage.WelcomeModelReady(MODEL_NAME)
                                 } else {
                                     LogMessage.WelcomeDownloadRequired
                                 },
@@ -238,7 +243,7 @@ class NotificationViewModelImpl(
 
     private fun getLocalModel() =
         LocalLLModel(
-            path = modelManager.getModelPath(GemmaModelName),
+            path = modelManager.getModelPath(MODEL_NAME),
             temperature = 0.8f,
         )
 }
