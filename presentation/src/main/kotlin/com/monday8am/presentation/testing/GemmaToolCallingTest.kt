@@ -37,7 +37,7 @@ data class TestResult(
     val fullLog: String = String(),
     val error: Throwable? = null,
 ) {
-    fun toFormattedString() : String {
+    fun toFormattedString(): String {
         val output = StringBuilder()
         output.appendLine(name)
         result.forEach { (validationResult, duration) ->
@@ -112,9 +112,10 @@ internal class GemmaToolCallingTest(
 
                 // Initialize with tools if provided
                 testCase.tools?.let { tools ->
-                    val toolRegistry = ToolRegistry {
-                        tools.forEach { tool(it) }
-                    }
+                    val toolRegistry =
+                        ToolRegistry {
+                            tools.forEach { tool(it) }
+                        }
                     agent.initializeWithTools(toolRegistry)
                 }
 
@@ -141,9 +142,10 @@ internal class GemmaToolCallingTest(
                         }
                     }
                 }
-                testResult = testResult.copy(
-                    result = testResult.result + (validationResult to duration)
-                )
+                testResult =
+                    testResult.copy(
+                        result = testResult.result + (validationResult to duration),
+                    )
             } catch (e: Exception) {
                 output.appendLine("✗ ERROR: ${e.message}")
                 logger.e(e) { "Test failed: ${query.text}" }

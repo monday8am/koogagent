@@ -120,9 +120,10 @@ class NotificationViewModelImpl(
                         UiAction.Initialize -> flowOf(value = modelManager.modelExists(modelName = MODEL_NAME))
                         UiAction.DownloadModel -> modelManager.downloadModel(url = MODEL_URL, modelName = MODEL_NAME)
                         UiAction.ShowNotification -> inferenceEngine.initializeAsFlow(model = getLocalModel())
-                        UiAction.RunModelTests -> inferenceEngine.initializeAsFlow(model = getLocalModel()).flatMapConcat { engine ->
-                            runModelTests(promptExecutor = engine::prompt)
-                        }
+                        UiAction.RunModelTests ->
+                            inferenceEngine.initializeAsFlow(model = getLocalModel()).flatMapConcat { engine ->
+                                runModelTests(promptExecutor = engine::prompt)
+                            }
                         is UiAction.UpdateContext -> flowOf(value = action.context)
                         is UiAction.NotificationReady -> flowOf(value = action.content)
                     }
@@ -254,13 +255,14 @@ class NotificationViewModelImpl(
         }
     }
 
-    private fun runModelTests(promptExecutor: suspend (String) -> Result<String>) = GemmaToolCallingTest(
-        promptExecutor = { prompt ->
-            promptExecutor(prompt).getOrThrow()
-        },
-        weatherProvider = weatherProvider,
-        locationProvider = locationProvider,
-    ).runAllTests()
+    private fun runModelTests(promptExecutor: suspend (String) -> Result<String>) =
+        GemmaToolCallingTest(
+            promptExecutor = { prompt ->
+                promptExecutor(prompt).getOrThrow()
+            },
+            weatherProvider = weatherProvider,
+            locationProvider = locationProvider,
+        ).runAllTests()
 
     private fun getLocalModel() =
         LocalLLModel(

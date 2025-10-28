@@ -37,5 +37,5 @@ sealed interface LogMessage {
         val content: TestResult,
     ) : LogMessage
 
-    data object InitTests: LogMessage
+    data object InitTests : LogMessage
 }
