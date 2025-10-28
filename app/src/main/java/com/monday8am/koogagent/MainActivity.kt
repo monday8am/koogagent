@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -32,6 +33,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key.Companion.U
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -93,9 +95,9 @@ class MainActivity : ComponentActivity() {
                     MainScreen(
                         log = state.statusMessage.toDisplayString(),
                         notificationContext = state.context,
+                        isModelReady = state.isModelReady,
                         onNotificationContextChange = { viewModel.onUiAction(UiAction.UpdateContext(context = it)) },
-                        onClickDownload = { viewModel.onUiAction(UiAction.DownloadModel) },
-                        onClickNotification = { viewModel.onUiAction(UiAction.ShowNotification) },
+                        onPressButton = { viewModel.onUiAction(uiAction = it) },
                         modifier = Modifier.padding(innerPadding),
                     )
                 }
@@ -108,9 +110,9 @@ class MainActivity : ComponentActivity() {
 fun MainScreen(
     log: String,
     notificationContext: NotificationContext,
+    isModelReady: Boolean,
     onNotificationContextChange: (NotificationContext) -> Unit,
-    onClickDownload: () -> Unit,
-    onClickNotification: () -> Unit,
+    onPressButton: (UiAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -123,20 +125,34 @@ fun MainScreen(
     ) {
         LogPanel(textLog = log, modifier = Modifier.padding(top = 32.dp))
 
-        Button(
-            onClick = onClickDownload,
-        ) {
-            Text(
-                text = "Download model",
-            )
-        }
-
-        Button(
-            onClick = onClickNotification,
-        ) {
-            Text(
-                text = "Trigger Notification",
-            )
+        if (isModelReady) {
+            Button(
+                onClick = { onPressButton(UiAction.ShowNotification) },
+            ) {
+                Text(
+                    text = "Trigger Notification",
+                )
+            }
+            Button(
+                onClick = { onPressButton(UiAction.RunModelTests) },
+                colors = MaterialTheme.colorScheme.run {
+                    ButtonDefaults.buttonColors(
+                        containerColor = Color.Magenta,
+                    )
+                }
+            ) {
+                Text(
+                    text = "Run tests",
+                )
+            }
+        } else {
+            Button(
+                onClick = { onPressButton(UiAction.DownloadModel) },
+            ) {
+                Text(
+                    text = "Download model",
+                )
+            }
         }
 
         NotificationContextEditor(
@@ -208,7 +224,7 @@ private fun <T : Enum<T>> EnumDropdown(
 
     ExposedDropdownMenuBox(
         expanded = expanded,
-        onExpandedChange = { expanded = it },
+        onExpandedChange = { },
         modifier = modifier.fillMaxWidth(),
     ) {
         TextField(
@@ -271,9 +287,9 @@ fun MainScreenPreview() {
         MainScreen(
             log = "Welcome to Yazio notificator!",
             notificationContext = defaultNotificationContext,
+            isModelReady = true,
             onNotificationContextChange = { },
-            onClickDownload = { },
-            onClickNotification = { },
+            onPressButton = { },
         )
     }
 }

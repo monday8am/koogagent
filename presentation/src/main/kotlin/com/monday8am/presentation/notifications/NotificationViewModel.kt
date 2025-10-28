@@ -1,6 +1,7 @@
 package com.monday8am.presentation.notifications
 
 import ai.koog.agents.core.tools.ToolRegistry
+import ai.koog.prompt.executor.llms.Executors.promptExecutor
 import com.monday8am.agent.core.LocalInferenceEngine
 import com.monday8am.agent.core.LocalLLModel
 import com.monday8am.agent.core.NotificationGenerator
@@ -13,6 +14,8 @@ import com.monday8am.koogagent.data.MotivationLevel
 import com.monday8am.koogagent.data.NotificationContext
 import com.monday8am.koogagent.data.NotificationResult
 import com.monday8am.koogagent.data.WeatherProvider
+import com.monday8am.presentation.testing.GemmaToolCallingTest
+import com.monday8am.presentation.testing.TestResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -55,6 +58,8 @@ sealed class UiAction {
     data object DownloadModel : UiAction()
 
     data object ShowNotification : UiAction()
+
+    data object RunModelTests : UiAction()
 
     data class UpdateContext(
         val context: NotificationContext,
@@ -112,17 +117,20 @@ class NotificationViewModelImpl(
             .flatMapConcat { action ->
                 val actionFlow =
                     when (action) {
-                        UiAction.Initialize -> flowOf(modelManager.modelExists(modelName = MODEL_NAME))
+                        UiAction.Initialize -> flowOf(value = modelManager.modelExists(modelName = MODEL_NAME))
                         UiAction.DownloadModel -> modelManager.downloadModel(url = MODEL_URL, modelName = MODEL_NAME)
                         UiAction.ShowNotification -> inferenceEngine.initializeAsFlow(model = getLocalModel())
-                        is UiAction.UpdateContext -> flowOf(action.context)
+                        UiAction.RunModelTests -> inferenceEngine.initializeAsFlow(model = getLocalModel()).flatMapConcat { engine ->
+                            runModelTests(promptExecutor = engine::prompt)
+                        }
+                        is UiAction.UpdateContext -> flowOf(value = action.context)
                         is UiAction.NotificationReady -> flowOf(value = action.content)
                     }
 
                 actionFlow
                     .map<Any, ActionState> { result -> ActionState.Success(result) }
                     .onStart {
-                        if (action is UiAction.DownloadModel || action is UiAction.ShowNotification) {
+                        if (action is UiAction.DownloadModel || action is UiAction.ShowNotification || action is UiAction.RunModelTests) {
                             emit(ActionState.Loading)
                         }
                     }.catch { throwable -> emit(ActionState.Error(throwable)) }
@@ -160,6 +168,7 @@ class NotificationViewModelImpl(
                 when (action) {
                     UiAction.DownloadModel -> state.copy(downloadStatus = ModelDownloadManager.Status.InProgress(0f))
                     UiAction.ShowNotification -> state.copy(statusMessage = LogMessage.InitializingModel)
+                    UiAction.RunModelTests -> state.copy(statusMessage = LogMessage.InitTests)
                     else -> state
                 }
             }
@@ -209,6 +218,10 @@ class NotificationViewModelImpl(
                             isModelReady = isModelReady,
                         )
                     }
+
+                    UiAction.RunModelTests -> {
+                        state.copy(statusMessage = LogMessage.TestResultMessage(actionState.result as TestResult))
+                    }
                 }
             }
 
@@ -240,6 +253,14 @@ class NotificationViewModelImpl(
             onUiAction(uiAction = UiAction.NotificationReady(content = content))
         }
     }
+
+    private fun runModelTests(promptExecutor: suspend (String) -> Result<String>) = GemmaToolCallingTest(
+        promptExecutor = { prompt ->
+            promptExecutor(prompt).getOrThrow()
+        },
+        weatherProvider = weatherProvider,
+        locationProvider = locationProvider,
+    ).runAllTests()
 
     private fun getLocalModel() =
         LocalLLModel(

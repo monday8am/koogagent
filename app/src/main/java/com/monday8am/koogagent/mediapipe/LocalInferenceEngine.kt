@@ -96,6 +96,10 @@ class LocalInferenceEngineImpl(
             instance.engine.close()
         }
     }
+
+    fun resetSession() {
+        currentInstance?.session?.cloneSession()
+    }
 }
 
 private suspend fun <T> ListenableFuture<T>.await(): T =

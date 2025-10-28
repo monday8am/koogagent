@@ -14,20 +14,13 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.withContext
 
-/**
- * Test query with optional description
- */
 internal data class TestQuery(
     val text: String,
     val description: String? = null,
 )
 
-/**
- * Validation result for test assertions
- */
-internal sealed class ValidationResult {
+sealed class ValidationResult {
     data class Pass(
         val message: String,
     ) : ValidationResult()
@@ -38,9 +31,32 @@ internal sealed class ValidationResult {
     ) : ValidationResult()
 }
 
-/**
- * Test case configuration
- */
+data class TestResult(
+    val name: String,
+    val result: List<Pair<ValidationResult, Long>> = listOf(),
+    val fullLog: String = String(),
+    val error: Throwable? = null,
+) {
+    fun toFormattedString() : String {
+        val output = StringBuilder()
+        output.appendLine(name)
+        result.forEach { (validationResult, duration) ->
+            when (validationResult) {
+                is ValidationResult.Pass -> {
+                    output.appendLine("✓ PASS (duration: ${duration}ms): ${validationResult.message}")
+                }
+                is ValidationResult.Fail -> {
+                    output.appendLine("✗ FAIL (duration: ${duration}ms): ${validationResult.message}")
+                    validationResult.details?.let { details ->
+                        output.appendLine(details)
+                    }
+                }
+            }
+        }
+        return output.toString()
+    }
+}
+
 internal data class TestCase(
     val name: String,
     val description: List<String> = emptyList(),
@@ -54,7 +70,6 @@ internal class GemmaToolCallingTest(
     private val promptExecutor: suspend (String) -> String?,
     private val weatherProvider: WeatherProvider,
     private val locationProvider: LocationProvider,
-    private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
     private val logger = Logger.withTag("GemmaToolCallingTest")
     private val testIterations = 5
@@ -66,7 +81,7 @@ internal class GemmaToolCallingTest(
      * - Result validation
      * - Pass/fail reporting
      */
-    private suspend fun runTest(testCase: TestCase): String {
+    private suspend fun runTest(testCase: TestCase): TestResult {
         val output = StringBuilder()
         output.appendLine(testCase.name)
         output.appendLine("─".repeat(testIterations))
@@ -80,6 +95,7 @@ internal class GemmaToolCallingTest(
         }
 
         var passCount = 0
+        var testResult = TestResult(name = testCase.name)
 
         for (query in testCase.queries) {
             val startTime = System.currentTimeMillis()
@@ -112,7 +128,8 @@ internal class GemmaToolCallingTest(
                 output.appendLine("Result: $result")
                 output.appendLine("Duration: ${duration}ms")
 
-                when (val validationResult = testCase.validator(result)) {
+                val validationResult = testCase.validator(result)
+                when (validationResult) {
                     is ValidationResult.Pass -> {
                         output.appendLine("✓ PASS: ${validationResult.message}")
                         passCount++
@@ -124,6 +141,9 @@ internal class GemmaToolCallingTest(
                         }
                     }
                 }
+                testResult = testResult.copy(
+                    result = testResult.result + (validationResult to duration)
+                )
             } catch (e: Exception) {
                 output.appendLine("✗ ERROR: ${e.message}")
                 logger.e(e) { "Test failed: ${query.text}" }
@@ -132,48 +152,32 @@ internal class GemmaToolCallingTest(
         }
 
         output.appendLine("Summary: $passCount/${testCase.queries.size} passed")
-        return output.toString()
+        return testResult.copy(fullLog = output.toString())
     }
 
-    fun runAllTests(): Flow<String> =
+    fun runAllTests(): Flow<TestResult> =
         flow {
-            withContext(dispatcher) {
-                // Enable verbose logging for tests
-                Logger.setMinSeverity(Severity.Debug)
+            Logger.setMinSeverity(Severity.Debug)
+            try {
+                val tests =
+                    listOf(
+                        // ::testBasicToolCall,
+                        // ::testNoToolNeeded,
+                        ::testToolHallucination,
+                        ::testWeatherTool,
+                        // ::testMultiTurnSequence,
+                    )
 
-                emit("=== GEMMA TOOL CALLING TESTS ===")
-                emit("Model: Gemma 3n-1b-it-int4")
-                emit("Protocol: Simplified JSON (single tool, no parameters)")
-                emit("")
-
-                try {
-                    val tests =
-                        listOf(
-                            // ::testBasicToolCall,
-                            // ::testNoToolNeeded,
-                            // ::testToolHallucination,
-                            ::testWeatherTool,
-                            // ::testMultiTurnSequence,
-                        )
-
-                    tests.forEach { test ->
-                        val result = test()
-                        // Emit each line of the test result
-                        result.lines().forEach { line ->
-                            emit(line)
-                        }
-                        emit("")
-                    }
-                } catch (e: Exception) {
-                    emit("FATAL ERROR: ${e.message}")
-                    logger.e(e) { "Test suite failed" }
+                tests.forEach { test ->
+                    emit(test())
                 }
-
-                emit("=== TESTS COMPLETE ===")
+            } catch (e: Exception) {
+                emit(TestResult(name = "Unknown", error = e))
+                logger.e(e) { "Test suite failed" }
             }
         }
 
-    private suspend fun testBasicToolCall(): String =
+    private suspend fun testBasicToolCall(): TestResult =
         runTest(
             TestCase(
                 name = "TEST 1: Basic Location Tool Call",
@@ -210,7 +214,7 @@ internal class GemmaToolCallingTest(
             ),
         )
 
-    private suspend fun testNoToolNeeded(): String =
+    private suspend fun testNoToolNeeded(): TestResult =
         runTest(
             TestCase(
                 name = "TEST 2: No Tool Needed (Normal Conversation)",
@@ -240,7 +244,7 @@ internal class GemmaToolCallingTest(
             ),
         )
 
-    private suspend fun testToolHallucination(): String =
+    private suspend fun testToolHallucination(): TestResult =
         runTest(
             TestCase(
                 name = "TEST 3: Tool Hallucination Prevention",
@@ -273,7 +277,7 @@ internal class GemmaToolCallingTest(
             ),
         )
 
-    private suspend fun testWeatherTool(): String =
+    private suspend fun testWeatherTool(): TestResult =
         runTest(
             TestCase(
                 name = "TEST 4: Weather Tool Execution",
@@ -298,7 +302,7 @@ internal class GemmaToolCallingTest(
             ),
         )
 
-    private suspend fun testMultiTurnSequence(): String =
+    private suspend fun testMultiTurnSequence(): TestResult =
         runTest(
             TestCase(
                 name = "TEST 5: Multi-Turn Tool Sequence",
