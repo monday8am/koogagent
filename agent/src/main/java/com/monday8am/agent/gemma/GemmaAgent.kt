@@ -29,6 +29,7 @@ private val gemmaModel =
 
 class GemmaAgent(
     private val promptExecutor: suspend (String) -> String?,
+    private val isLiteRT: Boolean = false,
 ) : NotificationAgent {
     private var registry: ToolRegistry? = null
     private val logger = Logger.withTag("GemmaAgent")
@@ -50,18 +51,21 @@ class GemmaAgent(
             "Error generating message"
         }
 
-    private fun getAIAgent(systemPrompt: String): AIAgent<String, String> =
-        AIAgent(
+    private fun getAIAgent(systemPrompt: String): AIAgent<String, String> {
+        val client = if (isLiteRT) GemmaLLMClient(promptExecutor = promptExecutor) else SimpleLLMClient(promptExecutor)
+        val tools = if (isLiteRT) ToolRegistry.EMPTY else registry ?: ToolRegistry.EMPTY
+        return AIAgent(
             promptExecutor =
                 SimpleGemmaAIExecutor(
-                    llmClient = GemmaLLMClient(promptExecutor = promptExecutor),
+                    llmClient = client,
                 ),
             systemPrompt = systemPrompt,
             temperature = 0.7,
             llmModel = gemmaModel,
-            toolRegistry = registry ?: ToolRegistry.EMPTY,
+            toolRegistry = tools,
             installFeatures = installCommonEventHandling,
         )
+    }
 }
 
 private class SimpleGemmaAIExecutor(

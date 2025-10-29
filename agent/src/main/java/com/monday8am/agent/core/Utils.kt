@@ -24,6 +24,7 @@ data class LocalLLModel(
     val shouldEnableImage: Boolean = false,
     val shouldEnableAudio: Boolean = false,
     val isGPUAccelerated: Boolean = true,
+    val toolList: List<Any> = listOf(),
 )
 
 private val traceLogger: KLogger = KotlinLogging.logger("ai.koog.agents.tracing")

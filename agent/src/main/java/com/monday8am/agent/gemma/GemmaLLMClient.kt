@@ -276,7 +276,7 @@ internal class GemmaLLMClient(
                         content =
                             "I have the information from $toolName: ${lastToolResult.content}. " +
                                 "Let me provide you with the answer based on that.",
-                        metaInfo = ResponseMetaInfo.Companion.Empty,
+                        metaInfo = ResponseMetaInfo.Empty,
                     ),
                 )
             }
@@ -292,7 +292,7 @@ internal class GemmaLLMClient(
                 listOf(
                     Message.Assistant(
                         content = cleanResponse,
-                        metaInfo = ResponseMetaInfo.Companion.Empty,
+                        metaInfo = ResponseMetaInfo.Empty,
                     ),
                 )
             } else {
@@ -308,7 +308,7 @@ internal class GemmaLLMClient(
                     listOf(
                         Message.Assistant(
                             content = "I tried to use a tool called '$toolName' but it doesn't exist. Let me try to help you another way.",
-                            metaInfo = ResponseMetaInfo.Companion.Empty,
+                            metaInfo = ResponseMetaInfo.Empty,
                         ),
                     )
                 } else {
@@ -322,7 +322,7 @@ internal class GemmaLLMClient(
                                     .toString(),
                             tool = toolName,
                             content = "{}", // CRITICAL: Empty JSON - Gemma 3n can't provide args
-                            metaInfo = ResponseMetaInfo.Companion.Empty,
+                            metaInfo = ResponseMetaInfo.Empty,
                         ),
                     )
                 }
@@ -333,7 +333,7 @@ internal class GemmaLLMClient(
             listOf(
                 Message.Assistant(
                     content = response,
-                    metaInfo = ResponseMetaInfo.Companion.Empty,
+                    metaInfo = ResponseMetaInfo.Empty,
                 ),
             )
         }

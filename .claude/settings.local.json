@@ -14,7 +14,9 @@
       "WebFetch(domain:ai.google.dev)",
       "WebFetch(domain:www.anthropic.com)",
       "Bash(JAVA_HOME=/opt/homebrew/Cellar/openjdk@17/17.0.16/libexec/openjdk.jdk/Contents/Home ./gradlew build:*)",
-      "WebFetch(domain:mvnrepository.com)"
+      "WebFetch(domain:mvnrepository.com)",
+      "Bash(echo:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []

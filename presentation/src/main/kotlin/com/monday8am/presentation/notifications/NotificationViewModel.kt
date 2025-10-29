@@ -1,7 +1,6 @@
 package com.monday8am.presentation.notifications
 
 import ai.koog.agents.core.tools.ToolRegistry
-import ai.koog.prompt.executor.llms.Executors.promptExecutor
 import com.monday8am.agent.core.LocalInferenceEngine
 import com.monday8am.agent.core.LocalLLModel
 import com.monday8am.agent.core.NotificationGenerator
@@ -258,15 +257,14 @@ class NotificationViewModelImpl(
     private fun runModelTests(
         promptExecutor: suspend (String) -> Result<String>,
         resetConversation: () -> Result<Unit>,
-    ) =
-        GemmaToolCallingTest(
-            promptExecutor = { prompt ->
-                promptExecutor(prompt).getOrThrow()
-            },
-            resetConversation = resetConversation,
-            weatherProvider = weatherProvider,
-            locationProvider = locationProvider,
-        ).runAllTests()
+    ) = GemmaToolCallingTest(
+        promptExecutor = { prompt ->
+            promptExecutor(prompt).getOrThrow()
+        },
+        resetConversation = resetConversation,
+        weatherProvider = weatherProvider,
+        locationProvider = locationProvider,
+    ).runAllTests()
 
     private fun getLocalModel() =
         LocalLLModel(
