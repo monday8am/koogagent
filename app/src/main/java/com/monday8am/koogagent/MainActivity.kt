@@ -135,12 +135,6 @@ fun MainScreen(
             }
             Button(
                 onClick = { onPressButton(UiAction.RunModelTests) },
-                colors =
-                    MaterialTheme.colorScheme.run {
-                        ButtonDefaults.buttonColors(
-                            containerColor = Color.Magenta,
-                        )
-                    },
             ) {
                 Text(
                     text = "Run tests",

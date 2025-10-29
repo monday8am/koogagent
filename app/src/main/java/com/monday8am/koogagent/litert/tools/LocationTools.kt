@@ -19,12 +19,11 @@ class LocationTools(
      *         "location: latitude X.XXXX, longitude Y.YYYY"
      */
     @Tool(description = "Get the user's current geographic location (latitude and longitude)")
-    suspend fun getLocation(): String {
-        return try {
+    suspend fun getLocation(): String =
+        try {
             val location = locationProvider.getLocation()
             "location: latitude ${location.latitude}, longitude ${location.longitude}"
         } catch (e: Exception) {
             "location: error - ${e.message}"
         }
-    }
 }

@@ -26,19 +26,18 @@ class WeatherTools(
     suspend fun getWeather(
         @ToolParam(description = "Latitude coordinate in decimal degrees") latitude: Double,
         @ToolParam(description = "Longitude coordinate in decimal degrees") longitude: Double,
-    ): String {
-        return try {
+    ): String =
+        try {
             val weather = weatherProvider.getCurrentWeather(latitude = latitude, longitude = longitude)
             if (weather != null) {
                 val temperature = getApproximateTemperature(weather)
-                "Weather: ${weather.name.lowercase()}, Temperature: ${temperature}°C at $latitude, $longitude"
+                "Weather: ${weather.name.lowercase()}, Temperature: $temperature°C at $latitude, $longitude"
             } else {
                 "Weather: unknown at $latitude, $longitude"
             }
         } catch (e: Exception) {
             "Weather: error - ${e.message}"
         }
-    }
 
     /**
      * Maps weather conditions to approximate temperatures in Celsius.

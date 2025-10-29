@@ -12,7 +12,6 @@ import com.google.ai.edge.litertlm.MessageCallback
 import com.google.ai.edge.litertlm.SamplerConfig
 import com.monday8am.agent.core.LocalInferenceEngine
 import com.monday8am.agent.core.LocalLLModel
-import java.io.File
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.InternalCoroutinesApi
@@ -20,6 +19,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import java.io.File
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 /**
  * LiteRT-LM based implementation of LocalInferenceEngine.
@@ -62,11 +64,12 @@ class LocalInferenceEngineImpl(
 
                 val conversationConfig =
                     ConversationConfig(
-                        samplerConfig = SamplerConfig(
-                            topK = model.topK,
-                            topP = model.topP.toDouble(),
-                            temperature = model.temperature.toDouble(),
-                        ),
+                        samplerConfig =
+                            SamplerConfig(
+                                topK = model.topK,
+                                topP = model.topP.toDouble(),
+                                temperature = model.temperature.toDouble(),
+                            ),
                     )
                 val conversation = engine.createConversation(conversationConfig)
 
@@ -107,11 +110,12 @@ class LocalInferenceEngineImpl(
             instance.conversation.close()
             val conversationConfig =
                 ConversationConfig(
-                    samplerConfig = SamplerConfig(
-                        topK = instance.model.topK,
-                        topP = instance.model.topP.toDouble(),
-                        temperature = instance.model.temperature.toDouble(),
-                    ),
+                    samplerConfig =
+                        SamplerConfig(
+                            topK = instance.model.topK,
+                            topP = instance.model.topP.toDouble(),
+                            temperature = instance.model.temperature.toDouble(),
+                        ),
                 )
             instance.conversation = instance.engine.createConversation(conversationConfig)
         }
@@ -146,14 +150,11 @@ private suspend fun Conversation.sendMessageAsync(message: Message): String =
                 }
 
                 override fun onDone() {
-                    // The 'try' block is important for thread safety.
-                    // It ensures that we don't resume a continuation that has already been cancelled.
-                    continuation.tryResume(resultBuilder.toString())
+                    continuation.resume(resultBuilder.toString())
                 }
 
                 override fun onError(throwable: Throwable) {
-                    // Same as onDone, we use 'try' to safely resume with an exception.
-                    continuation.tryResumeWithException(throwable)
+                    continuation.resumeWithException(throwable)
                 }
             }
 
