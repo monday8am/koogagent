@@ -10,8 +10,6 @@ import com.monday8am.agent.tools.GetWeatherTool
 import com.monday8am.agent.tools.GetWeatherToolFromLocation
 import com.monday8am.koogagent.data.LocationProvider
 import com.monday8am.koogagent.data.WeatherProvider
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
@@ -68,6 +66,7 @@ internal data class TestCase(
 
 internal class GemmaToolCallingTest(
     private val promptExecutor: suspend (String) -> String?,
+    private val resetConversation: () -> Result<Unit>,
     private val weatherProvider: WeatherProvider,
     private val locationProvider: LocationProvider,
 ) {
@@ -153,6 +152,10 @@ internal class GemmaToolCallingTest(
             output.appendLine()
         }
 
+        // Reset conversation to give enough tokens to other
+        // tests
+        resetConversation()
+
         output.appendLine("Summary: $passCount/${testCase.queries.size} passed")
         return testResult.copy(fullLog = output.toString())
     }
@@ -163,11 +166,11 @@ internal class GemmaToolCallingTest(
             try {
                 val tests =
                     listOf(
-                        // ::testBasicToolCall,
-                        // ::testNoToolNeeded,
+                        ::testBasicToolCall,
+                        ::testNoToolNeeded,
                         ::testToolHallucination,
                         ::testWeatherTool,
-                        // ::testMultiTurnSequence,
+                        ::testMultiTurnSequence,
                     )
 
                 tests.forEach { test ->
@@ -324,7 +327,7 @@ internal class GemmaToolCallingTest(
                     """
                     You are a helpful assistant.
                     To answer weather questions, you need the user's location first.
-                    Use GetLocationTool, then GetWeatherTool.
+                    Use GetLocationTool, then GetWeatherToolFromLocation.
                     """.trimIndent(),
                 validator = { result ->
                     // Check if it contains weather info (unlikely in one turn with current protocol)

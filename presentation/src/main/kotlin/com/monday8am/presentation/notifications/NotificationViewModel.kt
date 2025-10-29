@@ -122,7 +122,7 @@ class NotificationViewModelImpl(
                         UiAction.ShowNotification -> inferenceEngine.initializeAsFlow(model = getLocalModel())
                         UiAction.RunModelTests ->
                             inferenceEngine.initializeAsFlow(model = getLocalModel()).flatMapConcat { engine ->
-                                runModelTests(promptExecutor = engine::prompt)
+                                runModelTests(promptExecutor = engine::prompt, resetConversation = engine::resetConversation)
                             }
                         is UiAction.UpdateContext -> flowOf(value = action.context)
                         is UiAction.NotificationReady -> flowOf(value = action.content)
@@ -255,11 +255,15 @@ class NotificationViewModelImpl(
         }
     }
 
-    private fun runModelTests(promptExecutor: suspend (String) -> Result<String>) =
+    private fun runModelTests(
+        promptExecutor: suspend (String) -> Result<String>,
+        resetConversation: () -> Result<Unit>,
+    ) =
         GemmaToolCallingTest(
             promptExecutor = { prompt ->
                 promptExecutor(prompt).getOrThrow()
             },
+            resetConversation = resetConversation,
             weatherProvider = weatherProvider,
             locationProvider = locationProvider,
         ).runAllTests()
