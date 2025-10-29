@@ -11,7 +11,10 @@
       "WebFetch(domain:gist.github.com)",
       "WebFetch(domain:gist.githubusercontent.com)",
       "Bash(awk:*)",
-      "WebFetch(domain:ai.google.dev)"
+      "WebFetch(domain:ai.google.dev)",
+      "WebFetch(domain:www.anthropic.com)",
+      "Bash(JAVA_HOME=/opt/homebrew/Cellar/openjdk@17/17.0.16/libexec/openjdk.jdk/Contents/Home ./gradlew build:*)",
+      "WebFetch(domain:mvnrepository.com)"
     ],
     "deny": [],
     "ask": []

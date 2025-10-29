@@ -44,7 +44,7 @@ import com.monday8am.koogagent.data.MotivationLevel
 import com.monday8am.koogagent.data.NotificationContext
 import com.monday8am.koogagent.data.WeatherProviderImpl
 import com.monday8am.koogagent.download.ModelDownloadManagerImpl
-import com.monday8am.koogagent.mediapipe.LocalInferenceEngineImpl
+import com.monday8am.koogagent.litert.LocalInferenceEngineImpl
 import com.monday8am.koogagent.ui.AndroidNotificationViewModel
 import com.monday8am.koogagent.ui.DeviceContextProviderImpl
 import com.monday8am.koogagent.ui.NotificationEngineImpl
@@ -62,7 +62,7 @@ class MainActivity : ComponentActivity() {
     private val viewModelFactory: NotificationViewModelFactory by lazy {
         val applicationContext = this.applicationContext
 
-        val inferenceEngine = LocalInferenceEngineImpl(applicationContext)
+        val inferenceEngine = LocalInferenceEngineImpl()
         val notificationEngine = notificationEngine
         val weatherProvider = WeatherProviderImpl()
         val locationProvider = MockLocationProvider() // <-- using Mock for now.
@@ -135,12 +135,6 @@ fun MainScreen(
             }
             Button(
                 onClick = { onPressButton(UiAction.RunModelTests) },
-                colors =
-                    MaterialTheme.colorScheme.run {
-                        ButtonDefaults.buttonColors(
-                            containerColor = Color.Magenta,
-                        )
-                    },
             ) {
                 Text(
                     text = "Run tests",

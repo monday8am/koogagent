@@ -9,5 +9,7 @@ interface LocalInferenceEngine {
 
     fun initializeAsFlow(model: LocalLLModel): Flow<LocalInferenceEngine>
 
+    fun resetConversation(): Result<Unit>
+
     fun closeSession(): Result<Unit>
 }
