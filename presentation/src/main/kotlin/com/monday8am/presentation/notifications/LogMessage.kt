@@ -1,5 +1,7 @@
 package com.monday8am.presentation.notifications
 
+import com.monday8am.presentation.testing.TestResult
+
 sealed interface LogMessage {
     data object Initializing : LogMessage
 
@@ -30,4 +32,10 @@ sealed interface LogMessage {
     data class Error(
         val message: String,
     ) : LogMessage
+
+    data class TestResultMessage(
+        val content: TestResult,
+    ) : LogMessage
+
+    data object InitTests : LogMessage
 }

@@ -15,4 +15,8 @@ fun LogMessage.toDisplayString(): String =
         is LogMessage.WelcomeDownloadRequired ->
             "Welcome!\nPress download model button. It's a one time operation and it will take close to 4 minutes."
         is LogMessage.Error -> "An error occurred: $message"
+        is LogMessage.InitTests ->
+            "=== GEMMA TOOL CALLING TESTS ===\nModel: Gemma 3n-1b-it-int4\n" +
+                "Protocol: Simplified JSON (single tool, no parameters)"
+        is LogMessage.TestResultMessage -> "Test result: ${content.toFormattedString()}"
     }

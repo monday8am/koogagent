@@ -10,7 +10,7 @@ android {
 
     defaultConfig {
         applicationId = "com.monday8am.koogagent"
-        minSdk = 26
+        minSdk = 31
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
@@ -26,12 +26,12 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_21
-        targetCompatibility = JavaVersion.VERSION_21
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     kotlin {
-        jvmToolchain(21)
+        jvmToolchain(17)
     }
 
     packaging {
@@ -61,8 +61,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.work.runtime.ktx)
 
-    implementation(libs.mediapipe.tasks.text)
-    implementation(libs.mediapipe.tasks.genai)
+    implementation(libs.litertlm)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

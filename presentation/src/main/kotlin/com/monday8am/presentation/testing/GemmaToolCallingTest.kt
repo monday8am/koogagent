@@ -1,5 +1,6 @@
 package com.monday8am.presentation.testing
 
+import ai.koog.agents.core.tools.Tool
 import ai.koog.agents.core.tools.ToolRegistry
 import co.touchlab.kermit.Logger
 import co.touchlab.kermit.Severity
@@ -7,373 +8,361 @@ import com.monday8am.agent.gemma.GemmaAgent
 import com.monday8am.agent.tools.GetLocationTool
 import com.monday8am.agent.tools.GetWeatherTool
 import com.monday8am.agent.tools.GetWeatherToolFromLocation
-import com.monday8am.koogagent.data.MockLocationProvider
-import com.monday8am.koogagent.data.WeatherProviderImpl
+import com.monday8am.koogagent.data.LocationProvider
+import com.monday8am.koogagent.data.WeatherProvider
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 
-/**
- * Improved tool calling integration tests for Gemma + Koog
- *
- * ## Key Improvements:
- * - Added timing measurements
- * - Better assertions with actual coordinate checking
- * - Tool hallucination test
- * - Logging integration
- * - Clear expectations documentation
- */
+internal data class TestQuery(
+    val text: String,
+    val description: String? = null,
+)
+
+sealed class ValidationResult {
+    data class Pass(
+        val message: String,
+    ) : ValidationResult()
+
+    data class Fail(
+        val message: String,
+        val details: String? = null,
+    ) : ValidationResult()
+}
+
+data class TestResult(
+    val name: String,
+    val result: List<Pair<ValidationResult, Long>> = listOf(),
+    val fullLog: String = String(),
+    val error: Throwable? = null,
+) {
+    fun toFormattedString(): String {
+        val output = StringBuilder()
+        output.appendLine(name)
+        result.forEach { (validationResult, duration) ->
+            when (validationResult) {
+                is ValidationResult.Pass -> {
+                    output.appendLine("✓ PASS (duration: ${duration}ms): ${validationResult.message}")
+                }
+                is ValidationResult.Fail -> {
+                    output.appendLine("✗ FAIL (duration: ${duration}ms): ${validationResult.message}")
+                    validationResult.details?.let { details ->
+                        output.appendLine(details)
+                    }
+                }
+            }
+        }
+        return output.toString()
+    }
+}
+
+internal data class TestCase(
+    val name: String,
+    val description: List<String> = emptyList(),
+    val tools: List<Tool<*, *>>? = null,
+    val queries: List<TestQuery>,
+    val systemPrompt: String,
+    val validator: (result: String) -> ValidationResult,
+)
+
 internal class GemmaToolCallingTest(
     private val promptExecutor: suspend (String) -> String?,
-    private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val weatherProvider: WeatherProvider,
+    private val locationProvider: LocationProvider,
 ) {
-    private val logger = Logger.Companion.withTag("GemmaToolCallingTest")
+    private val logger = Logger.withTag("GemmaToolCallingTest")
     private val testIterations = 5
 
-    suspend fun runAllTests(): String =
-        withContext(dispatcher) {
-            val output = StringBuilder()
+    /**
+     * Common test runner that executes a test case with the standard pattern:
+     * - Agent creation and tool initialization
+     * - Query execution with timing
+     * - Result validation
+     * - Pass/fail reporting
+     */
+    private suspend fun runTest(testCase: TestCase): TestResult {
+        val output = StringBuilder()
+        output.appendLine(testCase.name)
+        output.appendLine("─".repeat(testIterations))
 
-            // Enable verbose logging for tests
-            Logger.Companion.setMinSeverity(Severity.Debug)
-
-            output.appendLine("=== GEMMA TOOL CALLING TESTS ===")
-            output.appendLine("Model: Gemma 3n-1b-it-int4")
-            output.appendLine("Protocol: Simplified JSON (single tool, no parameters)")
+        // Append description lines if provided
+        testCase.description.forEach { line ->
+            output.appendLine(line)
+        }
+        if (testCase.description.isNotEmpty()) {
             output.appendLine()
+        }
 
+        var passCount = 0
+        var testResult = TestResult(name = testCase.name)
+
+        for (query in testCase.queries) {
+            val startTime = System.currentTimeMillis()
+            val queryDisplay =
+                if (query.description != null) {
+                    "Query (${query.description}): ${query.text}"
+                } else {
+                    "Query: ${query.text}"
+                }
+            output.appendLine(queryDisplay)
+
+            try {
+                val agent = GemmaAgent(promptExecutor = promptExecutor)
+
+                // Initialize with tools if provided
+                testCase.tools?.let { tools ->
+                    val toolRegistry =
+                        ToolRegistry {
+                            tools.forEach { tool(it) }
+                        }
+                    agent.initializeWithTools(toolRegistry)
+                }
+
+                val result =
+                    agent.generateMessage(
+                        systemPrompt = testCase.systemPrompt,
+                        userPrompt = query.text,
+                    )
+
+                val duration = System.currentTimeMillis() - startTime
+                output.appendLine("Result: $result")
+                output.appendLine("Duration: ${duration}ms")
+
+                val validationResult = testCase.validator(result)
+                when (validationResult) {
+                    is ValidationResult.Pass -> {
+                        output.appendLine("✓ PASS: ${validationResult.message}")
+                        passCount++
+                    }
+                    is ValidationResult.Fail -> {
+                        output.appendLine("✗ FAIL: ${validationResult.message}")
+                        validationResult.details?.let { details ->
+                            output.appendLine(details)
+                        }
+                    }
+                }
+                testResult =
+                    testResult.copy(
+                        result = testResult.result + (validationResult to duration),
+                    )
+            } catch (e: Exception) {
+                output.appendLine("✗ ERROR: ${e.message}")
+                logger.e(e) { "Test failed: ${query.text}" }
+            }
+            output.appendLine()
+        }
+
+        output.appendLine("Summary: $passCount/${testCase.queries.size} passed")
+        return testResult.copy(fullLog = output.toString())
+    }
+
+    fun runAllTests(): Flow<TestResult> =
+        flow {
+            Logger.setMinSeverity(Severity.Debug)
             try {
                 val tests =
                     listOf(
                         // ::testBasicToolCall,
                         // ::testNoToolNeeded,
-                        // ::testToolHallucination,
+                        ::testToolHallucination,
                         ::testWeatherTool,
                         // ::testMultiTurnSequence,
                     )
 
                 tests.forEach { test ->
-                    output.appendLine(test())
-                    output.appendLine()
+                    emit(test())
                 }
             } catch (e: Exception) {
-                output.appendLine("FATAL ERROR: ${e.message}")
+                emit(TestResult(name = "Unknown", error = e))
                 logger.e(e) { "Test suite failed" }
             }
-
-            output.appendLine("=== TESTS COMPLETE ===")
-
-            return@withContext output.toString()
         }
 
-    private suspend fun testBasicToolCall(): String {
-        val output = StringBuilder()
-        output.appendLine("TEST 1: Basic Location Tool Call")
-        output.appendLine("─".repeat(testIterations))
+    private suspend fun testBasicToolCall(): TestResult =
+        runTest(
+            TestCase(
+                name = "TEST 1: Basic Location Tool Call",
+                tools = listOf(GetLocationTool(locationProvider)),
+                queries =
+                    listOf(
+                        TestQuery("Where am I?", "short query"),
+                        TestQuery("What is my current location?", "explicit query"),
+                        TestQuery("Can you tell me my coordinates?", "coordinate query"),
+                    ),
+                systemPrompt = "You are a helpful assistant that can access the user's location.",
+                validator = { result ->
+                    // Check for Madrid coordinates from MockLocationProvider
+                    val hasMadridLat = result.contains("40.4") || result.contains("40°")
+                    val hasMadridLon = result.contains("3.7") || result.contains("3°") || result.contains("-3.7")
+                    val hasLocationKeyword =
+                        result.contains("location", ignoreCase = true) ||
+                            result.contains("latitude", ignoreCase = true) ||
+                            result.contains("longitude", ignoreCase = true)
 
-        val toolRegistry =
-            ToolRegistry.Companion {
-                tool(GetLocationTool(MockLocationProvider()))
-            }
+                    val passed = (hasMadridLat || hasMadridLon) && hasLocationKeyword
 
-        val queries =
-            listOf(
-                "Where am I?" to "short query",
-                "What is my current location?" to "explicit query",
-                "Can you tell me my coordinates?" to "coordinate query",
-            )
+                    if (passed) {
+                        ValidationResult.Pass("Response contains Madrid coordinates")
+                    } else {
+                        ValidationResult.Fail(
+                            message = "Missing expected coordinates",
+                            details =
+                                "  Expected: Madrid (40.4168, -3.7038)\n" +
+                                    "  Got Madrid Lat: $hasMadridLat, Lon: $hasMadridLon, Keywords: $hasLocationKeyword",
+                        )
+                    }
+                },
+            ),
+        )
 
-        var passCount = 0
+    private suspend fun testNoToolNeeded(): TestResult =
+        runTest(
+            TestCase(
+                name = "TEST 2: No Tool Needed (Normal Conversation)",
+                tools = listOf(GetLocationTool(locationProvider)),
+                queries =
+                    listOf(
+                        TestQuery("Hello! How are you?"),
+                        TestQuery("Tell me a joke"),
+                        TestQuery("What is 2 + 2?"),
+                    ),
+                systemPrompt = "You are a helpful assistant. Only use tools when specifically asked about location.",
+                validator = { result ->
+                    // Should NOT mention tools or call GetLocationTool
+                    val inappropriateToolUse =
+                        result.contains("{\"tool\"", ignoreCase = true) ||
+                            result.contains("GetLocationTool", ignoreCase = true) ||
+                            result.contains("latitude", ignoreCase = true)
 
-        for ((query, description) in queries) {
-            val startTime = System.currentTimeMillis()
-            output.appendLine("Query ($description): $query")
+                    val hasValidResponse = result.isNotBlank() && result.length > 5
 
-            try {
-                val agent = GemmaAgent(promptExecutor = promptExecutor)
-                agent.initializeWithTools(toolRegistry)
+                    if (!inappropriateToolUse && hasValidResponse) {
+                        ValidationResult.Pass("Normal conversation without inappropriate tool use")
+                    } else {
+                        ValidationResult.Fail("Inappropriate tool mention or invalid response")
+                    }
+                },
+            ),
+        )
 
-                val result =
-                    agent.generateMessage(
-                        systemPrompt = "You are a helpful assistant that can access the user's location.",
-                        userPrompt = query,
-                    )
+    private suspend fun testToolHallucination(): TestResult =
+        runTest(
+            TestCase(
+                name = "TEST 3: Tool Hallucination Prevention",
+                description =
+                    listOf(
+                        "Available tools: GetLocationTool ONLY",
+                        "Query asks about: Weather (requires GetWeatherTool)",
+                        "Expected: Model should NOT hallucinate GetWeatherTool",
+                    ),
+                tools = listOf(GetLocationTool(locationProvider)),
+                queries = listOf(TestQuery("What's the weather like?")),
+                systemPrompt = "You are a helpful assistant. ONLY use tools that are explicitly available to you.",
+                validator = { result ->
+                    // Check if model handled unavailable tool gracefully
+                    val apologizes =
+                        result.contains("can't", ignoreCase = true) ||
+                            result.contains("unable", ignoreCase = true) ||
+                            result.contains("don't have", ignoreCase = true) ||
+                            result.contains("doesn't exist", ignoreCase = true)
 
-                val duration = System.currentTimeMillis() - startTime
-                output.appendLine("Result: $result")
-                output.appendLine("Duration: ${duration}ms")
+                    // OR model just answered without using tools (acceptable)
+                    val answeredWithoutTools = !result.contains("{\"tool\"")
 
-                // Check for Madrid coordinates from MockLocationProvider
-                val hasMadridLat = result.contains("40.4") || result.contains("40°")
-                val hasMadridLon = result.contains("3.7") || result.contains("3°") || result.contains("-3.7")
-                val hasLocationKeyword =
-                    result.contains("location", ignoreCase = true) ||
+                    if (apologizes || answeredWithoutTools) {
+                        ValidationResult.Pass("Correctly handled unavailable tool")
+                    } else {
+                        ValidationResult.Fail("May have attempted to use unavailable tool")
+                    }
+                },
+            ),
+        )
+
+    private suspend fun testWeatherTool(): TestResult =
+        runTest(
+            TestCase(
+                name = "TEST 4: Weather Tool Execution",
+                description = listOf("Note: GetWeatherTool should use default coordinates (no parameters)"),
+                tools = listOf(GetWeatherTool(locationProvider = locationProvider, weatherProvider = weatherProvider)),
+                queries = listOf(TestQuery("What's the weather?")),
+                systemPrompt = "You are a helpful weather assistant. Use GetWeatherTool to check current weather.",
+                validator = { result ->
+                    val hasWeatherInfo =
+                        result.contains("temperature", ignoreCase = true) ||
+                            result.contains("weather", ignoreCase = true) ||
+                            result.contains("sunny", ignoreCase = true) ||
+                            result.contains("cloudy", ignoreCase = true) ||
+                            result.contains("°", ignoreCase = true)
+
+                    if (hasWeatherInfo) {
+                        ValidationResult.Pass("Weather tool executed successfully")
+                    } else {
+                        ValidationResult.Fail("No weather data in response")
+                    }
+                },
+            ),
+        )
+
+    private suspend fun testMultiTurnSequence(): TestResult =
+        runTest(
+            TestCase(
+                name = "TEST 5: Multi-Turn Tool Sequence",
+                description =
+                    listOf(
+                        "IMPORTANT: This test demonstrates the limitation:",
+                        "  Gemma CANNOT call multiple tools in one turn",
+                        "  Must use separate turns for location → weather",
+                    ),
+                tools =
+                    listOf(
+                        GetLocationTool(locationProvider),
+                        GetWeatherToolFromLocation(weatherProvider),
+                    ),
+                queries = listOf(TestQuery("What's the weather where I am?")),
+                systemPrompt =
+                    """
+                    You are a helpful assistant.
+                    To answer weather questions, you need the user's location first.
+                    Use GetLocationTool, then GetWeatherTool.
+                    """.trimIndent(),
+                validator = { result ->
+                    // Check if it contains weather info (unlikely in one turn with current protocol)
+                    val hasWeather =
+                        result.contains("temperature", ignoreCase = true) ||
+                            result.contains("sunny", ignoreCase = true) ||
+                            result.contains("cloudy", ignoreCase = true)
+
+                    val hasLocation =
                         result.contains("latitude", ignoreCase = true) ||
-                        result.contains("longitude", ignoreCase = true)
+                            result.contains("longitude", ignoreCase = true)
 
-                val passed = (hasMadridLat || hasMadridLon) && hasLocationKeyword
-
-                if (passed) {
-                    output.appendLine("✓ PASS: Response contains Madrid coordinates")
-                    passCount++
-                } else {
-                    output.appendLine("✗ FAIL: Missing expected coordinates")
-                    output.appendLine("  Expected: Madrid (40.4168, -3.7038)")
-                    output.appendLine("  Got Madrid Lat: $hasMadridLat, Lon: $hasMadridLon, Keywords: $hasLocationKeyword")
-                }
-            } catch (e: Exception) {
-                output.appendLine("✗ ERROR: ${e.message}")
-                logger.e(e) { "Test failed: $query" }
-            }
-            output.appendLine()
-        }
-
-        output.appendLine("Summary: $passCount/${queries.size} passed")
-        return output.toString()
-    }
-
-    private suspend fun testNoToolNeeded(): String {
-        val output = StringBuilder()
-        output.appendLine("TEST 2: No Tool Needed (Normal Conversation)")
-        output.appendLine("─".repeat(testIterations))
-
-        val toolRegistry =
-            ToolRegistry.Companion {
-                tool(GetLocationTool(MockLocationProvider()))
-            }
-
-        val queries =
-            listOf(
-                "Hello! How are you?",
-                "Tell me a joke",
-                "What is 2 + 2?",
-            )
-
-        var passCount = 0
-
-        for (query in queries) {
-            val startTime = System.currentTimeMillis()
-            output.appendLine("Query: $query")
-
-            try {
-                val agent = GemmaAgent(promptExecutor = promptExecutor)
-                agent.initializeWithTools(toolRegistry)
-
-                val result =
-                    agent.generateMessage(
-                        systemPrompt = "You are a helpful assistant. Only use tools when specifically asked about location.",
-                        userPrompt = query,
-                    )
-
-                val duration = System.currentTimeMillis() - startTime
-                output.appendLine("Result: $result")
-                output.appendLine("Duration: ${duration}ms")
-
-                // Should NOT mention tools or call GetLocationTool
-                val inappropriateToolUse =
-                    result.contains("{\"tool\"", ignoreCase = true) ||
-                        result.contains("GetLocationTool", ignoreCase = true) ||
-                        result.contains("latitude", ignoreCase = true)
-
-                val hasValidResponse = result.isNotBlank() && result.length > 5
-
-                if (!inappropriateToolUse && hasValidResponse) {
-                    output.appendLine("✓ PASS: Normal conversation without inappropriate tool use")
-                    passCount++
-                } else {
-                    output.appendLine("✗ FAIL: Inappropriate tool mention or invalid response")
-                }
-            } catch (e: Exception) {
-                output.appendLine("✗ ERROR: ${e.message}")
-            }
-            output.appendLine()
-        }
-
-        output.appendLine("Summary: $passCount/${queries.size} passed")
-        return output.toString()
-    }
-
-    private suspend fun testToolHallucination(): String {
-        val output = StringBuilder()
-        output.appendLine("TEST 3: Tool Hallucination Prevention")
-        output.appendLine("─".repeat(testIterations))
-        output.appendLine("Available tools: GetLocationTool ONLY")
-        output.appendLine("Query asks about: Weather (requires GetWeatherTool)")
-        output.appendLine("Expected: Model should NOT hallucinate GetWeatherTool")
-        output.appendLine()
-
-        val toolRegistry =
-            ToolRegistry.Companion {
-                tool(GetLocationTool(MockLocationProvider()))
-            }
-
-        val query = "What's the weather like?"
-
-        val startTime = System.currentTimeMillis()
-        output.appendLine("Query: $query")
-
-        try {
-            val agent = GemmaAgent(promptExecutor = promptExecutor)
-            agent.initializeWithTools(toolRegistry)
-
-            val result =
-                agent.generateMessage(
-                    systemPrompt = "You are a helpful assistant. ONLY use tools that are explicitly available to you.",
-                    userPrompt = query,
-                )
-
-            val duration = System.currentTimeMillis() - startTime
-            output.appendLine("Result: $result")
-            output.appendLine("Duration: ${duration}ms")
-
-            // Check if model handled unavailable tool gracefully
-            val apologizes =
-                result.contains("can't", ignoreCase = true) ||
-                    result.contains("unable", ignoreCase = true) ||
-                    result.contains("don't have", ignoreCase = true) ||
-                    result.contains("doesn't exist", ignoreCase = true)
-
-            // OR model just answered without using tools (acceptable)
-            val answeredWithoutTools = !result.contains("{\"tool\"")
-
-            if (apologizes || answeredWithoutTools) {
-                output.appendLine("✓ PASS: Correctly handled unavailable tool")
-            } else {
-                output.appendLine("✗ FAIL: May have attempted to use unavailable tool")
-            }
-        } catch (e: Exception) {
-            output.appendLine("✗ ERROR: ${e.message}")
-        }
-
-        return output.toString()
-    }
-
-    private suspend fun testWeatherTool(): String {
-        val output = StringBuilder()
-        output.appendLine("TEST 4: Weather Tool Execution")
-        output.appendLine("─".repeat(testIterations))
-
-        val toolRegistry =
-            ToolRegistry.Companion {
-                tool(GetWeatherTool(locationProvider = MockLocationProvider(), weatherProvider = WeatherProviderImpl()))
-            }
-
-        // Note: Weather tool needs coordinates, but Gemma can't pass parameters
-        // So this tests if the tool uses default/context coordinates
-        val query = "What's the weather?"
-
-        val startTime = System.currentTimeMillis()
-        output.appendLine("Query: $query")
-        output.appendLine("Note: GetWeatherTool should use default coordinates (no parameters)")
-        output.appendLine()
-
-        try {
-            val agent = GemmaAgent(promptExecutor = promptExecutor)
-            agent.initializeWithTools(toolRegistry)
-
-            val result =
-                agent.generateMessage(
-                    systemPrompt = "You are a helpful weather assistant. Use GetWeatherTool to check current weather.",
-                    userPrompt = query,
-                )
-
-            val duration = System.currentTimeMillis() - startTime
-            output.appendLine("Result: $result")
-            output.appendLine("Duration: ${duration}ms")
-
-            val hasWeatherInfo =
-                result.contains("temperature", ignoreCase = true) ||
-                    result.contains("weather", ignoreCase = true) ||
-                    result.contains("sunny", ignoreCase = true) ||
-                    result.contains("cloudy", ignoreCase = true) ||
-                    result.contains("°", ignoreCase = true)
-
-            if (hasWeatherInfo) {
-                output.appendLine("✓ PASS: Weather tool executed successfully")
-            } else {
-                output.appendLine("✗ FAIL: No weather data in response")
-            }
-        } catch (e: Exception) {
-            output.appendLine("✗ ERROR: ${e.message}")
-        }
-
-        return output.toString()
-    }
-
-    private suspend fun testMultiTurnSequence(): String {
-        val output = StringBuilder()
-        output.appendLine("TEST 5: Multi-Turn Tool Sequence")
-        output.appendLine("─".repeat(testIterations))
-        output.appendLine("IMPORTANT: This test demonstrates the limitation:")
-        output.appendLine("  Gemma CANNOT call multiple tools in one turn")
-        output.appendLine("  Must use separate turns for location → weather")
-        output.appendLine()
-
-        val toolRegistry =
-            ToolRegistry.Companion {
-                tool(GetLocationTool(MockLocationProvider()))
-                tool(GetWeatherToolFromLocation(WeatherProviderImpl()))
-            }
-
-        val query = "What's the weather where I am?"
-
-        output.appendLine("Query: $query")
-        output.appendLine()
-
-        try {
-            val agent = GemmaAgent(promptExecutor = promptExecutor)
-            agent.initializeWithTools(toolRegistry)
-
-            // Turn 1: Should trigger location tool (hopefully)
-            val turn1Start = System.currentTimeMillis()
-            val result =
-                agent.generateMessage(
-                    systemPrompt =
-                        """
-                        You are a helpful assistant.
-                        To answer weather questions, you need the user's location first.
-                        Use GetLocationTool, then GetWeatherTool.
-                        """.trimIndent(),
-                    userPrompt = query,
-                )
-            val turn1Duration = System.currentTimeMillis() - turn1Start
-
-            output.appendLine("Turn 1 Result: $result")
-            output.appendLine("Turn 1 Duration: ${turn1Duration}ms")
-            output.appendLine()
-
-            // Check if it contains weather info (unlikely in one turn with current protocol)
-            val hasWeather =
-                result.contains("temperature", ignoreCase = true) ||
-                    result.contains("sunny", ignoreCase = true) ||
-                    result.contains("cloudy", ignoreCase = true)
-
-            val hasLocation =
-                result.contains("latitude", ignoreCase = true) ||
-                    result.contains("longitude", ignoreCase = true)
-
-            when {
-                hasWeather && hasLocation -> {
-                    output.appendLine("⚠️  UNEXPECTED: Both location AND weather in one turn!")
-                    output.appendLine("    This suggests agent made multiple tool calls somehow")
-                }
-                hasWeather -> {
-                    output.appendLine("✓ PASS: Weather information retrieved")
-                    output.appendLine("    (But we don't know how it got coordinates)")
-                }
-                hasLocation -> {
-                    output.appendLine("⚠️  PARTIAL: Got location, but not weather")
-                    output.appendLine("    This is expected with single-tool protocol")
-                    output.appendLine("    Would need another turn to get weather")
-                }
-                else -> {
-                    output.appendLine("✗ FAIL: No location or weather information")
-                }
-            }
-        } catch (e: Exception) {
-            output.appendLine("✗ ERROR: ${e.message}")
-        }
-
-        return output.toString()
-    }
+                    when {
+                        hasWeather && hasLocation -> {
+                            ValidationResult.Pass(
+                                "⚠️  UNEXPECTED: Both location AND weather in one turn!\n" +
+                                    "    This suggests agent made multiple tool calls somehow",
+                            )
+                        }
+                        hasWeather -> {
+                            ValidationResult.Pass(
+                                "Weather information retrieved\n" +
+                                    "    (But we don't know how it got coordinates)",
+                            )
+                        }
+                        hasLocation -> {
+                            ValidationResult.Fail(
+                                message = "⚠️  PARTIAL: Got location, but not weather",
+                                details =
+                                    "    This is expected with single-tool protocol\n" +
+                                        "    Would need another turn to get weather",
+                            )
+                        }
+                        else -> {
+                            ValidationResult.Fail("No location or weather information")
+                        }
+                    }
+                },
+            ),
+        )
 }
