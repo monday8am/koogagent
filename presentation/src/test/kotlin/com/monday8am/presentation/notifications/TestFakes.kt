@@ -26,6 +26,10 @@ internal class FakeLocalInferenceEngine : LocalInferenceEngine {
         return flowOf(this)
     }
 
+    override fun resetConversation(): Result<Unit> {
+        return Result.success(Unit)
+    }
+
     override suspend fun prompt(prompt: String): Result<String> = Result.success("Test response")
 
     override fun closeSession(): Result<Unit> = Result.success(Unit)
