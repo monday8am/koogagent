@@ -8,9 +8,9 @@ KoogAgent is an Android prototype that explores how agentic frameworks and on-de
 
 **Key Technologies:**
 - JetBrains Koog (agentic framework for language-model-driven agents)
-- MediaPipe LLM Inference API (local inference on Android)
+- LiteRT-LM (on-device LLM inference with GPU/CPU/NPU support)
 - Kotlin with Jetpack Compose
-- Local SLM models (Gemma, Mistral)
+- Local SLM models (Gemma 3 1B, int4 quantized)
 - Ollama (for JVM-side testing)
 
 **Important:** This is a prototype built for fast iteration, experimentation, and learning. The code prioritizes experimentation over production patterns.
@@ -51,7 +51,10 @@ KoogAgent is an Android prototype that explores how agentic frameworks and on-de
 
 4. **`:app` module** (Android Application)
    - Android-specific implementations of presentation interfaces
-   - `LocalInferenceEngineImpl` wraps MediaPipe LLM Inference API
+   - `LocalInferenceEngineImpl` wraps LiteRT-LM Engine/Conversation API (in `app/litert/`)
+   - `GemmaAgentLiteRT` agent implementation using LiteRT-LM (in `app/litert/`)
+   - `GemmaAgentLiteRTFactory` creates agent instances via factory pattern
+   - LiteRT native tools: `LocationTools`, `WeatherTools` (in `app/litert/tools/`)
    - `ModelDownloadManagerImpl` handles model downloading via WorkManager
    - `NotificationEngineImpl` shows Android notifications (with idempotency check)
    - `DeviceContextProviderImpl` extracts device locale/country
@@ -65,16 +68,25 @@ KoogAgent is an Android prototype that explores how agentic frameworks and on-de
 - Both `GemmaAgent` and `OllamaAgent` implement the `NotificationAgent` interface
 - They create Koog `AIAgent` instances with:
   - System prompt defining the nutritionist role
-  - Custom LLM executors (`SimpleGemmaAIExecutor` for MediaPipe, `simpleOllamaAIExecutor` for Ollama)
+  - Custom LLM executors (`SimpleGemmaAIExecutor` for LiteRT-LM, `simpleOllamaAIExecutor` for Ollama)
   - Event handlers for debugging (tool calls, agent finished, errors)
   - Temperature setting (0.7)
+- Uses custom tool protocol with Koog's `ToolRegistry` (Gemma requires prompt-based JSON, not native tool calling)
 
-**MediaPipe Integration:**
-- `LocalInferenceUtils.initialize()` creates `LlmInference` engine and session
-- Supports GPU/CPU backends via `LlmInference.Backend`
-- Model parameters: maxTokens, topK, topP, temperature
-- `LocalInferenceUtils.prompt()` adds query chunks and generates responses asynchronously
-- Custom `await()` extension for `ListenableFuture<T>` to bridge with coroutines
+**LiteRT-LM Integration:**
+- `LocalInferenceEngineImpl` implements `LocalInferenceEngine` interface (in `app/litert/`)
+- Uses LiteRT-LM's `Engine`/`Conversation` API pattern
+- `Engine.initialize()` loads model with `EngineConfig`:
+  - `modelPath`: Absolute path to `.litertlm` model file
+  - `backend`: GPU or CPU (via `Backend.GPU` / `Backend.CPU`)
+  - `maxNumTokens`: Total context length (default 4096)
+- `Conversation` created via `engine.createConversation(ConversationConfig)`
+- `ConversationConfig` parameters:
+  - `samplerConfig`: topK, topP, temperature
+  - `systemMessage`: Optional system prompt (as `Message`)
+  - `tools`: List of tool objects (not used due to Gemma limitation)
+- `sendMessageAsync()` extension (in `ConversationExtensions.kt`) bridges `MessageCallback` to Kotlin coroutines
+- Response collected via `MessageCallback`: `onMessage()` → `onDone()` → returns full text
 
 **Data Flow (MVI Pattern):**
 1. UI dispatches `UiAction.ShowNotification`
@@ -151,11 +163,80 @@ KoogAgent is an Android prototype that explores how agentic frameworks and on-de
 - Models are downloaded to app's internal storage via `ModelDownloadManagerImpl`
 - Default model: `gemma3-1b-it-int4.litertlm` (Gemma 3 1B parameters, int4 quantized)
 - Model URL in `NotificationViewModelImpl`: GitHub release at `https://github.com/monday8am/koogagent/releases/download/0.0.1/gemma3-1b-it-int4.zip`
-- `ModelDownloadManager.getModelPath()` returns absolute path for MediaPipe
+- `ModelDownloadManager.getModelPath()` returns absolute path for LiteRT-LM Engine
 - **Lazy evaluation**: `getLocalModel()` function evaluates path when needed, not at construction time
 
+### Tool Calling Architecture: Why Gemma 1B Requires Custom Protocol
+
+**Critical Finding:** Gemma 1B does not support LiteRT-LM's native tool calling system. This was discovered through investigation when initial attempts to use `@Tool` annotations failed.
+
+#### Investigation Process
+
+**1. Initial Attempt (Failed)**
+- Implemented tools using LiteRT-LM's `@Tool` annotations (`LocationTools`, `WeatherTools`)
+- Passed tools to `ConversationConfig(tools = listOf(...))`
+- Expected automatic OpenAPI schema generation and tool detection
+- **Result:** Model did not detect or use tools during testing
+
+**2. Root Cause Analysis**
+
+Discovered that LiteRT-LM's native tool calling requires models with specialized processors:
+
+**Source:** [LiteRT-LM Conversation Documentation](https://github.com/google-ai-edge/LiteRT-LM/blob/main/docs/conversation.md)
+
+> "**Function Calling Models (e.g., `Qwen3`):** The `Qwen3DataProcessor` handle `tool_calls` and `tool_response` content."
+
+Only models like Qwen3 natively generate `tool_calls` and `tool_response` content types.
+
+**3. Gemma's Architectural Limitation**
+
+Gemma fundamentally does not output tool-specific tokens:
+
+**Source:** [Google AI - Function calling with Gemma](https://ai.google.dev/gemma/docs/capabilities/function-calling)
+
+> "Gemma does not output a tool specific token."
+
+> "Instead, your framework must detect tool calls by checking if the output structure matches your specified function format."
+
+> Gemma supports: "JSON-style: `{"name": function name, "parameters": {argument mappings}}`"
+
+**4. Google's Official Solution**
+
+Google provides a separate SDK for Gemma tool calling (MediaPipe-based):
+
+**Source:** [AI Edge Function Calling SDK - Android Guide](https://ai.google.dev/edge/mediapipe/solutions/genai/function_calling/android)
+
+> "The SDK supports three models with built-in formatters:
+> - **Gemma**: Use `GemmaFormatter`"
+
+The `GemmaFormatter` (from `com.google.ai.edge.localagents:localagents-fc:0.1.0`) "formats the structured function declarations into text" and handles "parsing model output."
+
+#### Conclusion: Incompatible Architectures
+
+**LiteRT-LM Native Tool Calling:**
+- Designed for models that output structured `tool_calls` content (like Qwen3)
+- Automatic schema generation via `@Tool` annotations
+- Model natively understands when to invoke tools
+
+**Gemma 1B Approach:**
+- Requires explicit tool schemas in prompt text
+- Outputs plain text formatted as JSON (no special tokens)
+- Framework must parse JSON output and detect tool calls
+- This is exactly what the custom protocol implements
+
+**Current Implementation:**
+- Uses custom tool protocol with Koog's `ToolRegistry`
+- Tools: `GetLocationTool`, `GetWeatherToolFromLocation`
+- Prompts include explicit tool schemas and JSON formatting instructions
+- Response parser detects tool calls via JSON structure matching
+
+**Alternative Options Investigated:**
+1. **Custom Protocol** (current) - Works with LiteRT-LM inference ✅
+2. **AI Edge Function Calling SDK** - Requires reverting to MediaPipe ❌
+3. **Hybrid approach** - Port custom protocol to work with LiteRT-LM (future consideration)
+
 ### LLM Client Bridges
-- `GemmaLLMClient` implements Koog's `LLMClient` interface to wrap MediaPipe
+- `GemmaLLMClient` implements Koog's `LLMClient` interface to wrap LiteRT-LM inference
 - Converts Koog `Prompt` (list of messages) to single concatenated string
 - Returns `Message.Assistant` with generated text
 - Does not support streaming or moderation (throws exceptions)
@@ -201,7 +282,7 @@ KoogAgent is an Android prototype that explores how agentic frameworks and on-de
 ### Version Catalog
 Dependencies managed in `gradle/libs.versions.toml`:
 - Koog agents: 0.4.2
-- MediaPipe tasks-genai: 0.10.29
+- LiteRT-LM: 0.0.0-alpha05
 - Compose BOM: 2025.09.01
 - Kotlin: 2.2.20
 - AGP: 8.13.0-rc02
@@ -214,11 +295,13 @@ Not enabled for release builds (prototype phase)
 ### JVM Testing with Ollama
 - Use `:agent` module with `OllamaAgent`
 - Run local Ollama server at `http://10.0.2.2:11434` (Android emulator host)
-- Tests can verify prompt construction and JSON parsing without MediaPipe
+- Tests can verify prompt construction and JSON parsing without LiteRT-LM
 
 ### Android Testing
-- MediaPipe requires actual device or emulator with model files
+- LiteRT-LM requires actual device or emulator with model files
+- Model must be downloaded to device storage (`.litertlm` format)
 - UI tests in `app/src/androidTest`
+- Tool calling tests verify custom protocol (not LiteRT native tools due to Gemma limitation)
 
 ## Common Patterns
 
@@ -243,12 +326,14 @@ Not enabled for release builds (prototype phase)
 - Override in `LocalLLModel` data class
 - `NotificationViewModel` sets temperature to 0.8f for Gemma model
 - **Note**: Gemma 3n-1b-it supports 1280, 2048, or 4096 token context windows
-- MediaPipe's `setMaxTokens()` sets the TOTAL context (input + output combined)
+- LiteRT-LM's `EngineConfig.maxNumTokens` sets the TOTAL context (input + output combined)
 
-### Working with MediaPipe Sessions
-- Sessions maintain conversation state across multiple queries
-- `LocalInferenceEngineImpl.prompt()` adds chunks to existing session
+### Working with LiteRT-LM Conversations
+- `Conversation` maintains conversation state across multiple queries
+- `LocalInferenceEngineImpl.prompt()` sends messages to existing conversation
+- `resetConversation()` closes old conversation and creates new one with same config
 - Must call `closeSession()` to free resources (done in `AndroidNotificationViewModel.onCleared()`)
+- Cleanup chain: `conversation.close()` → `engine.close()`
 
 ### MVI State Management Pattern
 
@@ -323,7 +408,7 @@ sealed class UiAction {
 
 **Why Split Presentation from App?**
 - ViewModel state management is platform-agnostic
-- Only implementations (MediaPipe, WorkManager, Android notifications) are platform-specific
+- Only implementations (LiteRT-LM, WorkManager, Android notifications) are platform-specific
 - Allows testing presentation logic without Android framework
 - Enables sharing business logic across platforms
 
@@ -349,10 +434,13 @@ sealed class UiAction {
 - Event handlers for debugging LLM interactions
 - Abstraction over different LLM executors
 
-### Why MediaPipe?
+### Why LiteRT-LM?
 - On-device inference with no cloud dependency
-- Optimized for mobile GPUs
+- Optimized for mobile GPU, CPU, and NPU acceleration
 - Supports quantized models (int4, int8) for smaller size
+- Active development from Google with expanding model support
+- `Engine`/`Conversation` API provides clean abstraction for inference
+- Built-in support for multimodal inputs (text, vision, audio) in compatible models
 
 ## Common Patterns (continued)
 
@@ -367,7 +455,7 @@ sealed class UiAction {
 ```kotlin
 AndroidNotificationViewModel.onCleared() {
     impl.dispose()                    // Cancels presentation scope
-    inferenceEngine.closeSession()    // Frees MediaPipe resources
+    inferenceEngine.closeSession()    // Frees LiteRT-LM resources (conversation + engine)
 }
 ```
 
@@ -392,10 +480,11 @@ To add alternative weather sources (e.g., OpenWeatherMap, WeatherAPI):
 
 ## Known Limitations
 
+- **Gemma 1B doesn't support LiteRT-LM native tool calling** - requires custom prompt-based protocol
 - No real MCP server integration (weather uses direct API instead of MCP protocol)
 - No prompt safety filtering
 - No translation layer (relies on model to generate in correct language)
-- MediaPipe client doesn't support streaming or moderation
-- Single-shot inference only (no multi-turn conversations)
+- LiteRT-LM client doesn't support streaming or moderation
+- Conversations maintain state but primarily used for single-shot inference
 - Model download requires GitHub release URL (no fallback)
 - Location is mocked (not using device GPS)

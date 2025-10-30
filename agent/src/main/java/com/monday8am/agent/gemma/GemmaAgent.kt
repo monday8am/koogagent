@@ -29,7 +29,7 @@ private val gemmaModel =
 
 class GemmaAgent(
     private val promptExecutor: suspend (String) -> String?,
-    private val isLiteRT: Boolean = false,
+    private val useOpenApiForTools: Boolean = false,
 ) : NotificationAgent {
     private var registry: ToolRegistry? = null
     private val logger = Logger.withTag("GemmaAgent")
@@ -52,8 +52,7 @@ class GemmaAgent(
         }
 
     private fun getAIAgent(systemPrompt: String): AIAgent<String, String> {
-        val client = if (isLiteRT) GemmaLLMClient(promptExecutor = promptExecutor) else SimpleLLMClient(promptExecutor)
-        val tools = if (isLiteRT) ToolRegistry.EMPTY else registry ?: ToolRegistry.EMPTY
+        val client = if (useOpenApiForTools) OpenApiLLMClient(promptExecutor) else GemmaLLMClient(promptExecutor = promptExecutor)
         return AIAgent(
             promptExecutor =
                 SimpleGemmaAIExecutor(
@@ -62,7 +61,7 @@ class GemmaAgent(
             systemPrompt = systemPrompt,
             temperature = 0.7,
             llmModel = gemmaModel,
-            toolRegistry = tools,
+            toolRegistry = registry ?: ToolRegistry.EMPTY,
             installFeatures = installCommonEventHandling,
         )
     }

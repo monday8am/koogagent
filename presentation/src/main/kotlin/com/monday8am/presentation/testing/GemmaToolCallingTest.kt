@@ -10,6 +10,7 @@ import com.monday8am.agent.tools.GetWeatherTool
 import com.monday8am.agent.tools.GetWeatherToolFromLocation
 import com.monday8am.koogagent.data.LocationProvider
 import com.monday8am.koogagent.data.WeatherProvider
+import jdk.internal.vm.vector.VectorSupport.test
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
@@ -107,7 +108,7 @@ internal class GemmaToolCallingTest(
             output.appendLine(queryDisplay)
 
             try {
-                val agent = GemmaAgent(promptExecutor = promptExecutor)
+                val agent = GemmaAgent(promptExecutor = promptExecutor, useOpenApiForTools = true)
 
                 // Initialize with tools if provided
                 testCase.tools?.let { tools ->
@@ -152,8 +153,7 @@ internal class GemmaToolCallingTest(
             output.appendLine()
         }
 
-        // Reset conversation to give enough tokens to other
-        // tests
+        // Avoid reaching max context tokens
         resetConversation()
 
         output.appendLine("Summary: $passCount/${testCase.queries.size} passed")
