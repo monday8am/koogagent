@@ -15,23 +15,24 @@ import kotlinx.serialization.Serializable
  * This tool allows the AI agent to autonomously request weather data
  * when it determines weather context is needed for notification generation.
  */
-class GetWeatherToolFromLocation(
+
+@Serializable
+internal data class WeatherResult(
+    val condition: String,
+    val temperature: Double?,
+    val location: String,
+    val success: Boolean,
+)
+
+class GetWeatherFromLocation(
     private val weatherProvider: WeatherProvider,
-) : SimpleTool<GetWeatherToolFromLocation.Args>() {
+) : SimpleTool<GetWeatherFromLocation.Args>() {
     @Serializable
     data class Args(
         @property:LLMDescription("Latitude of the location in double format")
         val latitude: Double,
         @property:LLMDescription("Longitude of the location in double format")
         val longitude: Double,
-    )
-
-    @Serializable
-    private data class WeatherResult(
-        val condition: String,
-        val temperature: Double?,
-        val location: String,
-        val success: Boolean,
     )
 
     override val argsSerializer = Args.serializer()
@@ -41,7 +42,7 @@ class GetWeatherToolFromLocation(
 
     override val descriptor =
         ToolDescriptor(
-            name = "GetWeatherToolFromLocation",
+            name = "GetWeatherFromLocation",
             description = "Get the current weather from the provided latitude and longitude parameters",
             requiredParameters =
                 listOf(
@@ -66,7 +67,7 @@ class GetWeatherToolFromLocation(
                         location = "${args.latitude}, ${args.longitude}",
                         success = true,
                     )
-                "Weather: ${result.condition}, Temperature: ${result.temperature}°C at ${result.location}"
+                "weather: ${result.condition}, temperature: ${result.temperature}°C"
             } else {
                 "Weather: unknown at ${args.latitude}, ${args.longitude}"
             }

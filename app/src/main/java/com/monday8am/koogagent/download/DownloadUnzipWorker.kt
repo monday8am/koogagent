@@ -42,12 +42,10 @@ class DownloadUnzipWorker(
                         ?: return@withContext Result.failure(workDataOf(KEY_ERROR_MESSAGE to "Destination path not provided"))
 
                 val destinationFile = File(destinationPath)
-                val parentDir = destinationFile.parentFile
-                if (parentDir == null) {
-                    return@withContext Result.failure(
+                val parentDir =
+                    destinationFile.parentFile ?: return@withContext Result.failure(
                         workDataOf(KEY_ERROR_MESSAGE to "Could not create destination directory: $destinationFile"),
                     )
-                }
                 if (!parentDir.exists()) {
                     if (!parentDir.mkdirs()) {
                         return@withContext Result.failure(

@@ -6,7 +6,6 @@ import com.monday8am.agent.core.logger
 import com.monday8am.koogagent.data.LocationProvider
 import com.monday8am.koogagent.data.WeatherCondition
 import com.monday8am.koogagent.data.WeatherProvider
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.serializer
 
 /**
@@ -14,18 +13,10 @@ import kotlinx.serialization.builtins.serializer
  * This tool allows the AI agent to autonomously request weather data
  * when it determines weather context is needed for notification generation.
  */
-class GetWeatherTool(
+class GetWeather(
     private val locationProvider: LocationProvider,
     private val weatherProvider: WeatherProvider,
 ) : SimpleTool<Unit>() {
-    @Serializable
-    private data class WeatherResult(
-        val condition: String,
-        val temperature: Double?,
-        val location: String,
-        val success: Boolean,
-    )
-
     override val argsSerializer = Unit.serializer()
 
     override val description: String
@@ -33,7 +24,7 @@ class GetWeatherTool(
 
     override val descriptor =
         ToolDescriptor(
-            name = "GetWeatherTool",
+            name = "GetWeather",
             description = "Get the current weather",
             requiredParameters = listOf(),
         )
@@ -55,7 +46,7 @@ class GetWeatherTool(
                         location = "${location.latitude}, ${location.longitude}",
                         success = true,
                     )
-                "Weather: ${result.condition}, Temperature: ${result.temperature}°C at ${result.location}"
+                "weather: ${result.condition}, temperature: ${result.temperature}°C"
             } else {
                 "Weather: unknown at ${location.latitude}, ${location.longitude}"
             }

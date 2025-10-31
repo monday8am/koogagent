@@ -1,13 +1,12 @@
 package com.monday8am.presentation.notifications
 
 import ai.koog.agents.core.tools.ToolRegistry
-import ai.koog.prompt.executor.llms.Executors.promptExecutor
 import com.monday8am.agent.core.LocalInferenceEngine
 import com.monday8am.agent.core.LocalLLModel
 import com.monday8am.agent.core.NotificationGenerator
 import com.monday8am.agent.gemma.GemmaAgent
-import com.monday8am.agent.tools.GetLocationTool
-import com.monday8am.agent.tools.GetWeatherToolFromLocation
+import com.monday8am.agent.tools.GetLocation
+import com.monday8am.agent.tools.GetWeatherFromLocation
 import com.monday8am.koogagent.data.LocationProvider
 import com.monday8am.koogagent.data.MealType
 import com.monday8am.koogagent.data.MotivationLevel
@@ -104,8 +103,8 @@ class NotificationViewModelImpl(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val toolRegistry =
         ToolRegistry {
-            tool(tool = GetWeatherToolFromLocation(weatherProvider))
-            tool(tool = GetLocationTool(locationProvider))
+            tool(tool = GetWeatherFromLocation(weatherProvider))
+            tool(tool = GetLocation(locationProvider))
         }
 
     internal val userActions = MutableSharedFlow<UiAction>(replay = 0)
@@ -113,7 +112,6 @@ class NotificationViewModelImpl(
     override val uiState =
         userActions
             .onStart { emit(UiAction.Initialize) }
-            .distinctUntilChanged()
             .flatMapConcat { action ->
                 val actionFlow =
                     when (action) {
@@ -122,7 +120,7 @@ class NotificationViewModelImpl(
                         UiAction.ShowNotification -> inferenceEngine.initializeAsFlow(model = getLocalModel())
                         UiAction.RunModelTests ->
                             inferenceEngine.initializeAsFlow(model = getLocalModel()).flatMapConcat { engine ->
-                                runModelTests(promptExecutor = engine::prompt)
+                                runModelTests(promptExecutor = engine::prompt, resetConversation = engine::resetConversation)
                             }
                         is UiAction.UpdateContext -> flowOf(value = action.context)
                         is UiAction.NotificationReady -> flowOf(value = action.content)
@@ -255,14 +253,17 @@ class NotificationViewModelImpl(
         }
     }
 
-    private fun runModelTests(promptExecutor: suspend (String) -> Result<String>) =
-        GemmaToolCallingTest(
-            promptExecutor = { prompt ->
-                promptExecutor(prompt).getOrThrow()
-            },
-            weatherProvider = weatherProvider,
-            locationProvider = locationProvider,
-        ).runAllTests()
+    private fun runModelTests(
+        promptExecutor: suspend (String) -> Result<String>,
+        resetConversation: () -> Result<Unit>,
+    ) = GemmaToolCallingTest(
+        promptExecutor = { prompt ->
+            promptExecutor(prompt).getOrThrow()
+        },
+        resetConversation = resetConversation,
+        weatherProvider = weatherProvider,
+        locationProvider = locationProvider,
+    ).runAllTests()
 
     private fun getLocalModel() =
         LocalLLModel(

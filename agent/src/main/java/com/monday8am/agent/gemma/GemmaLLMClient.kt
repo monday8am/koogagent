@@ -10,6 +10,7 @@ import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.message.ResponseMetaInfo
 import co.touchlab.kermit.Logger
+import io.ktor.http.cio.parseResponse
 import java.util.UUID
 
 /**
@@ -36,6 +37,7 @@ internal class GemmaLLMClient(
     private val promptExecutor: suspend (String) -> String?,
 ) : LLMClient {
     private val logger = Logger.withTag("GemmaLLMClient")
+    private var isFirstTurn = true
 
     override suspend fun execute(
         prompt: Prompt,
@@ -47,18 +49,25 @@ internal class GemmaLLMClient(
             "Model ${model.id} does not support tools"
         }
 
-        // 1. Build the full prompt with tool instructions
-        val fullPrompt = buildFullPrompt(prompt, tools)
+        // Build prompt based on whether it's the first turn or subsequent turn
+        val promptText =
+            if (isFirstTurn) {
+                logger.d { "First turn: sending system + tools + initial message" }
+                buildFirstTurnPrompt(prompt, tools)
+            } else {
+                logger.d { "Subsequent turn: sending only latest message" }
+                buildSubsequentTurnPrompt(prompt.messages)
+            }
 
         logger.d { "=== GEMMA PROMPT ===" }
-        logger.d { fullPrompt }
+        logger.d { promptText }
         logger.d { "===================" }
 
-        // 2. Execute inference
-        val response = promptExecutor(fullPrompt)
+        // Execute inference
+        val response = promptExecutor(promptText)
 
         if (response == null) {
-            logger.w { "MediaPipe returned null response" }
+            logger.w { "LiteRT-LM returned null response" }
             return emptyList()
         }
 
@@ -66,14 +75,21 @@ internal class GemmaLLMClient(
         logger.d { response }
         logger.d { "=======================" }
 
-        // 3. Parse response (with loop detection)
+        // Parse response (with loop detection)
         val parsedMessages = parseResponse(response, tools, prompt.messages)
         logger.i { "Parsed ${parsedMessages.size} messages from response" }
+
+        // After first turn completes, subsequent calls are incremental
+        isFirstTurn = false
 
         return parsedMessages
     }
 
-    internal fun buildFullPrompt(
+    /**
+     * Builds the first turn prompt with system message, tool instructions, and initial user message.
+     * This is only sent once at the start of the conversation.
+     */
+    internal fun buildFirstTurnPrompt(
         prompt: Prompt,
         tools: List<ToolDescriptor>,
     ): String {
@@ -84,11 +100,15 @@ internal class GemmaLLMClient(
                 .firstOrNull()
                 ?.content ?: ""
 
-        // Build conversation history
-        val conversation = buildConversationHistory(prompt.messages)
-
         // Build tool instructions
         val toolInstructions = buildToolInstructions(tools)
+
+        // Get only the first user message (no history yet)
+        val firstUserMessage =
+            prompt.messages
+                .filterIsInstance<Message.User>()
+                .firstOrNull()
+                ?.content ?: ""
 
         return buildString {
             // System prompt first
@@ -103,8 +123,31 @@ internal class GemmaLLMClient(
                 appendLine()
             }
 
-            // Conversation history
-            append(conversation)
+            // First user message
+            append(firstUserMessage)
+        }
+    }
+
+    /**
+     * Builds subsequent turn prompts with only the latest message.
+     * LiteRT-LM's Conversation API maintains history, so we only send new content.
+     */
+    internal fun buildSubsequentTurnPrompt(messages: List<Message>): String {
+        // Get the last non-system message
+        val latestMessage =
+            messages
+                .filterNot { it is Message.System }
+                .lastOrNull()
+
+        return when (latestMessage) {
+            is Message.User -> "User:${latestMessage.content}"
+            is Message.Tool.Result -> "Tool '${latestMessage.tool}' returned: ${latestMessage.content}"
+            is Message.Assistant -> "Assistant:${latestMessage.content}"
+            is Message.Tool.Call -> "Assistant:{\"tool\":\"${latestMessage.tool}\"}"
+            else -> {
+                logger.w { "No valid latest message found, returning empty string" }
+                ""
+            }
         }
     }
 
@@ -158,62 +201,6 @@ internal class GemmaLLMClient(
             User: Tell me a joke
             Assistant: Why did the chicken cross the road? To get to the other side!
             """.trimIndent()
-    }
-
-    /**
-     * Builds conversation history from Koog messages into text format for Gemma.
-     *
-     * ## Message Type Mapping:
-     * - `Message.User` → "User: content"
-     * - `Message.Assistant` → "Assistant: content"
-     * - `Message.Tool.Call` → "Assistant: {"tool":"X"}" (shows model requested tool)
-     * - `Message.Tool.Result` → "Tool 'X' returned: result" (provides context for next turn)
-     *
-     * ## Why This Works:
-     * Gemma sees tool calls as part of conversation history, allowing it to:
-     * 1. Understand that it previously called a tool
-     * 2. See the tool's result as contextual information
-     * 3. Generate a final response incorporating the result
-     *
-     * @param messages List of Koog messages to convert
-     * @return Formatted conversation history
-     */
-    internal fun buildConversationHistory(messages: List<Message>): String {
-        val formattedMessages =
-            messages
-                .filterNot { it is Message.System }
-                .mapNotNull { message ->
-                    when (message) {
-                        is Message.User -> {
-                            "User: ${message.content}"
-                        }
-
-                        is Message.Assistant -> {
-                            "Assistant: ${message.content}"
-                        }
-
-                        // CRITICAL: Handle tool call requests
-                        is Message.Tool.Call -> {
-                            // The assistant previously requested a tool call
-                            logger.v { "Including tool call in history: ${message.tool}" }
-                            "Assistant: {\"tool\":\"${message.tool}\"}"
-                        }
-
-                        // CRITICAL: Handle tool results
-                        is Message.Tool.Result -> {
-                            // Tool results come back as "user" messages showing what the tool returned
-                            logger.v { "Including tool result in history: ${message.tool} -> ${message.content}" }
-                            "Tool '${message.tool}' returned: ${message.content}"
-                        }
-
-                        else -> {
-                            logger.w { "Encountered unexpected message type: ${message::class.simpleName}" }
-                            null
-                        }
-                    }
-                }
-
-        return formattedMessages.joinToString("\n\n")
     }
 
     /**
@@ -276,7 +263,7 @@ internal class GemmaLLMClient(
                         content =
                             "I have the information from $toolName: ${lastToolResult.content}. " +
                                 "Let me provide you with the answer based on that.",
-                        metaInfo = ResponseMetaInfo.Companion.Empty,
+                        metaInfo = ResponseMetaInfo.Empty,
                     ),
                 )
             }
@@ -292,7 +279,7 @@ internal class GemmaLLMClient(
                 listOf(
                     Message.Assistant(
                         content = cleanResponse,
-                        metaInfo = ResponseMetaInfo.Companion.Empty,
+                        metaInfo = ResponseMetaInfo.Empty,
                     ),
                 )
             } else {
@@ -308,7 +295,7 @@ internal class GemmaLLMClient(
                     listOf(
                         Message.Assistant(
                             content = "I tried to use a tool called '$toolName' but it doesn't exist. Let me try to help you another way.",
-                            metaInfo = ResponseMetaInfo.Companion.Empty,
+                            metaInfo = ResponseMetaInfo.Empty,
                         ),
                     )
                 } else {
@@ -322,7 +309,7 @@ internal class GemmaLLMClient(
                                     .toString(),
                             tool = toolName,
                             content = "{}", // CRITICAL: Empty JSON - Gemma 3n can't provide args
-                            metaInfo = ResponseMetaInfo.Companion.Empty,
+                            metaInfo = ResponseMetaInfo.Empty,
                         ),
                     )
                 }
@@ -333,7 +320,7 @@ internal class GemmaLLMClient(
             listOf(
                 Message.Assistant(
                     content = response,
-                    metaInfo = ResponseMetaInfo.Companion.Empty,
+                    metaInfo = ResponseMetaInfo.Empty,
                 ),
             )
         }

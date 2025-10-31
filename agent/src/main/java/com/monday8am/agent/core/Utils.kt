@@ -5,6 +5,7 @@ import ai.koog.agents.features.eventHandler.feature.handleEvents
 import co.touchlab.kermit.Logger
 import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
+import io.lettuce.core.AclSetuserArgs.Builder.on
 
 // Gemma 3n-1b-it context lengths: 1280, 2048, or 4096 tokens
 // We use 4096 as the total context window (input + output combined)
@@ -36,8 +37,23 @@ val installCommonEventHandling: FeatureContext.() -> Unit = {
     }
      */
     handleEvents {
+        onLLMCallStarting {
+            kermitLogger.d { "LLM call started with prompt: ${it.prompt}" }
+        }
+        onAgentStarting {
+            kermitLogger.d { "Agent started: ${it.agent.id}" }
+        }
+        onAgentClosing {
+            kermitLogger.d { "Agent closed: ${it.agentId}" }
+        }
+        onLLMCallCompleted {
+            kermitLogger.d { "LLM call ended with \ntools: ${it.tools}\nresponses:${it.responses}" }
+        }
         onToolCallStarting { eventContext ->
             kermitLogger.d { "Tool called: ${eventContext.tool} with args ${eventContext.toolArgs}" }
+        }
+        onToolCallCompleted {
+            kermitLogger.d { "Tool call ended with result: ${it.result}" }
         }
         onAgentCompleted { eventContext ->
             kermitLogger.d { "Agent finished with result: ${eventContext.result}" }

@@ -19,5 +19,6 @@ dependencies {
         exclude(group = "io.modelcontextprotocol", module = "kotlin-sdk-core-jvm")
     }
     api(libs.kermit)
+    implementation(libs.litertlm)
     testImplementation(kotlin("test"))
 }
