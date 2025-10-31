@@ -6,7 +6,7 @@ import com.monday8am.agent.core.logger
 import com.monday8am.koogagent.data.LocationProvider
 import kotlinx.serialization.builtins.serializer
 
-class GetLocationTool(
+class GetLocation(
     private val locationProvider: LocationProvider,
 ) : SimpleTool<Unit>() {
     override val argsSerializer = Unit.serializer()
@@ -16,7 +16,7 @@ class GetLocationTool(
 
     override val descriptor =
         ToolDescriptor(
-            name = "GetLocationTool",
+            name = "GetLocation",
             description = "Get the user location and returns it in a string with latitude and longitude",
             requiredParameters = listOf(),
         )
@@ -24,9 +24,9 @@ class GetLocationTool(
     override suspend fun doExecute(args: Unit): String =
         try {
             val result = locationProvider.getLocation()
-            "location: latitude ${result.latitude}, longitude: ${result.longitude}"
+            "latitude ${result.latitude}, longitude: ${result.longitude}"
         } catch (e: Exception) {
-            logger.e { "GetLocationTool: Error fetching location: ${e.message}" }
+            logger.e { "GetLocation: Error fetching location: ${e.message}" }
             "location: error - ${e.message}"
         }
 }

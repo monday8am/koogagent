@@ -70,31 +70,31 @@ class GemmaLLMClientTest {
     }
 
     @Test
-    fun `buildConversationHistory formats user message correctly`() {
+    fun `buildSubsequentTurnPrompt extracts user message correctly`() {
         val messages =
             listOf(
                 Message.User(content = "Hello", metaInfo = RequestMetaInfo.Empty),
             )
 
-        val result = client.buildConversationHistory(messages)
+        val result = client.buildSubsequentTurnPrompt(messages)
 
-        assertEquals("User: Hello", result)
+        assertEquals("User:Hello", result)
     }
 
     @Test
-    fun `buildConversationHistory formats assistant message correctly`() {
+    fun `buildSubsequentTurnPrompt extracts assistant message correctly`() {
         val messages =
             listOf(
                 Message.Assistant(content = "Hi there!", metaInfo = ResponseMetaInfo.Empty),
             )
 
-        val result = client.buildConversationHistory(messages)
+        val result = client.buildSubsequentTurnPrompt(messages)
 
-        assertEquals("Assistant: Hi there!", result)
+        assertEquals("Assistant:Hi there!", result)
     }
 
     @Test
-    fun `buildConversationHistory formats tool call correctly`() {
+    fun `buildSubsequentTurnPrompt extracts tool call correctly`() {
         val messages =
             listOf(
                 Message.Tool.Call(
@@ -105,13 +105,13 @@ class GemmaLLMClientTest {
                 ),
             )
 
-        val result = client.buildConversationHistory(messages)
+        val result = client.buildSubsequentTurnPrompt(messages)
 
-        assertEquals("""Assistant: {"tool":"GetWeather"}""", result)
+        assertEquals("""Assistant:{"tool":"GetWeather"}""", result)
     }
 
     @Test
-    fun `buildConversationHistory formats tool result correctly`() {
+    fun `buildSubsequentTurnPrompt extracts tool result correctly`() {
         val messages =
             listOf(
                 Message.Tool.Result(
@@ -122,40 +122,40 @@ class GemmaLLMClientTest {
                 ),
             )
 
-        val result = client.buildConversationHistory(messages)
+        val result = client.buildSubsequentTurnPrompt(messages)
 
         assertEquals("Tool 'GetWeather' returned: Sunny, 72°F", result)
     }
 
     @Test
-    fun `buildConversationHistory filters out system messages`() {
+    fun `buildSubsequentTurnPrompt filters out system messages`() {
         val messages =
             listOf(
                 Message.System(content = "You are a helpful assistant", RequestMetaInfo.Empty),
                 Message.User(content = "Hello", metaInfo = RequestMetaInfo.Empty),
             )
 
-        val result = client.buildConversationHistory(messages)
+        val result = client.buildSubsequentTurnPrompt(messages)
 
-        assertEquals("User: Hello", result)
+        assertEquals("User:Hello", result)
         assertTrue(!result.contains("You are a helpful assistant"))
     }
 
     @Test
-    fun `buildConversationHistory joins multiple messages with double newline`() {
+    fun `buildSubsequentTurnPrompt returns latest message only`() {
         val messages =
             listOf(
                 Message.User(content = "Hello", metaInfo = RequestMetaInfo.Empty),
                 Message.Assistant(content = "Hi!", metaInfo = ResponseMetaInfo.Empty),
             )
 
-        val result = client.buildConversationHistory(messages)
+        val result = client.buildSubsequentTurnPrompt(messages)
 
-        assertEquals("User: Hello\n\nAssistant: Hi!", result)
+        assertEquals("Assistant:Hi!", result)
     }
 
     @Test
-    fun `buildConversationHistory handles complete tool calling flow`() {
+    fun `buildSubsequentTurnPrompt extracts latest from tool calling flow`() {
         val messages =
             listOf(
                 Message.User(content = "What's the weather?", metaInfo = RequestMetaInfo.Empty),
@@ -171,21 +171,17 @@ class GemmaLLMClientTest {
                     content = "Sunny, 72°F",
                     metaInfo = RequestMetaInfo.Empty,
                 ),
-                Message.Assistant(content = "It's sunny and 72 degrees!", metaInfo = ResponseMetaInfo.Empty),
             )
 
-        val result = client.buildConversationHistory(messages)
+        val result = client.buildSubsequentTurnPrompt(messages)
 
-        assertTrue(result.contains("User: What's the weather?"))
-        assertTrue(result.contains("""Assistant: {"tool":"GetWeather"}"""))
-        assertTrue(result.contains("Tool 'GetWeather' returned: Sunny, 72°F"))
-        assertTrue(result.contains("Assistant: It's sunny and 72 degrees!"))
+        assertEquals("Tool 'GetWeather' returned: Sunny, 72°F", result)
     }
 
-    // ==================== buildFullPrompt Tests ====================
+    // ==================== buildFirstTurnPrompt Tests ====================
 
     @Test
-    fun `buildFullPrompt includes system message`() {
+    fun `buildFirstTurnPrompt includes system message`() {
         val prompt =
             Prompt(
                 id = "promptId",
@@ -196,14 +192,14 @@ class GemmaLLMClientTest {
                     ),
             )
 
-        val result = client.buildFullPrompt(prompt, emptyList())
+        val result = client.buildFirstTurnPrompt(prompt, emptyList())
 
         assertTrue(result.startsWith("You are helpful"))
-        assertTrue(result.contains("User: Hello"))
+        assertTrue(result.contains("Hello"))
     }
 
     @Test
-    fun `buildFullPrompt includes tool instructions when tools provided`() {
+    fun `buildFirstTurnPrompt includes tool instructions when tools provided`() {
         val prompt =
             Prompt(
                 id = "promptId",
@@ -214,16 +210,16 @@ class GemmaLLMClientTest {
                     ),
             )
 
-        val result = client.buildFullPrompt(prompt, listOf(getWeatherTool))
+        val result = client.buildFirstTurnPrompt(prompt, listOf(getWeatherTool))
 
         assertTrue(result.contains("You are helpful"))
         assertTrue(result.contains("Available tools:"))
         assertTrue(result.contains("- GetWeather: Gets current weather"))
-        assertTrue(result.contains("User: What's the weather?"))
+        assertTrue(result.contains("What's the weather?"))
     }
 
     @Test
-    fun `buildFullPrompt works without system message`() {
+    fun `buildFirstTurnPrompt works without system message`() {
         val prompt =
             Prompt(
                 id = "promptId",
@@ -233,9 +229,9 @@ class GemmaLLMClientTest {
                     ),
             )
 
-        val result = client.buildFullPrompt(prompt, emptyList())
+        val result = client.buildFirstTurnPrompt(prompt, emptyList())
 
-        assertEquals("User: Hello", result)
+        assertEquals("Hello", result)
     }
 
     @Test

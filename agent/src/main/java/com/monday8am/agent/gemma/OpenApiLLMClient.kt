@@ -23,34 +23,62 @@ import java.util.UUID
  * This implementation follows the OpenAPI specification format similar to LiteRT-LM's Tool.kt,
  * providing better structured tool definitions with typed parameters.
  */
+
+internal val prettyJson = Json { prettyPrint = true }
+
 internal class OpenApiLLMClient(
     private val promptExecutor: suspend (String) -> String?,
 ) : LLMClient {
     private val logger = Logger.withTag("OpenApiLLMClient")
+    private var isFirstTurn = true
 
     override suspend fun execute(
         prompt: Prompt,
         model: LLModel,
         tools: List<ToolDescriptor>,
     ): List<Message.Response> {
-        logger.d { "Executing prompt with OpenAPI protocol, tools: ${tools.map { it.name }}" }
         require(model.capabilities.contains(LLMCapability.Tools)) {
             "Model ${model.id} does not support tools"
         }
 
-        // 1. Build the full prompt with OpenAPI tool schemas
-        val fullPrompt = buildFullPrompt(prompt, tools)
-        val response = promptExecutor(fullPrompt)
+        // Build prompt based on whether it's the first turn or subsequent turn
+        val promptText =
+            if (isFirstTurn) {
+                logger.d { "First turn: sending system + tools + initial message" }
+                buildFirstTurnPrompt(prompt, tools)
+            } else {
+                logger.d { "Subsequent turn: sending only latest message" }
+                buildSubsequentTurnPrompt(prompt.messages)
+            }
+
+        logger.d { "=== GEMMA PROMPT ===" }
+        logger.d { promptText }
+        logger.d { "===================" }
+
+        val response = promptExecutor(promptText)
 
         if (response == null) {
             logger.w { "LiteRT-LM returned null response" }
             return emptyList()
         }
+
+        logger.d { "=== GEMMA RESPONSE ===" }
+        logger.d { response }
+        logger.d { "=======================" }
+
         val parsedMessages = parseResponse(response, tools, prompt.messages)
+
+        // After first turn completes, subsequent calls are incremental
+        isFirstTurn = false
+
         return parsedMessages
     }
 
-    internal fun buildFullPrompt(
+    /**
+     * Builds the first turn prompt with system message, tool schemas, and initial user message.
+     * This is only sent once at the start of the conversation.
+     */
+    internal fun buildFirstTurnPrompt(
         prompt: Prompt,
         tools: List<ToolDescriptor>,
     ): String {
@@ -60,8 +88,14 @@ internal class OpenApiLLMClient(
                 .firstOrNull()
                 ?.content ?: ""
 
-        val conversation = buildConversationHistory(prompt.messages)
         val toolSchemas = buildOpenApiToolSchemas(tools)
+
+        // Get only the first user message (no history yet)
+        val firstUserMessage =
+            prompt.messages
+                .filterIsInstance<Message.User>()
+                .firstOrNull()
+                ?.content ?: ""
 
         return buildString {
             if (systemMessage.isNotEmpty()) {
@@ -72,7 +106,30 @@ internal class OpenApiLLMClient(
                 appendLine(toolSchemas)
                 appendLine()
             }
-            append(conversation)
+            append(firstUserMessage)
+        }
+    }
+
+    /**
+     * Builds subsequent turn prompts with only the latest message.
+     * LiteRT-LM's Conversation API maintains history, so we only send new content.
+     */
+    internal fun buildSubsequentTurnPrompt(messages: List<Message>): String {
+        // Get the last non-system message
+        val latestMessage =
+            messages
+                .filterNot { it is Message.System }
+                .lastOrNull()
+
+        return when (latestMessage) {
+            is Message.User -> latestMessage.content
+            is Message.Tool.Result -> "Result: ${latestMessage.content}"
+            is Message.Assistant -> latestMessage.content
+            is Message.Tool.Call -> "{\"name\":\"${latestMessage.tool}\", \"parameters\":${latestMessage.content}}"
+            else -> {
+                logger.w { "No valid latest message found, returning empty string" }
+                ""
+            }
         }
     }
 
@@ -81,66 +138,61 @@ internal class OpenApiLLMClient(
             logger.d { "No tools provided, skipping OpenAPI schemas" }
             return ""
         }
-        val schemaObjects = tools.map { tool ->
-            buildOpenApiSchemaObject(tool)
-        }
-
-        val schemasArray = Json.encodeToString(
-            JsonArray.serializer(),
-            JsonArray(schemaObjects)
-        )
+        val schemaObjects =
+            tools.map { tool ->
+                buildOpenApiSchemaObject(tool)
+            }
+        val schemasArray = prettyJson.encodeToString(schemaObjects)
 
         return """
-            You have access to the following functions:
+You have access to functions:
+$schemasArray
 
-            $schemasArray
+Instructions:
+1. If you decide to invoke any of the function(s), you MUST put it in the format of:
+{"name": function name, "parameters": dictionary of argument name and its value}
+2. If the function doesn't contains parameters, use the format:
+{"name": function name, "parameters": {}}
+3. After receiving a result from the function, answer the initial user's question using that information
 
-            If you choose to call a function, respond with JSON in this format:
-            {"name": "function_name", "parameters": {"param1": "value1", "param2": value2}}
-
-            After receiving the function result, answer the user's question using that information.
-            DO NOT call the same function repeatedly.
-
-            Examples:
-
-            Example 1 - Function with parameters:
-            User: What's the weather at latitude 48.8534, longitude 2.3488?
-            Assistant: {"name": "GetWeatherToolFromLocation", "parameters": {"latitude": 48.8534, "longitude": 2.3488}}
-            [Function returns: Weather: sunny, Temperature: 22.0°C]
-            Assistant: The weather is sunny with a temperature of 22°C.
-
-            Example 2 - Function without parameters:
-            User: Where am I?
-            Assistant: {"name": "GetLocationTool", "parameters": {}}
-            [Function returns: location: latitude 48.8534, longitude 2.3488]
-            Assistant: You are at latitude 48.8534, longitude 2.3488.
-
-            Example 3 - Direct answer (no function needed):
-            User: Tell me a joke
-            Assistant: Why did the chicken cross the road? To get to the other side!
+You SHOULD NOT include any other text in the response if you call a function.
             """.trimIndent()
     }
 
     private fun buildOpenApiSchemaObject(tool: ToolDescriptor): JsonObject {
-        val properties = tool.requiredParameters.associate { param ->
-            param.name to mapOf(
-                "type" to mapParameterType(param.type)
-            )
-        }
+        // For zero-parameter functions, use a simplified schema
+        // For functions with parameters, use full OpenAPI structure
+        val schema =
+            if (tool.requiredParameters.isEmpty()) {
+                mapOf(
+                    "name" to tool.name,
+                    "description" to tool.description,
+                    "parameters" to emptyMap<String, Any>(), // Empty object for zero-parameter functions
+                )
+            } else {
+                val properties =
+                    tool.requiredParameters.associate { param ->
+                        param.name to
+                            mapOf(
+                                "type" to mapParameterType(param.type),
+                            )
+                    }
 
-        val requiredParams = tool.requiredParameters.map { it.name }
-        val schema = mapOf(
-            "name" to tool.name,
-            "description" to tool.description,
-            "parameters" to mapOf(
-                "type" to "object",
-                "properties" to properties,
-                "required" to requiredParams
-            )
-        )
+                val requiredParams = tool.requiredParameters.map { it.name }
+                mapOf(
+                    "name" to tool.name,
+                    "description" to tool.description,
+                    "parameters" to
+                        mapOf(
+                            "type" to "object",
+                            "properties" to properties,
+                            "required" to requiredParams,
+                        ),
+                )
+            }
 
         return JsonObject(
-            schema.mapValues { (_, value) -> toJsonElement(value) }
+            schema.mapValues { (_, value) -> toJsonElement(value) },
         )
     }
 
@@ -166,46 +218,16 @@ internal class OpenApiLLMClient(
             is String -> JsonPrimitive(value)
             is Number -> JsonPrimitive(value)
             is Boolean -> JsonPrimitive(value)
-            is Map<*, *> -> JsonObject(
-                value.mapKeys { it.key.toString() }
-                    .mapValues { toJsonElement(it.value) }
-            )
+            is Map<*, *> ->
+                JsonObject(
+                    value
+                        .mapKeys { it.key.toString() }
+                        .mapValues { toJsonElement(it.value) },
+                )
             is List<*> -> JsonArray(value.map { toJsonElement(it) })
             null -> JsonNull
             else -> JsonPrimitive(value.toString())
         }
-
-    internal fun buildConversationHistory(messages: List<Message>): String {
-        val formattedMessages =
-            messages
-                .filterNot { it is Message.System }
-                .mapNotNull { message ->
-                    when (message) {
-                        is Message.User -> {
-                            "User: ${message.content}"
-                        }
-
-                        is Message.Assistant -> {
-                            "Assistant: ${message.content}"
-                        }
-
-                        is Message.Tool.Call -> {
-                            "Assistant: {\"name\":\"${message.tool}\", \"parameters\":${message.content}}"
-                        }
-
-                        is Message.Tool.Result -> {
-                            "Function '${message.tool}' returned: ${message.content}"
-                        }
-
-                        else -> {
-                            logger.w { "Encountered unexpected message type: ${message::class.simpleName}" }
-                            null
-                        }
-                    }
-                }
-
-        return formattedMessages.joinToString("\n\n")
-    }
 
     internal fun parseResponse(
         response: String,

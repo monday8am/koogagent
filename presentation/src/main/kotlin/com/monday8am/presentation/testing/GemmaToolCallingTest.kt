@@ -5,12 +5,11 @@ import ai.koog.agents.core.tools.ToolRegistry
 import co.touchlab.kermit.Logger
 import co.touchlab.kermit.Severity
 import com.monday8am.agent.gemma.GemmaAgent
-import com.monday8am.agent.tools.GetLocationTool
-import com.monday8am.agent.tools.GetWeatherTool
-import com.monday8am.agent.tools.GetWeatherToolFromLocation
+import com.monday8am.agent.tools.GetLocation
+import com.monday8am.agent.tools.GetWeather
+import com.monday8am.agent.tools.GetWeatherFromLocation
 import com.monday8am.koogagent.data.LocationProvider
 import com.monday8am.koogagent.data.WeatherProvider
-import jdk.internal.vm.vector.VectorSupport.test
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
@@ -186,14 +185,14 @@ internal class GemmaToolCallingTest(
         runTest(
             TestCase(
                 name = "TEST 1: Basic Location Tool Call",
-                tools = listOf(GetLocationTool(locationProvider)),
+                tools = listOf(GetLocation(locationProvider)),
                 queries =
                     listOf(
-                        TestQuery("Where am I?", "short query"),
+                        TestQuery("Where am I located?", "short query"),
                         TestQuery("What is my current location?", "explicit query"),
                         TestQuery("Can you tell me my coordinates?", "coordinate query"),
                     ),
-                systemPrompt = "You are a helpful assistant that can access the user's location.",
+                systemPrompt = "You are a helpful assistant that can call a function for getting user location.",
                 validator = { result ->
                     // Check for Madrid coordinates from MockLocationProvider
                     val hasMadridLat = result.contains("40.4") || result.contains("40°")
@@ -223,19 +222,19 @@ internal class GemmaToolCallingTest(
         runTest(
             TestCase(
                 name = "TEST 2: No Tool Needed (Normal Conversation)",
-                tools = listOf(GetLocationTool(locationProvider)),
+                tools = listOf(GetLocation(locationProvider)),
                 queries =
                     listOf(
                         TestQuery("Hello! How are you?"),
                         TestQuery("Tell me a joke"),
                         TestQuery("What is 2 + 2?"),
                     ),
-                systemPrompt = "You are a helpful assistant. Only use tools when specifically asked about location.",
+                systemPrompt = "You are a helpful assistant. Only call functions when specifically asked about location.",
                 validator = { result ->
-                    // Should NOT mention tools or call GetLocationTool
+                    // Should NOT mention tools or call GetLocation
                     val inappropriateToolUse =
                         result.contains("{\"tool\"", ignoreCase = true) ||
-                            result.contains("GetLocationTool", ignoreCase = true) ||
+                            result.contains("GetLocation", ignoreCase = true) ||
                             result.contains("latitude", ignoreCase = true)
 
                     val hasValidResponse = result.isNotBlank() && result.length > 5
@@ -255,13 +254,13 @@ internal class GemmaToolCallingTest(
                 name = "TEST 3: Tool Hallucination Prevention",
                 description =
                     listOf(
-                        "Available tools: GetLocationTool ONLY",
-                        "Query asks about: Weather (requires GetWeatherTool)",
-                        "Expected: Model should NOT hallucinate GetWeatherTool",
+                        "Available tools: GetLocation ONLY",
+                        "Query asks about: Weather (requires GetWeather)",
+                        "Expected: Model should NOT hallucinate GetWeather",
                     ),
-                tools = listOf(GetLocationTool(locationProvider)),
+                tools = listOf(GetLocation(locationProvider)),
                 queries = listOf(TestQuery("What's the weather like?")),
-                systemPrompt = "You are a helpful assistant. ONLY use tools that are explicitly available to you.",
+                systemPrompt = "You are a helpful assistant. ONLY call functions that are explicitly available to you.",
                 validator = { result ->
                     // Check if model handled unavailable tool gracefully
                     val apologizes =
@@ -286,10 +285,10 @@ internal class GemmaToolCallingTest(
         runTest(
             TestCase(
                 name = "TEST 4: Weather Tool Execution",
-                description = listOf("Note: GetWeatherTool should use default coordinates (no parameters)"),
-                tools = listOf(GetWeatherTool(locationProvider = locationProvider, weatherProvider = weatherProvider)),
+                description = listOf("Note: GetWeather should use default coordinates (no parameters)"),
+                tools = listOf(GetWeather(locationProvider = locationProvider, weatherProvider = weatherProvider)),
                 queries = listOf(TestQuery("What's the weather?")),
-                systemPrompt = "You are a helpful weather assistant. Use GetWeatherTool to check current weather.",
+                systemPrompt = "You are a helpful weather assistant. Call GetWeather to check current weather.",
                 validator = { result ->
                     val hasWeatherInfo =
                         result.contains("temperature", ignoreCase = true) ||
@@ -319,15 +318,15 @@ internal class GemmaToolCallingTest(
                     ),
                 tools =
                     listOf(
-                        GetLocationTool(locationProvider),
-                        GetWeatherToolFromLocation(weatherProvider),
+                        GetLocation(locationProvider),
+                        GetWeatherFromLocation(weatherProvider),
                     ),
                 queries = listOf(TestQuery("What's the weather where I am?")),
                 systemPrompt =
                     """
                     You are a helpful assistant.
                     To answer weather questions, you need the user's location first.
-                    Use GetLocationTool, then GetWeatherToolFromLocation.
+                    Call GetLocation and pass the result to GetWeatherFromLocation.
                     """.trimIndent(),
                 validator = { result ->
                     // Check if it contains weather info (unlikely in one turn with current protocol)
