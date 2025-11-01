@@ -20,12 +20,12 @@ class GetWeather(
     override val argsSerializer = Unit.serializer()
 
     override val description: String
-        get() = "Get the current weather"
+        get() = "Call this function to get the current weather. Parameters not required!"
 
     override val descriptor =
         ToolDescriptor(
             name = "GetWeather",
-            description = "Get the current weather",
+            description = description,
             requiredParameters = listOf(),
         )
 

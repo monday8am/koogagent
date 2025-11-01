@@ -27,9 +27,24 @@ private val gemmaModel =
         contextLength = DEFAULT_CONTEXT_LENGTH.toLong(), // Actual Gemma 3n-1b-it context: 4096 tokens
     )
 
+/**
+ * Tool calling format options for Gemma agent.
+ *
+ * @property SIMPLE Simplified JSON format: `{"tool":"ToolName"}` (no parameters)
+ * @property OPENAPI OpenAPI specification format: `{"name":"FunctionName", "parameters":{...}}`
+ * @property SLIM XML-like tag format: `<function>FunctionName</function>` with optional `<parameters>{...}</parameters>`
+ * @property REACT ReAct (Reasoning and Acting) pattern: Natural language with `Thought:` and `Action:` (recommended by Google)
+ */
+enum class ToolFormat {
+    SIMPLE,
+    OPENAPI,
+    SLIM,
+    REACT,
+}
+
 class GemmaAgent(
     private val promptExecutor: suspend (String) -> String?,
-    private val useOpenApiForTools: Boolean = false,
+    private val toolFormat: ToolFormat = ToolFormat.REACT,
 ) : NotificationAgent {
     private var registry: ToolRegistry? = null
     private val logger = Logger.withTag("GemmaAgent")
@@ -52,7 +67,16 @@ class GemmaAgent(
         }
 
     private fun getAIAgent(systemPrompt: String): AIAgent<String, String> {
-        val client = if (useOpenApiForTools) OpenApiLLMClient(promptExecutor) else GemmaLLMClient(promptExecutor = promptExecutor)
+        val client =
+            when (toolFormat) {
+                ToolFormat.SIMPLE -> GemmaLLMClient(promptExecutor = promptExecutor)
+                ToolFormat.OPENAPI -> OpenApiLLMClient(promptExecutor = promptExecutor)
+                ToolFormat.SLIM -> SlimLLMClient(promptExecutor = promptExecutor)
+                ToolFormat.REACT -> ReActLLMClient(promptExecutor = promptExecutor)
+            }
+
+        logger.d { "Using tool format: $toolFormat" }
+
         return AIAgent(
             promptExecutor =
                 SimpleGemmaAIExecutor(

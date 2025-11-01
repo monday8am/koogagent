@@ -38,12 +38,14 @@ class GetWeatherFromLocation(
     override val argsSerializer = Args.serializer()
 
     override val description: String
-        get() = "Get the current weather from latitude and longitude parameters"
+        get() =
+            "Call this function to get the weather using latitude and longitude parameters. " +
+                "The latitude and longitude are needed as parameters."
 
     override val descriptor =
         ToolDescriptor(
             name = "GetWeatherFromLocation",
-            description = "Get the current weather from the provided latitude and longitude parameters",
+            description = description,
             requiredParameters =
                 listOf(
                     ToolParameterDescriptor(name = "latitude", description = "geo latitude", type = ToolParameterType.String),
