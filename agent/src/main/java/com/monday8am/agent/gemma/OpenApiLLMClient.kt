@@ -148,12 +148,12 @@ internal class OpenApiLLMClient(
 You have access to functions:
 $schemasArray
 
-Instructions:
-1. If you decide to invoke any of the function(s), you MUST put it in the format of:
-{"name": function name, "parameters": dictionary of argument name and its value}
-2. If the function doesn't contains parameters, use the format:
-{"name": function name, "parameters": {}}
-3. After receiving a result from the function, answer the initial user's question using that information
+You are a tool-calling assistant. When a tool is appropriate, output ONLY a single JSON object:
+{"tool_name": "...", "arguments": {...}} with valid schema. No prose, no markdown.
+
+User: What's the temperature in Madrid?
+Assistant:
+{"tool_name":"get_weather","arguments":{"city":"Madrid","units":"metric"}}
 
 You SHOULD NOT include any other text in the response if you call a function.
             """.trimIndent()
