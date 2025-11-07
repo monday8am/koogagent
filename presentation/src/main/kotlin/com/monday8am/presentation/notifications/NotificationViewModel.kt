@@ -3,7 +3,7 @@ package com.monday8am.presentation.notifications
 import ai.koog.agents.core.tools.ToolRegistry
 import com.monday8am.agent.core.LocalInferenceEngine
 import com.monday8am.agent.core.LocalLLModel
-import com.monday8am.agent.core.NotificationAgentImpl
+import com.monday8am.agent.core.NotificationAgent
 import com.monday8am.agent.core.NotificationGenerator
 import com.monday8am.agent.core.ToolFormat
 import com.monday8am.agent.tools.GetLocation
@@ -243,7 +243,7 @@ class NotificationViewModelImpl(
                 )
 
             val agent =
-                NotificationAgentImpl(
+                NotificationAgent(
                     promptExecutor = { prompt ->
                         promptExecutor(prompt).getOrThrow()
                     },

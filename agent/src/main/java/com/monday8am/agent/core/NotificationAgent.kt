@@ -9,11 +9,10 @@ import ai.koog.prompt.llm.LLMCapability
 import ai.koog.prompt.llm.LLMProvider
 import ai.koog.prompt.llm.LLModel
 import co.touchlab.kermit.Logger
-import com.monday8am.agent.gemma.GemmaLLMClient
-import com.monday8am.agent.gemma.OpenApiLLMClient
-import com.monday8am.agent.gemma.ReActLLMClient
-import com.monday8am.agent.gemma.SlimLLMClient
-import com.monday8am.agent.ollama.OllamaLLMClient
+import com.monday8am.agent.local.SimpleLLMClient
+import com.monday8am.agent.local.OpenApiLLMClient
+import com.monday8am.agent.local.ReActLLMClient
+import com.monday8am.agent.local.SlimLLMClient
 
 /**
  * Tool calling format options for the notification agent.
@@ -22,14 +21,12 @@ import com.monday8am.agent.ollama.OllamaLLMClient
  * @property OPENAPI OpenAPI specification format: `{"name":"FunctionName", "parameters":{...}}`
  * @property SLIM XML-like tag format: `<function>FunctionName</function>` with optional `<parameters>{...}</parameters>`
  * @property REACT ReAct (Reasoning and Acting) pattern: Natural language with `Thought:` and `Action:` (recommended by Google)
- * @property NATIVE Native tool calling via Ollama API (OpenAI-compatible format)
  */
 enum class ToolFormat {
     SIMPLE,
     OPENAPI,
     SLIM,
     REACT,
-    NATIVE,
 }
 
 /**
@@ -43,14 +40,14 @@ enum class ToolFormat {
  * @param toolFormat Tool calling protocol to use (default: REACT)
  * @param modelProvider LLM provider (default: Google)
  */
-class NotificationAgentImpl(
+class NotificationAgent(
     private val promptExecutor: suspend (String) -> String?,
     private val modelId: String,
     private val toolFormat: ToolFormat = ToolFormat.REACT,
     private val modelProvider: LLMProvider = LLMProvider.Google,
 ) {
     private var registry: ToolRegistry? = null
-    private val logger = Logger.withTag("NotificationAgentImpl")
+    private val logger = Logger.withTag("NotificationAgent")
 
     /**
      * Initializes the agent with a tool registry.
@@ -85,44 +82,27 @@ class NotificationAgentImpl(
         logger.d { "Using tool format: $toolFormat, model: $modelId" }
 
         val llmModel = buildLLModel()
-
-        return when (toolFormat) {
-            ToolFormat.NATIVE -> {
-                // Use Ollama's native tool calling
-                AIAgent(
-                    promptExecutor = simpleOllamaAIExecutor(),
-                    systemPrompt = systemPrompt,
-                    temperature = 0.7,
-                    llmModel = llmModel,
-                    toolRegistry = registry ?: ToolRegistry.EMPTY,
-                    installFeatures = installCommonEventHandling,
-                )
-            }
-            else -> {
-                // Use text-based tool calling protocol with custom LLM client
-                val client = createLLMClient()
-                AIAgent(
-                    promptExecutor =
-                        SimpleGemmaAIExecutor(
-                            llmClient = client,
-                        ),
-                    systemPrompt = systemPrompt,
-                    temperature = 0.7,
-                    llmModel = llmModel,
-                    toolRegistry = registry ?: ToolRegistry.EMPTY,
-                    installFeatures = installCommonEventHandling,
-                )
-            }
+        val promptExecutor = if (modelId == "ollama") simpleOllamaAIExecutor() else {
+            LocalInferenceAIExecutor(
+                llmClient = createLLMClient(),
+            )
         }
+        return AIAgent(
+            promptExecutor = promptExecutor,
+            systemPrompt = systemPrompt,
+            temperature = 0.7,
+            llmModel = llmModel,
+            toolRegistry = registry ?: ToolRegistry.EMPTY,
+            installFeatures = installCommonEventHandling,
+        )
     }
 
     private fun createLLMClient(): LLMClient =
         when (toolFormat) {
-            ToolFormat.SIMPLE -> GemmaLLMClient(promptExecutor = promptExecutor)
+            ToolFormat.SIMPLE -> SimpleLLMClient(promptExecutor = promptExecutor)
             ToolFormat.OPENAPI -> OpenApiLLMClient(promptExecutor = promptExecutor)
             ToolFormat.SLIM -> SlimLLMClient(promptExecutor = promptExecutor)
             ToolFormat.REACT -> ReActLLMClient(promptExecutor = promptExecutor)
-            ToolFormat.NATIVE -> OllamaLLMClient(promptExecutor = promptExecutor)
         }
 
     private fun buildLLModel(): LLModel =
@@ -140,6 +120,6 @@ class NotificationAgentImpl(
         )
 }
 
-private class SimpleGemmaAIExecutor(
+private class LocalInferenceAIExecutor(
     llmClient: LLMClient,
 ) : SingleLLMPromptExecutor(llmClient)

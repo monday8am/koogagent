@@ -4,7 +4,7 @@ import ai.koog.agents.core.tools.Tool
 import ai.koog.agents.core.tools.ToolRegistry
 import co.touchlab.kermit.Logger
 import co.touchlab.kermit.Severity
-import com.monday8am.agent.core.NotificationAgentImpl
+import com.monday8am.agent.core.NotificationAgent
 import com.monday8am.agent.core.ToolFormat
 import com.monday8am.agent.tools.GetLocation
 import com.monday8am.agent.tools.GetWeather
@@ -109,7 +109,7 @@ internal class GemmaToolCallingTest(
 
             try {
                 val agent =
-                    NotificationAgentImpl(
+                    NotificationAgent(
                         promptExecutor = promptExecutor,
                         modelId = "gemma3-1b-it-int4",
                         toolFormat = ToolFormat.REACT,

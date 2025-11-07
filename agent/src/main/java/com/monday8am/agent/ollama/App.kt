@@ -4,7 +4,7 @@ import ai.koog.agents.core.tools.ToolRegistry
 import ai.koog.prompt.executor.ollama.client.OllamaClient
 import ai.koog.prompt.executor.ollama.client.toLLModel
 import co.touchlab.kermit.Logger
-import com.monday8am.agent.core.NotificationAgentImpl
+import com.monday8am.agent.core.NotificationAgent
 import com.monday8am.agent.core.NotificationGenerator
 import com.monday8am.agent.core.ToolFormat
 import com.monday8am.agent.tools.GetLocation
@@ -40,10 +40,9 @@ fun main() =
         logger.i { "Using Ollama model: ${llModel.id}" }
 
         val agent =
-            NotificationAgentImpl(
+            NotificationAgent(
                 promptExecutor = { "" }, // Not used for NATIVE format
                 modelId = llModel.id,
-                toolFormat = ToolFormat.NATIVE,
             ).apply {
                 initializeWithTools(toolRegistry)
             }

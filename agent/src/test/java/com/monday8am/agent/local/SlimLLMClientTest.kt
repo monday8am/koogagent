@@ -1,6 +1,8 @@
-package com.monday8am.agent.gemma
+package com.monday8am.agent.local
 
 import ai.koog.agents.core.tools.ToolDescriptor
+import ai.koog.agents.core.tools.ToolParameterDescriptor
+import ai.koog.agents.core.tools.ToolParameterType
 import ai.koog.prompt.dsl.Prompt
 import ai.koog.prompt.llm.LLMCapability
 import ai.koog.prompt.llm.LLMProvider
@@ -14,9 +16,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
-// Vibe code for good vibes: Claude Desktop!
-class GemmaLLMClientTest {
-    private lateinit var client: GemmaLLMClient
+class SlimLLMClientTest {
+    private lateinit var client: SlimLLMClient
 
     // Shared tool definitions to avoid repetition
     private val getWeatherTool =
@@ -35,39 +36,83 @@ class GemmaLLMClientTest {
             optionalParameters = emptyList(),
         )
 
+    private val getWeatherWithParamsTool =
+        ToolDescriptor(
+            name = "GetWeatherFromLocation",
+            description = "Gets weather for a specific location",
+            requiredParameters =
+                listOf(
+                    ToolParameterDescriptor(
+                        name = "latitude",
+                        description = "Latitude coordinate",
+                        type = ToolParameterType.String,
+                    ),
+                    ToolParameterDescriptor(
+                        name = "longitude",
+                        description = "Longitude coordinate",
+                        type = ToolParameterType.String,
+                    ),
+                ),
+            optionalParameters = emptyList(),
+        )
+
     @Before
     fun setup() {
         // Create a dummy instance - we won't call execute() in these tests
-        client = GemmaLLMClient(promptExecutor = { "result!" })
+        client = SlimLLMClient(promptExecutor = { "result!" })
     }
 
+    // ==================== buildSlimToolInstructions Tests ====================
+
     @Test
-    fun `buildToolInstructions returns empty string when no tools provided`() {
-        val result = client.buildToolInstructions(emptyList())
+    fun `buildSlimToolInstructions returns empty string when no tools provided`() {
+        val result = client.buildSlimToolInstructions(emptyList())
         assertEquals("", result)
     }
 
     @Test
-    fun `buildToolInstructions formats single tool correctly`() {
+    fun `buildSlimToolInstructions formats single tool correctly`() {
         val tools = listOf(getWeatherTool)
 
-        val result = client.buildToolInstructions(tools)
+        val result = client.buildSlimToolInstructions(tools)
 
-        assertTrue(result.contains("Available tools:"))
+        assertTrue(result.contains("Available functions:"))
         assertTrue(result.contains("- GetWeather: Gets current weather"))
-        assertTrue(result.contains("""{"tool":"ToolName"}"""))
-        assertTrue(result.contains("""{"tool":"none"}"""))
+        assertTrue(result.contains("<function>FunctionName</function>"))
+        assertTrue(result.contains("<parameters>"))
     }
 
     @Test
-    fun `buildToolInstructions formats multiple tools correctly`() {
+    fun `buildSlimToolInstructions formats multiple tools correctly`() {
         val tools = listOf(getWeatherTool, getLocationTool)
 
-        val result = client.buildToolInstructions(tools)
+        val result = client.buildSlimToolInstructions(tools)
 
         assertTrue(result.contains("- GetWeather: Gets current weather"))
         assertTrue(result.contains("- GetLocation: Gets current location"))
     }
+
+    @Test
+    fun `buildSlimToolInstructions shows parameters for tools with params`() {
+        val tools = listOf(getWeatherWithParamsTool)
+
+        val result = client.buildSlimToolInstructions(tools)
+
+        assertTrue(result.contains("- GetWeatherFromLocation: Gets weather for a specific location (parameters: latitude, longitude)"))
+    }
+
+    @Test
+    fun `buildSlimToolInstructions includes SLIM format examples`() {
+        val tools = listOf(getLocationTool)
+
+        val result = client.buildSlimToolInstructions(tools)
+
+        assertTrue(result.contains("EXAMPLES:"))
+        assertTrue(result.contains("<function>GetLocation</function>"))
+        assertTrue(result.contains("latitude: 48.8534, longitude: 2.3488"))
+    }
+
+    // ==================== buildSubsequentTurnPrompt Tests ====================
 
     @Test
     fun `buildSubsequentTurnPrompt extracts user message correctly`() {
@@ -78,7 +123,7 @@ class GemmaLLMClientTest {
 
         val result = client.buildSubsequentTurnPrompt(messages)
 
-        assertEquals("User:Hello", result)
+        assertEquals("Hello", result)
     }
 
     @Test
@@ -90,11 +135,11 @@ class GemmaLLMClientTest {
 
         val result = client.buildSubsequentTurnPrompt(messages)
 
-        assertEquals("Assistant:Hi there!", result)
+        assertEquals("Hi there!", result)
     }
 
     @Test
-    fun `buildSubsequentTurnPrompt extracts tool call correctly`() {
+    fun `buildSubsequentTurnPrompt extracts tool call without parameters`() {
         val messages =
             listOf(
                 Message.Tool.Call(
@@ -107,7 +152,28 @@ class GemmaLLMClientTest {
 
         val result = client.buildSubsequentTurnPrompt(messages)
 
-        assertEquals("""Assistant:{"tool":"GetWeather"}""", result)
+        assertEquals("<function>GetWeather</function>", result)
+    }
+
+    @Test
+    fun `buildSubsequentTurnPrompt extracts tool call with parameters`() {
+        val messages =
+            listOf(
+                Message.Tool.Call(
+                    id = "123",
+                    tool = "GetWeatherFromLocation",
+                    content = """{"latitude": "48.8534", "longitude": "2.3488"}""",
+                    metaInfo = ResponseMetaInfo.Empty,
+                ),
+            )
+
+        val result = client.buildSubsequentTurnPrompt(messages)
+
+        assertEquals(
+            """<function>GetWeatherFromLocation</function>
+<parameters>{"latitude": "48.8534", "longitude": "2.3488"}</parameters>""",
+            result,
+        )
     }
 
     @Test
@@ -124,7 +190,7 @@ class GemmaLLMClientTest {
 
         val result = client.buildSubsequentTurnPrompt(messages)
 
-        assertEquals("Tool 'GetWeather' returned: Sunny, 72°F", result)
+        assertEquals("Tool result: Sunny, 72°F", result)
     }
 
     @Test
@@ -137,7 +203,7 @@ class GemmaLLMClientTest {
 
         val result = client.buildSubsequentTurnPrompt(messages)
 
-        assertEquals("User:Hello", result)
+        assertEquals("Hello", result)
         assertTrue(!result.contains("You are a helpful assistant"))
     }
 
@@ -151,31 +217,7 @@ class GemmaLLMClientTest {
 
         val result = client.buildSubsequentTurnPrompt(messages)
 
-        assertEquals("Assistant:Hi!", result)
-    }
-
-    @Test
-    fun `buildSubsequentTurnPrompt extracts latest from tool calling flow`() {
-        val messages =
-            listOf(
-                Message.User(content = "What's the weather?", metaInfo = RequestMetaInfo.Empty),
-                Message.Tool.Call(
-                    id = "1",
-                    tool = "GetWeather",
-                    content = "{}",
-                    metaInfo = ResponseMetaInfo.Empty,
-                ),
-                Message.Tool.Result(
-                    id = "1",
-                    tool = "GetWeather",
-                    content = "Sunny, 72°F",
-                    metaInfo = RequestMetaInfo.Empty,
-                ),
-            )
-
-        val result = client.buildSubsequentTurnPrompt(messages)
-
-        assertEquals("Tool 'GetWeather' returned: Sunny, 72°F", result)
+        assertEquals("Hi!", result)
     }
 
     // ==================== buildFirstTurnPrompt Tests ====================
@@ -213,7 +255,7 @@ class GemmaLLMClientTest {
         val result = client.buildFirstTurnPrompt(prompt, listOf(getWeatherTool))
 
         assertTrue(result.contains("You are helpful"))
-        assertTrue(result.contains("Available tools:"))
+        assertTrue(result.contains("Available functions:"))
         assertTrue(result.contains("- GetWeather: Gets current weather"))
         assertTrue(result.contains("What's the weather?"))
     }
@@ -234,9 +276,11 @@ class GemmaLLMClientTest {
         assertEquals("Hello", result)
     }
 
+    // ==================== parseResponse Tests ====================
+
     @Test
-    fun `parseResponse detects tool call`() {
-        val result = client.parseResponse("""{"tool":"GetWeather"}""", listOf(getWeatherTool))
+    fun `parseResponse detects tool call without parameters`() {
+        val result = client.parseResponse("<function>GetWeather</function>", listOf(getWeatherTool))
 
         assertEquals(1, result.size)
         val message = result[0]
@@ -246,11 +290,28 @@ class GemmaLLMClientTest {
     }
 
     @Test
-    fun `parseResponse handles tool none with text response`() {
+    fun `parseResponse detects tool call with parameters`() {
+        val response =
+            """
+            <function>GetWeatherFromLocation</function>
+            <parameters>{"latitude": "48.8534", "longitude": "2.3488"}</parameters>
+            """.trimIndent()
+
+        val result = client.parseResponse(response, listOf(getWeatherWithParamsTool))
+
+        assertEquals(1, result.size)
+        val message = result[0]
+        assertTrue(message is Message.Tool.Call)
+        assertEquals("GetWeatherFromLocation", (message as Message.Tool.Call).tool)
+        assertEquals("""{"latitude": "48.8534", "longitude": "2.3488"}""", message.content)
+    }
+
+    @Test
+    fun `parseResponse handles function none with text response`() {
         val result =
             client.parseResponse(
                 """
-                {"tool":"none"}
+                <function>none</function>
                 Hello! How can I help you?
                 """.trimIndent(),
                 emptyList(),
@@ -263,8 +324,18 @@ class GemmaLLMClientTest {
     }
 
     @Test
+    fun `parseResponse handles function none without additional text`() {
+        val result = client.parseResponse("<function>none</function>", emptyList())
+
+        assertEquals(1, result.size)
+        val message = result[0]
+        assertTrue(message is Message.Assistant)
+        assertEquals("I can help with that without using any tools.", (message as Message.Assistant).content)
+    }
+
+    @Test
     fun `parseResponse handles non-existent tool gracefully`() {
-        val result = client.parseResponse("""{"tool":"GetLocation"}""", listOf(getWeatherTool))
+        val result = client.parseResponse("<function>GetLocation</function>", listOf(getWeatherTool))
 
         assertEquals(1, result.size)
         val message = result[0]
@@ -273,7 +344,7 @@ class GemmaLLMClientTest {
     }
 
     @Test
-    fun `parseResponse handles response without tool pattern`() {
+    fun `parseResponse handles response without function tags`() {
         val result = client.parseResponse("Just a regular response", emptyList())
 
         assertEquals(1, result.size)
@@ -283,8 +354,8 @@ class GemmaLLMClientTest {
     }
 
     @Test
-    fun `parseResponse handles tool pattern with extra whitespace`() {
-        val result = client.parseResponse("""{ "tool" : "GetWeather" }""", listOf(getWeatherTool))
+    fun `parseResponse handles function tag with extra whitespace`() {
+        val result = client.parseResponse("<function>  GetWeather  </function>", listOf(getWeatherTool))
 
         assertEquals(1, result.size)
         val message = result[0]
@@ -293,23 +364,106 @@ class GemmaLLMClientTest {
     }
 
     @Test
-    fun `parseResponse trims whitespace from tool name value`() {
-        // Model might add leading/trailing space in the value
-        val result = client.parseResponse("""{"tool":" GetWeather "}""", listOf(getWeatherTool))
+    fun `parseResponse handles parameters with extra whitespace`() {
+        val response =
+            """
+            <function>GetWeatherFromLocation</function>
+            <parameters>  {"latitude": "48.8534"}  </parameters>
+            """.trimIndent()
+
+        val result = client.parseResponse(response, listOf(getWeatherWithParamsTool))
 
         assertEquals(1, result.size)
         val message = result[0]
         assertTrue(message is Message.Tool.Call)
-        assertEquals("GetWeather", (message as Message.Tool.Call).tool)
+        assertEquals("""{"latitude": "48.8534"}""", (message as Message.Tool.Call).content)
     }
 
     @Test
-    fun `parseResponse extracts tool name correctly from mixed content`() {
-        // Model might add extra text
+    fun `parseResponse extracts function from mixed content`() {
+        // Model might add extra text before function tag
         val result =
             client.parseResponse(
-                """Let me check that for you. {"tool":"GetWeather"}""",
+                "Let me check that for you.\n<function>GetWeather</function>",
                 listOf(getWeatherTool),
+            )
+
+        assertEquals(1, result.size)
+        val message = result[0]
+        assertTrue(message is Message.Tool.Call)
+        assertEquals("GetWeather", (message as Message.Tool.Call).tool)
+    }
+
+    @Test
+    fun `parseResponse handles case-insensitive none`() {
+        val result = client.parseResponse("<function>NoNe</function>", emptyList())
+
+        assertEquals(1, result.size)
+        val message = result[0]
+        assertTrue(message is Message.Assistant)
+    }
+
+    // ==================== Infinite Loop Detection Tests ====================
+
+    @Test
+    fun `parseResponse detects infinite loop and breaks it`() {
+        val conversationHistory =
+            listOf(
+                Message.User(content = "What's the weather?", metaInfo = RequestMetaInfo.Empty),
+                Message.Tool.Call(
+                    id = "1",
+                    tool = "GetWeather",
+                    content = "{}",
+                    metaInfo = ResponseMetaInfo.Empty,
+                ),
+                Message.Tool.Result(
+                    id = "1",
+                    tool = "GetWeather",
+                    content = "Sunny, 72°F",
+                    metaInfo = RequestMetaInfo.Empty,
+                ),
+            )
+
+        // Model tries to call GetWeather again
+        val result =
+            client.parseResponse(
+                "<function>GetWeather</function>",
+                listOf(getWeatherTool),
+                conversationHistory,
+            )
+
+        assertEquals(1, result.size)
+        val message = result[0]
+        assertTrue(message is Message.Assistant)
+        assertTrue((message as Message.Assistant).content.contains("I have the information"))
+        assertTrue(message.content.contains("Sunny, 72°F"))
+    }
+
+    @Test
+    fun `parseResponse allows calling different tool after result`() {
+        val conversationHistory =
+            listOf(
+                Message.User(content = "Where am I?", metaInfo = RequestMetaInfo.Empty),
+                Message.Tool.Call(
+                    id = "1",
+                    tool = "GetLocation",
+                    content = "{}",
+                    metaInfo = ResponseMetaInfo.Empty,
+                ),
+                Message.Tool.Result(
+                    id = "1",
+                    tool = "GetLocation",
+                    content = "latitude: 48.8534, longitude: 2.3488",
+                    metaInfo = RequestMetaInfo.Empty,
+                ),
+            )
+
+        // Model now calls GetWeather (different tool) - should be allowed
+        val result =
+            client.parseResponse(
+                "<function>GetWeather</function>",
+                listOf(getWeatherTool, getLocationTool),
+                conversationHistory,
             )
 
         assertEquals(1, result.size)
@@ -321,15 +475,15 @@ class GemmaLLMClientTest {
     // ==================== End-to-End Integration Tests ====================
 
     @Test
-    fun `execute returns tool call when model responds with tool pattern`() =
+    fun `execute returns tool call when model responds with SLIM function tag`() =
         runBlockingTest {
             // Mock the LLM to return a tool call
             val client =
-                GemmaLLMClient(promptExecutor = { prompt ->
+                SlimLLMClient(promptExecutor = { prompt ->
                     // Verify prompt contains tool instructions
-                    assertTrue(prompt.contains("Available tools:"))
+                    assertTrue(prompt.contains("Available functions:"))
                     // Return a tool call
-                    """{"tool":"GetWeather"}"""
+                    "<function>GetWeather</function>"
                 })
 
             val prompt =
@@ -349,12 +503,41 @@ class GemmaLLMClientTest {
         }
 
     @Test
+    fun `execute returns tool call with parameters`() =
+        runBlockingTest {
+            val client =
+                SlimLLMClient(promptExecutor = {
+                    """
+                    <function>GetWeatherFromLocation</function>
+                    <parameters>{"latitude": "40.4168", "longitude": "-3.7038"}</parameters>
+                    """.trimIndent()
+                })
+
+            val prompt =
+                Prompt(
+                    id = "test",
+                    messages =
+                        listOf(
+                            Message.User(content = "Weather in Madrid?", metaInfo = RequestMetaInfo.Empty),
+                        ),
+                )
+
+            val result = client.execute(prompt, mockModel(), listOf(getWeatherWithParamsTool))
+
+            assertEquals(1, result.size)
+            assertTrue(result[0] is Message.Tool.Call)
+            val call = result[0] as Message.Tool.Call
+            assertEquals("GetWeatherFromLocation", call.tool)
+            assertEquals("""{"latitude": "40.4168", "longitude": "-3.7038"}""", call.content)
+        }
+
+    @Test
     fun `execute returns assistant message when model responds with none`() =
         runBlockingTest {
             val client =
-                GemmaLLMClient(promptExecutor = {
+                SlimLLMClient(promptExecutor = {
                     """
-                    {"tool":"none"}
+                    <function>none</function>
                     The weather is sunny today!
                     """.trimIndent()
                 })
@@ -378,7 +561,7 @@ class GemmaLLMClientTest {
     @Test
     fun `execute handles model returning null`() =
         runBlockingTest {
-            val client = GemmaLLMClient(promptExecutor = { null })
+            val client = SlimLLMClient(promptExecutor = { null })
 
             val prompt =
                 Prompt(
@@ -399,9 +582,9 @@ class GemmaLLMClientTest {
         runBlockingTest {
             var capturedPrompt = ""
             val client =
-                GemmaLLMClient(promptExecutor = { prompt ->
+                SlimLLMClient(promptExecutor = { prompt ->
                     capturedPrompt = prompt
-                    """{"tool":"none"} Hello!"""
+                    "<function>none</function> Hello!"
                 })
 
             val promptObj =
@@ -418,50 +601,9 @@ class GemmaLLMClientTest {
 
             // Verify the built prompt
             assertTrue(capturedPrompt.contains("You are helpful"))
-            assertTrue(capturedPrompt.contains("Available tools:"))
+            assertTrue(capturedPrompt.contains("Available functions:"))
             assertTrue(capturedPrompt.contains("- GetWeather: Gets current weather"))
-            assertTrue(capturedPrompt.contains("User: Hi"))
-        }
-
-    @Test
-    fun `execute passes conversation history correctly`() =
-        runBlockingTest {
-            var capturedPrompt = ""
-            val client =
-                GemmaLLMClient(promptExecutor = { prompt ->
-                    capturedPrompt = prompt
-                    """{"tool":"GetWeather"}"""
-                })
-
-            val promptObj =
-                Prompt(
-                    id = "test",
-                    messages =
-                        listOf(
-                            Message.User(content = "What's the weather?", metaInfo = RequestMetaInfo.Empty),
-                            Message.Tool.Call(
-                                id = "1",
-                                tool = "GetWeather",
-                                content = "{}",
-                                metaInfo = ResponseMetaInfo.Empty,
-                            ),
-                            Message.Tool.Result(
-                                id = "1",
-                                tool = "GetWeather",
-                                content = "Sunny, 72°F",
-                                metaInfo = RequestMetaInfo.Empty,
-                            ),
-                            Message.User(content = "What about tomorrow?", metaInfo = RequestMetaInfo.Empty),
-                        ),
-                )
-
-            client.execute(promptObj, mockModel(), listOf(getWeatherTool))
-
-            // Verify conversation history is included
-            assertTrue(capturedPrompt.contains("User: What's the weather?"))
-            assertTrue(capturedPrompt.contains("""Assistant: {"tool":"GetWeather"}"""))
-            assertTrue(capturedPrompt.contains("Tool 'GetWeather' returned: Sunny, 72°F"))
-            assertTrue(capturedPrompt.contains("User: What about tomorrow?"))
+            assertTrue(capturedPrompt.contains("Hi"))
         }
 
     // Helper to create a mock LLModel

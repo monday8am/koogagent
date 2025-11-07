@@ -28,7 +28,7 @@ KoogAgent is an Android prototype that explores how agentic frameworks and on-de
 2. **`:agent` module** (Pure Kotlin/JVM)
    - Platform-agnostic notification generation logic
    - `NotificationGenerator` class orchestrates the AI agent
-   - `NotificationAgentImpl` - unified agent supporting multiple LLM backends and tool calling protocols
+   - `NotificationAgent` - unified agent supporting multiple LLM backends and tool calling protocols
    - 5 tool format options: SIMPLE, OPENAPI, SLIM, REACT (text-based), NATIVE (Ollama API)
    - LLM clients: `GemmaLLMClient`, `OpenApiLLMClient`, `SlimLLMClient`, `ReActLLMClient`, `OllamaLLMClient`
    - Core models: `LocalLLModel`, `LocalInferenceEngine` interface
@@ -65,7 +65,7 @@ KoogAgent is an Android prototype that explores how agentic frameworks and on-de
 ### Key Integration Points
 
 **Koog Agent Integration:**
-- `NotificationAgentImpl` is a unified agent supporting multiple LLM backends and tool calling protocols
+- `NotificationAgent` is a unified agent supporting multiple LLM backends and tool calling protocols
 - Creates Koog `AIAgent` instances with:
   - System prompt defining the nutritionist role
   - Configurable LLM executors based on `toolFormat`:
@@ -229,7 +229,7 @@ The `GemmaFormatter` (from `com.google.ai.edge.localagents:localagents-fc:0.1.0`
 - This is exactly what the custom protocol implements
 
 **Current Implementation:**
-- `NotificationAgentImpl` provides unified interface for all tool calling approaches
+- `NotificationAgent` provides unified interface for all tool calling approaches
 - Uses custom text-based protocols with Koog's `ToolRegistry` for Gemma-style models
 - Uses native Ollama API for server-based models (NATIVE format)
 - Tools: `GetLocationTool`, `GetWeatherToolFromLocation`
@@ -310,7 +310,7 @@ Not enabled for release builds (prototype phase)
 ## Testing Strategy
 
 ### JVM Testing with Ollama
-- Use `:agent` module with `NotificationAgentImpl` (NATIVE format)
+- Use `:agent` module with `NotificationAgent` (NATIVE format)
 - Run local Ollama server at `http://10.0.2.2:11434` (Android emulator host)
 - Tests can verify prompt construction and tool calling without LiteRT-LM
 - Example: `agent/ollama/App.kt` creates agent with `ToolFormat.NATIVE`
@@ -464,12 +464,12 @@ sealed class UiAction {
 
 ### Unified Agent Architecture
 
-**NotificationAgentImpl Design:**
-The project previously had separate `GemmaAgent` and `OllamaAgent` classes with a `NotificationAgent` interface. These have been unified into a single `NotificationAgentImpl` class that supports both on-device and server-based models.
+**NotificationAgent Design:**
+The project previously had separate `GemmaAgent` and `OllamaAgent` classes with a `NotificationAgent` interface. These have been unified into a single `NotificationAgent` class that supports both on-device and server-based models.
 
 **Constructor Parameters:**
 ```kotlin
-NotificationAgentImpl(
+NotificationAgent(
     promptExecutor: suspend (String) -> String?,  // LLM inference function
     modelId: String,                               // Model identifier
     toolFormat: ToolFormat = ToolFormat.REACT,     // Tool calling protocol
@@ -488,14 +488,14 @@ NotificationAgentImpl(
 **Usage Examples:**
 ```kotlin
 // On-device Gemma with REACT protocol (recommended)
-NotificationAgentImpl(
+NotificationAgent(
     promptExecutor = { prompt -> inferenceEngine.prompt(prompt).getOrThrow() },
     modelId = "gemma3-1b-it-int4",
     toolFormat = ToolFormat.REACT,
 )
 
 // Server-based Ollama with native tool calling
-NotificationAgentImpl(
+NotificationAgent(
     promptExecutor = { "" },  // Not used for NATIVE format
     modelId = dynamicModel.id,
     toolFormat = ToolFormat.NATIVE,

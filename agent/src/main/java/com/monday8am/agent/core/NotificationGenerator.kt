@@ -9,23 +9,9 @@ import org.json.JSONObject
 internal val logger = Logger.withTag("NotificationGenerator")
 
 class NotificationGenerator(
-    private val agent: NotificationAgentImpl,
+    private val agent: NotificationAgent,
 ) {
     private val systemPrompt = "You are an nutritionist that generates short, motivating reminders for logging meals or water intake."
-    private val systemPromptForToolTesting =
-        """
-        You are a tool-calling assistant.
-
-        Available tool:
-        - GetLocationTool (no parameters needed)
-
-        Rule: If the user needs location information, output exactly: {"tool":"GetLocationTool"}
-        If not needed, output exactly: {"tool":"none"}
-
-        Example:
-        For the question: Where am I right now?
-        The answer is: {"tool":"GetLocationTool"}
-        """.trimIndent()
 
     suspend fun generate(context: NotificationContext): NotificationResult {
         val prompt = buildPrompt(context)
@@ -71,10 +57,6 @@ class NotificationGenerator(
         ${if (context.alreadyLogged) "The user has already logged something today - encourage them to continue." else "The user has not logged anything today - motivate them to start."}
         Say to user if you used the WeatherTool or not and why
         """.trimIndent()
-
-    // Build prompt for tool testing
-
-    private fun buildPromptForToolTesting(): String = "I'm lost. I need to know my location"
 
     private fun parseResponse(response: String): NotificationResult {
         val cleanJson = response.removePrefix("```json\n").removeSuffix("\n```")
