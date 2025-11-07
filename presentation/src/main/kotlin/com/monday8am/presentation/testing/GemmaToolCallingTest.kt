@@ -109,7 +109,7 @@ internal class GemmaToolCallingTest(
 
             try {
                 val agent =
-                    NotificationAgent(
+                    NotificationAgent.local(
                         promptExecutor = promptExecutor,
                         modelId = "gemma3-1b-it-int4",
                         toolFormat = ToolFormat.REACT,

@@ -40,8 +40,7 @@ fun main() =
         logger.i { "Using Ollama model: ${llModel.id}" }
 
         val agent =
-            NotificationAgent(
-                promptExecutor = { "" }, // Not used for NATIVE format
+            NotificationAgent.koog(
                 modelId = llModel.id,
             ).apply {
                 initializeWithTools(toolRegistry)

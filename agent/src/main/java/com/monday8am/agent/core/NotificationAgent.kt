@@ -30,22 +30,69 @@ enum class ToolFormat {
 }
 
 /**
+ * Agent backend type determines which executor and configuration to use.
+ */
+enum class AgentBackend {
+    /** Local inference (LiteRT-LM, etc.) - requires promptExecutor and toolFormat */
+    LOCAL,
+    /** Koog framework agent (Ollama, etc.) - uses built-in executors */
+    KOOG,
+}
+
+/**
  * Unified agent implementation that supports multiple LLM backends and tool calling protocols.
  *
- * This class replaces the previous GemmaAgent and OllamaAgent implementations, providing
- * a single configurable agent that works with different models and tool formats.
- *
- * @param promptExecutor Function that executes prompts against the LLM (for text-based protocols)
- * @param modelId Model identifier (e.g., "gemma3-1b-it-int4", "llama3")
- * @param toolFormat Tool calling protocol to use (default: REACT)
- * @param modelProvider LLM provider (default: Google)
+ * Use factory methods for clearer construction:
+ * - `NotificationAgent.local()` for local inference-based agents (Gemma, etc.)
+ * - `NotificationAgent.koog()` for Koog framework agents (Ollama, etc.)
  */
-class NotificationAgent(
-    private val promptExecutor: suspend (String) -> String?,
+class NotificationAgent private constructor(
+    private val backend: AgentBackend,
+    private val promptExecutor: (suspend (String) -> String?)?,
     private val modelId: String,
-    private val toolFormat: ToolFormat = ToolFormat.REACT,
-    private val modelProvider: LLMProvider = LLMProvider.Google,
+    private val toolFormat: ToolFormat?,
+    private val modelProvider: LLMProvider,
 ) {
+    companion object {
+        /**
+         * Creates an agent for local inference (e.g., LiteRT-LM with Gemma).
+         *
+         * @param promptExecutor Function that executes prompts against the local LLM
+         * @param modelId Model identifier (e.g., "gemma3-1b-it-int4")
+         * @param toolFormat Tool calling protocol (SIMPLE, OPENAPI, SLIM, REACT)
+         * @param modelProvider LLM provider (default: Google)
+         */
+        fun local(
+            promptExecutor: suspend (String) -> String?,
+            modelId: String,
+            toolFormat: ToolFormat = ToolFormat.REACT,
+            modelProvider: LLMProvider = LLMProvider.Google,
+        ) = NotificationAgent(
+            backend = AgentBackend.LOCAL,
+            promptExecutor = promptExecutor,
+            modelId = modelId,
+            toolFormat = toolFormat,
+            modelProvider = modelProvider,
+        )
+
+        /**
+         * Creates an agent using Koog framework's built-in executors (e.g., Ollama).
+         *
+         * @param modelId Model identifier (e.g., "llama3")
+         * @param modelProvider LLM provider (default: Ollama)
+         */
+        fun koog(
+            modelId: String,
+            modelProvider: LLMProvider = LLMProvider.Ollama,
+        ) = NotificationAgent(
+            backend = AgentBackend.KOOG,
+            promptExecutor = null,
+            modelId = modelId,
+            toolFormat = null,
+            modelProvider = modelProvider,
+        )
+    }
+
     private var registry: ToolRegistry? = null
     private val logger = Logger.withTag("NotificationAgent")
 
@@ -79,16 +126,21 @@ class NotificationAgent(
         }
 
     private fun getAIAgent(systemPrompt: String): AIAgent<String, String> {
-        logger.d { "Using tool format: $toolFormat, model: $modelId" }
+        logger.d { "Using backend: $backend, model: $modelId" }
 
         val llmModel = buildLLModel()
-        val promptExecutor = if (modelId == "ollama") simpleOllamaAIExecutor() else {
-            LocalInferenceAIExecutor(
-                llmClient = createLLMClient(),
-            )
-        }
+        val executor =
+            when (backend) {
+                AgentBackend.LOCAL -> {
+                    requireNotNull(promptExecutor) { "promptExecutor required for LOCAL backend" }
+                    requireNotNull(toolFormat) { "toolFormat required for LOCAL backend" }
+                    LocalInferenceAIExecutor(llmClient = createLLMClient())
+                }
+                AgentBackend.KOOG -> simpleOllamaAIExecutor()
+            }
+
         return AIAgent(
-            promptExecutor = promptExecutor,
+            promptExecutor = executor,
             systemPrompt = systemPrompt,
             temperature = 0.7,
             llmModel = llmModel,
@@ -97,13 +149,16 @@ class NotificationAgent(
         )
     }
 
-    private fun createLLMClient(): LLMClient =
-        when (toolFormat) {
-            ToolFormat.SIMPLE -> SimpleLLMClient(promptExecutor = promptExecutor)
-            ToolFormat.OPENAPI -> OpenApiLLMClient(promptExecutor = promptExecutor)
-            ToolFormat.SLIM -> SlimLLMClient(promptExecutor = promptExecutor)
-            ToolFormat.REACT -> ReActLLMClient(promptExecutor = promptExecutor)
+    private fun createLLMClient(): LLMClient {
+        val executor = requireNotNull(promptExecutor) { "promptExecutor required for LOCAL backend" }
+        val format = requireNotNull(toolFormat) { "toolFormat required for LOCAL backend" }
+        return when (format) {
+            ToolFormat.SIMPLE -> SimpleLLMClient(promptExecutor = executor)
+            ToolFormat.OPENAPI -> OpenApiLLMClient(promptExecutor = executor)
+            ToolFormat.SLIM -> SlimLLMClient(promptExecutor = executor)
+            ToolFormat.REACT -> ReActLLMClient(promptExecutor = executor)
         }
+    }
 
     private fun buildLLModel(): LLModel =
         LLModel(

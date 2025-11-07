@@ -465,40 +465,55 @@ sealed class UiAction {
 ### Unified Agent Architecture
 
 **NotificationAgent Design:**
-The project previously had separate `GemmaAgent` and `OllamaAgent` classes with a `NotificationAgent` interface. These have been unified into a single `NotificationAgent` class that supports both on-device and server-based models.
+The project previously had separate `GemmaAgent` and `OllamaAgent` classes with a `NotificationAgent` interface. These have been unified into a single `NotificationAgent` class with two distinct factory methods for clarity.
 
-**Constructor Parameters:**
+**Two Backend Types:**
+1. **LOCAL** - Local inference-based agents (LiteRT-LM, etc.)
+   - Requires: `promptExecutor` + `toolFormat`
+   - Supports: SIMPLE, OPENAPI, SLIM, REACT protocols
+   - Use case: On-device models like Gemma
+
+2. **KOOG** - Koog framework agents (Ollama, etc.)
+   - Uses: Built-in executors (no promptExecutor needed)
+   - Supports: Native tool calling via Ollama API
+   - Use case: Server-based models, future Koog-compatible agents
+
+**Factory Methods:**
 ```kotlin
-NotificationAgent(
-    promptExecutor: suspend (String) -> String?,  // LLM inference function
-    modelId: String,                               // Model identifier
-    toolFormat: ToolFormat = ToolFormat.REACT,     // Tool calling protocol
-    modelProvider: LLMProvider = LLMProvider.Google // Model provider
+// Local inference agent (e.g., Gemma with LiteRT-LM)
+NotificationAgent.local(
+    promptExecutor: suspend (String) -> String?,
+    modelId: String,
+    toolFormat: ToolFormat = ToolFormat.REACT,
+    modelProvider: LLMProvider = LLMProvider.Google,
+)
+
+// Koog framework agent (e.g., Ollama)
+NotificationAgent.koog(
+    modelId: String,
+    modelProvider: LLMProvider = LLMProvider.Ollama,
 )
 ```
 
 **Key Design Decisions:**
-1. **Model Configuration**: Accepts simple `modelId` string instead of full `LLModel` object. The agent builds `LLModel` internally with standard capabilities.
-2. **Tool Format Selection**: Single parameter controls both protocol and executor type:
-   - Text-based formats → Custom `LLMClient` implementations
-   - NATIVE format → Koog's `simpleOllamaAIExecutor()`
-3. **Strategy**: Always uses Koog's default strategy (removed OllamaAgent's multi-tool loop for simplicity)
-4. **No Interface**: With only one implementation, the `NotificationAgent` interface was removed
+1. **Explicit Backend Selection**: Factory methods make it clear which type of agent you're creating
+2. **Required Parameters Only**: LOCAL agents need `promptExecutor` + `toolFormat`, KOOG agents don't
+3. **Model Configuration**: Simple `modelId` string; agent builds `LLModel` internally
+4. **Strategy**: Always uses Koog's default strategy (removed OllamaAgent's multi-tool loop for simplicity)
+5. **No Interface**: With only one implementation, the `NotificationAgent` interface was removed
 
 **Usage Examples:**
 ```kotlin
 // On-device Gemma with REACT protocol (recommended)
-NotificationAgent(
+val agent = NotificationAgent.local(
     promptExecutor = { prompt -> inferenceEngine.prompt(prompt).getOrThrow() },
     modelId = "gemma3-1b-it-int4",
     toolFormat = ToolFormat.REACT,
 )
 
 // Server-based Ollama with native tool calling
-NotificationAgent(
-    promptExecutor = { "" },  // Not used for NATIVE format
+val agent = NotificationAgent.koog(
     modelId = dynamicModel.id,
-    toolFormat = ToolFormat.NATIVE,
 )
 ```
 

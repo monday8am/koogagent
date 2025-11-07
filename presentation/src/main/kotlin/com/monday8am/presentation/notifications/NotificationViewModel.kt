@@ -243,7 +243,7 @@ class NotificationViewModelImpl(
                 )
 
             val agent =
-                NotificationAgent(
+                NotificationAgent.local(
                     promptExecutor = { prompt ->
                         promptExecutor(prompt).getOrThrow()
                     },
