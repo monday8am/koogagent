@@ -489,16 +489,18 @@ NotificationAgent.local(
 )
 
 // Koog framework agent (e.g., Ollama)
+// Mirrors AIAgent's API - accepts LLModel directly
 NotificationAgent.koog(
-    modelId: String,
-    modelProvider: LLMProvider = LLMProvider.Ollama,
+    model: LLModel,
 )
 ```
 
 **Key Design Decisions:**
 1. **Explicit Backend Selection**: Factory methods make it clear which type of agent you're creating
-2. **Required Parameters Only**: LOCAL agents need `promptExecutor` + `toolFormat`, KOOG agents don't
-3. **Model Configuration**: Simple `modelId` string; agent builds `LLModel` internally
+2. **Required Parameters Only**: LOCAL agents need `promptExecutor` + `toolFormat`, KOOG agents just need the model
+3. **Model Configuration**:
+   - LOCAL: Builds `LLModel` internally from simple `modelId` string
+   - KOOG: Accepts `LLModel` directly (mirrors `AIAgent` API, avoids rebuilding model)
 4. **Strategy**: Always uses Koog's default strategy (removed OllamaAgent's multi-tool loop for simplicity)
 5. **No Interface**: With only one implementation, the `NotificationAgent` interface was removed
 
@@ -512,8 +514,10 @@ val agent = NotificationAgent.local(
 )
 
 // Server-based Ollama with native tool calling
+val client = OllamaClient()
+val llModel = client.getModels().firstOrNull()?.toLLModel()
 val agent = NotificationAgent.koog(
-    modelId = dynamicModel.id,
+    model = llModel,
 )
 ```
 

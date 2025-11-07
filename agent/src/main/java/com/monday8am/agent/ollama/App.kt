@@ -41,7 +41,7 @@ fun main() =
 
         val agent =
             NotificationAgent.koog(
-                modelId = llModel.id,
+                model = llModel,
             ).apply {
                 initializeWithTools(toolRegistry)
             }

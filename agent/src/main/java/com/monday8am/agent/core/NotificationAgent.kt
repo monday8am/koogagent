@@ -49,9 +49,8 @@ enum class AgentBackend {
 class NotificationAgent private constructor(
     private val backend: AgentBackend,
     private val promptExecutor: (suspend (String) -> String?)?,
-    private val modelId: String,
+    private val model: LLModel,
     private val toolFormat: ToolFormat?,
-    private val modelProvider: LLMProvider,
 ) {
     companion object {
         /**
@@ -70,26 +69,37 @@ class NotificationAgent private constructor(
         ) = NotificationAgent(
             backend = AgentBackend.LOCAL,
             promptExecutor = promptExecutor,
-            modelId = modelId,
+            model =
+                LLModel(
+                    provider = modelProvider,
+                    id = modelId,
+                    capabilities =
+                        listOf(
+                            LLMCapability.Temperature,
+                            LLMCapability.Tools,
+                            LLMCapability.Schema.JSON.Standard,
+                        ),
+                    maxOutputTokens = DEFAULT_MAX_OUTPUT_TOKENS.toLong(),
+                    contextLength = DEFAULT_CONTEXT_LENGTH.toLong(),
+                ),
             toolFormat = toolFormat,
-            modelProvider = modelProvider,
         )
 
         /**
          * Creates an agent using Koog framework's built-in executors (e.g., Ollama).
          *
-         * @param modelId Model identifier (e.g., "llama3")
-         * @param modelProvider LLM provider (default: Ollama)
+         * This mirrors AIAgent's API by accepting an LLModel directly, avoiding
+         * the need to rebuild model information that's already available.
+         *
+         * @param model LLModel instance (typically from OllamaClient.getModels().toLLModel())
          */
         fun koog(
-            modelId: String,
-            modelProvider: LLMProvider = LLMProvider.Ollama,
+            model: LLModel,
         ) = NotificationAgent(
             backend = AgentBackend.KOOG,
             promptExecutor = null,
-            modelId = modelId,
+            model = model,
             toolFormat = null,
-            modelProvider = modelProvider,
         )
     }
 
@@ -126,9 +136,8 @@ class NotificationAgent private constructor(
         }
 
     private fun getAIAgent(systemPrompt: String): AIAgent<String, String> {
-        logger.d { "Using backend: $backend, model: $modelId" }
+        logger.d { "Using backend: $backend, model: ${model.id}" }
 
-        val llmModel = buildLLModel()
         val executor =
             when (backend) {
                 AgentBackend.LOCAL -> {
@@ -143,7 +152,7 @@ class NotificationAgent private constructor(
             promptExecutor = executor,
             systemPrompt = systemPrompt,
             temperature = 0.7,
-            llmModel = llmModel,
+            llmModel = model,
             toolRegistry = registry ?: ToolRegistry.EMPTY,
             installFeatures = installCommonEventHandling,
         )
@@ -159,20 +168,6 @@ class NotificationAgent private constructor(
             ToolFormat.REACT -> ReActLLMClient(promptExecutor = executor)
         }
     }
-
-    private fun buildLLModel(): LLModel =
-        LLModel(
-            provider = modelProvider,
-            id = modelId,
-            capabilities =
-                listOf(
-                    LLMCapability.Temperature,
-                    LLMCapability.Tools,
-                    LLMCapability.Schema.JSON.Standard,
-                ),
-            maxOutputTokens = DEFAULT_MAX_OUTPUT_TOKENS.toLong(),
-            contextLength = DEFAULT_CONTEXT_LENGTH.toLong(),
-        )
 }
 
 private class LocalInferenceAIExecutor(
