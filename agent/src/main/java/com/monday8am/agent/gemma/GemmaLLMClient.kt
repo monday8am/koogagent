@@ -10,7 +10,6 @@ import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.message.ResponseMetaInfo
 import co.touchlab.kermit.Logger
-import io.ktor.http.cio.parseResponse
 import java.util.UUID
 
 /**

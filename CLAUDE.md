@@ -28,9 +28,9 @@ KoogAgent is an Android prototype that explores how agentic frameworks and on-de
 2. **`:agent` module** (Pure Kotlin/JVM)
    - Platform-agnostic notification generation logic
    - `NotificationGenerator` class orchestrates the AI agent
-   - `NotificationAgent` interface abstracts LLM implementations
-   - `GemmaAgent` implementation (uses LLM executor abstraction)
-   - `OllamaAgent` implementation for JVM testing with Ollama
+   - `NotificationAgentImpl` - unified agent supporting multiple LLM backends and tool calling protocols
+   - 5 tool format options: SIMPLE, OPENAPI, SLIM, REACT (text-based), NATIVE (Ollama API)
+   - LLM clients: `GemmaLLMClient`, `OpenApiLLMClient`, `SlimLLMClient`, `ReActLLMClient`, `OllamaLLMClient`
    - Core models: `LocalLLModel`, `LocalInferenceEngine` interface
    - Tools: `GetLocationTool`, `GetWeatherToolFromLocation`
    - Depends on `:data`
@@ -65,13 +65,17 @@ KoogAgent is an Android prototype that explores how agentic frameworks and on-de
 ### Key Integration Points
 
 **Koog Agent Integration:**
-- Both `GemmaAgent` and `OllamaAgent` implement the `NotificationAgent` interface
-- They create Koog `AIAgent` instances with:
+- `NotificationAgentImpl` is a unified agent supporting multiple LLM backends and tool calling protocols
+- Creates Koog `AIAgent` instances with:
   - System prompt defining the nutritionist role
-  - Custom LLM executors (`SimpleGemmaAIExecutor` for LiteRT-LM, `simpleOllamaAIExecutor` for Ollama)
+  - Configurable LLM executors based on `toolFormat`:
+    - Text-based formats (SIMPLE, OPENAPI, SLIM, REACT): Use `SimpleGemmaAIExecutor` with respective LLM client
+    - NATIVE format: Use Koog's `simpleOllamaAIExecutor()` for Ollama API
   - Event handlers for debugging (tool calls, agent finished, errors)
   - Temperature setting (0.7)
-- Uses custom tool protocol with Koog's `ToolRegistry` (Gemma requires prompt-based JSON, not native tool calling)
+  - Model information (provider, id, capabilities) built from constructor parameters
+- Text-based formats use custom tool protocols (Gemma requires prompt-based JSON, not native tool calling)
+- NATIVE format uses Ollama's OpenAI-compatible tool calling API
 
 **LiteRT-LM Integration:**
 - `LocalInferenceEngineImpl` implements `LocalInferenceEngine` interface (in `app/litert/`)
@@ -225,21 +229,34 @@ The `GemmaFormatter` (from `com.google.ai.edge.localagents:localagents-fc:0.1.0`
 - This is exactly what the custom protocol implements
 
 **Current Implementation:**
-- Uses custom tool protocol with Koog's `ToolRegistry`
+- `NotificationAgentImpl` provides unified interface for all tool calling approaches
+- Uses custom text-based protocols with Koog's `ToolRegistry` for Gemma-style models
+- Uses native Ollama API for server-based models (NATIVE format)
 - Tools: `GetLocationTool`, `GetWeatherToolFromLocation`
-- Prompts include explicit tool schemas and JSON formatting instructions
-- Response parser detects tool calls via JSON structure matching
+- Text-based prompts include explicit tool schemas and JSON formatting instructions
+- Response parsers detect tool calls via pattern matching (JSON, XML, or natural language)
+
+**5 Tool Calling Formats:**
+1. **SIMPLE** - Simplified JSON: `{"tool":"ToolName"}` (no parameters)
+2. **OPENAPI** - OpenAPI spec: `{"name":"FunctionName", "parameters":{...}}`
+3. **SLIM** - XML-like tags: `<function>FunctionName</function>` with optional `<parameters>`
+4. **REACT** - Natural language: `Thought:` and `Action:` patterns (recommended by Google for small models)
+5. **NATIVE** - Ollama's OpenAI-compatible tool calling API (for server-based models)
 
 **Alternative Options Investigated:**
-1. **Custom Protocol** (current) - Works with LiteRT-LM inference ✅
+1. **Custom Text-Based Protocols** (formats 1-4) - Works with LiteRT-LM inference ✅
 2. **AI Edge Function Calling SDK** - Requires reverting to MediaPipe ❌
-3. **Hybrid approach** - Port custom protocol to work with LiteRT-LM (future consideration)
+3. **Native Ollama Protocol** (format 5) - Works with Ollama server ✅
 
 ### LLM Client Bridges
-- `GemmaLLMClient` implements Koog's `LLMClient` interface to wrap LiteRT-LM inference
-- Converts Koog `Prompt` (list of messages) to single concatenated string
-- Returns `Message.Assistant` with generated text
-- Does not support streaming or moderation (throws exceptions)
+- All LLM clients implement Koog's `LLMClient` interface
+- **Text-based clients** (`GemmaLLMClient`, `OpenApiLLMClient`, `SlimLLMClient`, `ReActLLMClient`):
+  - Wrap LiteRT-LM inference via `promptExecutor` function
+  - Convert Koog `Prompt` (list of messages) to concatenated string
+  - Maintain conversation state (`isFirstTurn` flag)
+  - Return `Message.Assistant` with generated text
+  - Do not support streaming or moderation (throws exceptions)
+- **OllamaLLMClient**: Placeholder for NATIVE format (actual execution uses `simpleOllamaAIExecutor()`)
 
 ### Weather Integration
 - **Real weather data** fetched from Open-Meteo API (https://open-meteo.com/)
@@ -293,9 +310,10 @@ Not enabled for release builds (prototype phase)
 ## Testing Strategy
 
 ### JVM Testing with Ollama
-- Use `:agent` module with `OllamaAgent`
+- Use `:agent` module with `NotificationAgentImpl` (NATIVE format)
 - Run local Ollama server at `http://10.0.2.2:11434` (Android emulator host)
-- Tests can verify prompt construction and JSON parsing without LiteRT-LM
+- Tests can verify prompt construction and tool calling without LiteRT-LM
+- Example: `agent/ollama/App.kt` creates agent with `ToolFormat.NATIVE`
 
 ### Android Testing
 - LiteRT-LM requires actual device or emulator with model files
@@ -430,9 +448,11 @@ sealed class UiAction {
 - **Models**: `:data` (shared everywhere)
 
 ### Why Koog?
-- Provides agentic framework with tool support (though not heavily used here)
+- Provides agentic framework with tool registry and execution
 - Event handlers for debugging LLM interactions
-- Abstraction over different LLM executors
+- Abstraction over different LLM executors (custom text-based clients and Ollama)
+- Built-in support for multiple strategies (default, functional, etc.)
+- Clean separation between tool definition and execution
 
 ### Why LiteRT-LM?
 - On-device inference with no cloud dependency
@@ -441,6 +461,46 @@ sealed class UiAction {
 - Active development from Google with expanding model support
 - `Engine`/`Conversation` API provides clean abstraction for inference
 - Built-in support for multimodal inputs (text, vision, audio) in compatible models
+
+### Unified Agent Architecture
+
+**NotificationAgentImpl Design:**
+The project previously had separate `GemmaAgent` and `OllamaAgent` classes with a `NotificationAgent` interface. These have been unified into a single `NotificationAgentImpl` class that supports both on-device and server-based models.
+
+**Constructor Parameters:**
+```kotlin
+NotificationAgentImpl(
+    promptExecutor: suspend (String) -> String?,  // LLM inference function
+    modelId: String,                               // Model identifier
+    toolFormat: ToolFormat = ToolFormat.REACT,     // Tool calling protocol
+    modelProvider: LLMProvider = LLMProvider.Google // Model provider
+)
+```
+
+**Key Design Decisions:**
+1. **Model Configuration**: Accepts simple `modelId` string instead of full `LLModel` object. The agent builds `LLModel` internally with standard capabilities.
+2. **Tool Format Selection**: Single parameter controls both protocol and executor type:
+   - Text-based formats → Custom `LLMClient` implementations
+   - NATIVE format → Koog's `simpleOllamaAIExecutor()`
+3. **Strategy**: Always uses Koog's default strategy (removed OllamaAgent's multi-tool loop for simplicity)
+4. **No Interface**: With only one implementation, the `NotificationAgent` interface was removed
+
+**Usage Examples:**
+```kotlin
+// On-device Gemma with REACT protocol (recommended)
+NotificationAgentImpl(
+    promptExecutor = { prompt -> inferenceEngine.prompt(prompt).getOrThrow() },
+    modelId = "gemma3-1b-it-int4",
+    toolFormat = ToolFormat.REACT,
+)
+
+// Server-based Ollama with native tool calling
+NotificationAgentImpl(
+    promptExecutor = { "" },  // Not used for NATIVE format
+    modelId = dynamicModel.id,
+    toolFormat = ToolFormat.NATIVE,
+)
+```
 
 ## Common Patterns (continued)
 

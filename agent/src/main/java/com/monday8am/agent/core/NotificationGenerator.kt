@@ -9,7 +9,7 @@ import org.json.JSONObject
 internal val logger = Logger.withTag("NotificationGenerator")
 
 class NotificationGenerator(
-    private val agent: NotificationAgent,
+    private val agent: NotificationAgentImpl,
 ) {
     private val systemPrompt = "You are an nutritionist that generates short, motivating reminders for logging meals or water intake."
     private val systemPromptForToolTesting =
