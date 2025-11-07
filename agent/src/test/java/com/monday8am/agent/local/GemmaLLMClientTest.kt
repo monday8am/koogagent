@@ -1,8 +1,6 @@
-package com.monday8am.agent.gemma
+package com.monday8am.agent.local
 
 import ai.koog.agents.core.tools.ToolDescriptor
-import ai.koog.agents.core.tools.ToolParameterDescriptor
-import ai.koog.agents.core.tools.ToolParameterType
 import ai.koog.prompt.dsl.Prompt
 import ai.koog.prompt.llm.LLMCapability
 import ai.koog.prompt.llm.LLMProvider
@@ -16,8 +14,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
-class SlimLLMClientTest {
-    private lateinit var client: SlimLLMClient
+// Vibe code for good vibes: Claude Desktop!
+class GemmaLLMClientTest {
+    private lateinit var client: SimpleLLMClient
 
     // Shared tool definitions to avoid repetition
     private val getWeatherTool =
@@ -36,83 +35,39 @@ class SlimLLMClientTest {
             optionalParameters = emptyList(),
         )
 
-    private val getWeatherWithParamsTool =
-        ToolDescriptor(
-            name = "GetWeatherFromLocation",
-            description = "Gets weather for a specific location",
-            requiredParameters =
-                listOf(
-                    ToolParameterDescriptor(
-                        name = "latitude",
-                        description = "Latitude coordinate",
-                        type = ToolParameterType.String,
-                    ),
-                    ToolParameterDescriptor(
-                        name = "longitude",
-                        description = "Longitude coordinate",
-                        type = ToolParameterType.String,
-                    ),
-                ),
-            optionalParameters = emptyList(),
-        )
-
     @Before
     fun setup() {
         // Create a dummy instance - we won't call execute() in these tests
-        client = SlimLLMClient(promptExecutor = { "result!" })
+        client = SimpleLLMClient(promptExecutor = { "result!" })
     }
 
-    // ==================== buildSlimToolInstructions Tests ====================
-
     @Test
-    fun `buildSlimToolInstructions returns empty string when no tools provided`() {
-        val result = client.buildSlimToolInstructions(emptyList())
+    fun `buildToolInstructions returns empty string when no tools provided`() {
+        val result = client.buildToolInstructions(emptyList())
         assertEquals("", result)
     }
 
     @Test
-    fun `buildSlimToolInstructions formats single tool correctly`() {
+    fun `buildToolInstructions formats single tool correctly`() {
         val tools = listOf(getWeatherTool)
 
-        val result = client.buildSlimToolInstructions(tools)
+        val result = client.buildToolInstructions(tools)
 
-        assertTrue(result.contains("Available functions:"))
+        assertTrue(result.contains("Available tools:"))
         assertTrue(result.contains("- GetWeather: Gets current weather"))
-        assertTrue(result.contains("<function>FunctionName</function>"))
-        assertTrue(result.contains("<parameters>"))
+        assertTrue(result.contains("""{"tool":"ToolName"}"""))
+        assertTrue(result.contains("""{"tool":"none"}"""))
     }
 
     @Test
-    fun `buildSlimToolInstructions formats multiple tools correctly`() {
+    fun `buildToolInstructions formats multiple tools correctly`() {
         val tools = listOf(getWeatherTool, getLocationTool)
 
-        val result = client.buildSlimToolInstructions(tools)
+        val result = client.buildToolInstructions(tools)
 
         assertTrue(result.contains("- GetWeather: Gets current weather"))
         assertTrue(result.contains("- GetLocation: Gets current location"))
     }
-
-    @Test
-    fun `buildSlimToolInstructions shows parameters for tools with params`() {
-        val tools = listOf(getWeatherWithParamsTool)
-
-        val result = client.buildSlimToolInstructions(tools)
-
-        assertTrue(result.contains("- GetWeatherFromLocation: Gets weather for a specific location (parameters: latitude, longitude)"))
-    }
-
-    @Test
-    fun `buildSlimToolInstructions includes SLIM format examples`() {
-        val tools = listOf(getLocationTool)
-
-        val result = client.buildSlimToolInstructions(tools)
-
-        assertTrue(result.contains("EXAMPLES:"))
-        assertTrue(result.contains("<function>GetLocation</function>"))
-        assertTrue(result.contains("latitude: 48.8534, longitude: 2.3488"))
-    }
-
-    // ==================== buildSubsequentTurnPrompt Tests ====================
 
     @Test
     fun `buildSubsequentTurnPrompt extracts user message correctly`() {
@@ -123,7 +78,7 @@ class SlimLLMClientTest {
 
         val result = client.buildSubsequentTurnPrompt(messages)
 
-        assertEquals("Hello", result)
+        assertEquals("User:Hello", result)
     }
 
     @Test
@@ -135,11 +90,11 @@ class SlimLLMClientTest {
 
         val result = client.buildSubsequentTurnPrompt(messages)
 
-        assertEquals("Hi there!", result)
+        assertEquals("Assistant:Hi there!", result)
     }
 
     @Test
-    fun `buildSubsequentTurnPrompt extracts tool call without parameters`() {
+    fun `buildSubsequentTurnPrompt extracts tool call correctly`() {
         val messages =
             listOf(
                 Message.Tool.Call(
@@ -152,28 +107,7 @@ class SlimLLMClientTest {
 
         val result = client.buildSubsequentTurnPrompt(messages)
 
-        assertEquals("<function>GetWeather</function>", result)
-    }
-
-    @Test
-    fun `buildSubsequentTurnPrompt extracts tool call with parameters`() {
-        val messages =
-            listOf(
-                Message.Tool.Call(
-                    id = "123",
-                    tool = "GetWeatherFromLocation",
-                    content = """{"latitude": "48.8534", "longitude": "2.3488"}""",
-                    metaInfo = ResponseMetaInfo.Empty,
-                ),
-            )
-
-        val result = client.buildSubsequentTurnPrompt(messages)
-
-        assertEquals(
-            """<function>GetWeatherFromLocation</function>
-<parameters>{"latitude": "48.8534", "longitude": "2.3488"}</parameters>""",
-            result,
-        )
+        assertEquals("""Assistant:{"tool":"GetWeather"}""", result)
     }
 
     @Test
@@ -190,7 +124,7 @@ class SlimLLMClientTest {
 
         val result = client.buildSubsequentTurnPrompt(messages)
 
-        assertEquals("Tool result: Sunny, 72°F", result)
+        assertEquals("Tool 'GetWeather' returned: Sunny, 72°F", result)
     }
 
     @Test
@@ -203,7 +137,7 @@ class SlimLLMClientTest {
 
         val result = client.buildSubsequentTurnPrompt(messages)
 
-        assertEquals("Hello", result)
+        assertEquals("User:Hello", result)
         assertTrue(!result.contains("You are a helpful assistant"))
     }
 
@@ -217,7 +151,31 @@ class SlimLLMClientTest {
 
         val result = client.buildSubsequentTurnPrompt(messages)
 
-        assertEquals("Hi!", result)
+        assertEquals("Assistant:Hi!", result)
+    }
+
+    @Test
+    fun `buildSubsequentTurnPrompt extracts latest from tool calling flow`() {
+        val messages =
+            listOf(
+                Message.User(content = "What's the weather?", metaInfo = RequestMetaInfo.Empty),
+                Message.Tool.Call(
+                    id = "1",
+                    tool = "GetWeather",
+                    content = "{}",
+                    metaInfo = ResponseMetaInfo.Empty,
+                ),
+                Message.Tool.Result(
+                    id = "1",
+                    tool = "GetWeather",
+                    content = "Sunny, 72°F",
+                    metaInfo = RequestMetaInfo.Empty,
+                ),
+            )
+
+        val result = client.buildSubsequentTurnPrompt(messages)
+
+        assertEquals("Tool 'GetWeather' returned: Sunny, 72°F", result)
     }
 
     // ==================== buildFirstTurnPrompt Tests ====================
@@ -255,7 +213,7 @@ class SlimLLMClientTest {
         val result = client.buildFirstTurnPrompt(prompt, listOf(getWeatherTool))
 
         assertTrue(result.contains("You are helpful"))
-        assertTrue(result.contains("Available functions:"))
+        assertTrue(result.contains("Available tools:"))
         assertTrue(result.contains("- GetWeather: Gets current weather"))
         assertTrue(result.contains("What's the weather?"))
     }
@@ -276,11 +234,9 @@ class SlimLLMClientTest {
         assertEquals("Hello", result)
     }
 
-    // ==================== parseResponse Tests ====================
-
     @Test
-    fun `parseResponse detects tool call without parameters`() {
-        val result = client.parseResponse("<function>GetWeather</function>", listOf(getWeatherTool))
+    fun `parseResponse detects tool call`() {
+        val result = client.parseResponse("""{"tool":"GetWeather"}""", listOf(getWeatherTool))
 
         assertEquals(1, result.size)
         val message = result[0]
@@ -290,28 +246,11 @@ class SlimLLMClientTest {
     }
 
     @Test
-    fun `parseResponse detects tool call with parameters`() {
-        val response =
-            """
-            <function>GetWeatherFromLocation</function>
-            <parameters>{"latitude": "48.8534", "longitude": "2.3488"}</parameters>
-            """.trimIndent()
-
-        val result = client.parseResponse(response, listOf(getWeatherWithParamsTool))
-
-        assertEquals(1, result.size)
-        val message = result[0]
-        assertTrue(message is Message.Tool.Call)
-        assertEquals("GetWeatherFromLocation", (message as Message.Tool.Call).tool)
-        assertEquals("""{"latitude": "48.8534", "longitude": "2.3488"}""", message.content)
-    }
-
-    @Test
-    fun `parseResponse handles function none with text response`() {
+    fun `parseResponse handles tool none with text response`() {
         val result =
             client.parseResponse(
                 """
-                <function>none</function>
+                {"tool":"none"}
                 Hello! How can I help you?
                 """.trimIndent(),
                 emptyList(),
@@ -324,18 +263,8 @@ class SlimLLMClientTest {
     }
 
     @Test
-    fun `parseResponse handles function none without additional text`() {
-        val result = client.parseResponse("<function>none</function>", emptyList())
-
-        assertEquals(1, result.size)
-        val message = result[0]
-        assertTrue(message is Message.Assistant)
-        assertEquals("I can help with that without using any tools.", (message as Message.Assistant).content)
-    }
-
-    @Test
     fun `parseResponse handles non-existent tool gracefully`() {
-        val result = client.parseResponse("<function>GetLocation</function>", listOf(getWeatherTool))
+        val result = client.parseResponse("""{"tool":"GetLocation"}""", listOf(getWeatherTool))
 
         assertEquals(1, result.size)
         val message = result[0]
@@ -344,7 +273,7 @@ class SlimLLMClientTest {
     }
 
     @Test
-    fun `parseResponse handles response without function tags`() {
+    fun `parseResponse handles response without tool pattern`() {
         val result = client.parseResponse("Just a regular response", emptyList())
 
         assertEquals(1, result.size)
@@ -354,8 +283,8 @@ class SlimLLMClientTest {
     }
 
     @Test
-    fun `parseResponse handles function tag with extra whitespace`() {
-        val result = client.parseResponse("<function>  GetWeather  </function>", listOf(getWeatherTool))
+    fun `parseResponse handles tool pattern with extra whitespace`() {
+        val result = client.parseResponse("""{ "tool" : "GetWeather" }""", listOf(getWeatherTool))
 
         assertEquals(1, result.size)
         val message = result[0]
@@ -364,29 +293,9 @@ class SlimLLMClientTest {
     }
 
     @Test
-    fun `parseResponse handles parameters with extra whitespace`() {
-        val response =
-            """
-            <function>GetWeatherFromLocation</function>
-            <parameters>  {"latitude": "48.8534"}  </parameters>
-            """.trimIndent()
-
-        val result = client.parseResponse(response, listOf(getWeatherWithParamsTool))
-
-        assertEquals(1, result.size)
-        val message = result[0]
-        assertTrue(message is Message.Tool.Call)
-        assertEquals("""{"latitude": "48.8534"}""", (message as Message.Tool.Call).content)
-    }
-
-    @Test
-    fun `parseResponse extracts function from mixed content`() {
-        // Model might add extra text before function tag
-        val result =
-            client.parseResponse(
-                "Let me check that for you.\n<function>GetWeather</function>",
-                listOf(getWeatherTool),
-            )
+    fun `parseResponse trims whitespace from tool name value`() {
+        // Model might add leading/trailing space in the value
+        val result = client.parseResponse("""{"tool":" GetWeather "}""", listOf(getWeatherTool))
 
         assertEquals(1, result.size)
         val message = result[0]
@@ -395,75 +304,12 @@ class SlimLLMClientTest {
     }
 
     @Test
-    fun `parseResponse handles case-insensitive none`() {
-        val result = client.parseResponse("<function>NoNe</function>", emptyList())
-
-        assertEquals(1, result.size)
-        val message = result[0]
-        assertTrue(message is Message.Assistant)
-    }
-
-    // ==================== Infinite Loop Detection Tests ====================
-
-    @Test
-    fun `parseResponse detects infinite loop and breaks it`() {
-        val conversationHistory =
-            listOf(
-                Message.User(content = "What's the weather?", metaInfo = RequestMetaInfo.Empty),
-                Message.Tool.Call(
-                    id = "1",
-                    tool = "GetWeather",
-                    content = "{}",
-                    metaInfo = ResponseMetaInfo.Empty,
-                ),
-                Message.Tool.Result(
-                    id = "1",
-                    tool = "GetWeather",
-                    content = "Sunny, 72°F",
-                    metaInfo = RequestMetaInfo.Empty,
-                ),
-            )
-
-        // Model tries to call GetWeather again
+    fun `parseResponse extracts tool name correctly from mixed content`() {
+        // Model might add extra text
         val result =
             client.parseResponse(
-                "<function>GetWeather</function>",
+                """Let me check that for you. {"tool":"GetWeather"}""",
                 listOf(getWeatherTool),
-                conversationHistory,
-            )
-
-        assertEquals(1, result.size)
-        val message = result[0]
-        assertTrue(message is Message.Assistant)
-        assertTrue((message as Message.Assistant).content.contains("I have the information"))
-        assertTrue(message.content.contains("Sunny, 72°F"))
-    }
-
-    @Test
-    fun `parseResponse allows calling different tool after result`() {
-        val conversationHistory =
-            listOf(
-                Message.User(content = "Where am I?", metaInfo = RequestMetaInfo.Empty),
-                Message.Tool.Call(
-                    id = "1",
-                    tool = "GetLocation",
-                    content = "{}",
-                    metaInfo = ResponseMetaInfo.Empty,
-                ),
-                Message.Tool.Result(
-                    id = "1",
-                    tool = "GetLocation",
-                    content = "latitude: 48.8534, longitude: 2.3488",
-                    metaInfo = RequestMetaInfo.Empty,
-                ),
-            )
-
-        // Model now calls GetWeather (different tool) - should be allowed
-        val result =
-            client.parseResponse(
-                "<function>GetWeather</function>",
-                listOf(getWeatherTool, getLocationTool),
-                conversationHistory,
             )
 
         assertEquals(1, result.size)
@@ -475,15 +321,15 @@ class SlimLLMClientTest {
     // ==================== End-to-End Integration Tests ====================
 
     @Test
-    fun `execute returns tool call when model responds with SLIM function tag`() =
+    fun `execute returns tool call when model responds with tool pattern`() =
         runBlockingTest {
             // Mock the LLM to return a tool call
             val client =
-                SlimLLMClient(promptExecutor = { prompt ->
+                SimpleLLMClient(promptExecutor = { prompt ->
                     // Verify prompt contains tool instructions
-                    assertTrue(prompt.contains("Available functions:"))
+                    assertTrue(prompt.contains("Available tools:"))
                     // Return a tool call
-                    "<function>GetWeather</function>"
+                    """{"tool":"GetWeather"}"""
                 })
 
             val prompt =
@@ -503,41 +349,12 @@ class SlimLLMClientTest {
         }
 
     @Test
-    fun `execute returns tool call with parameters`() =
-        runBlockingTest {
-            val client =
-                SlimLLMClient(promptExecutor = {
-                    """
-                    <function>GetWeatherFromLocation</function>
-                    <parameters>{"latitude": "40.4168", "longitude": "-3.7038"}</parameters>
-                    """.trimIndent()
-                })
-
-            val prompt =
-                Prompt(
-                    id = "test",
-                    messages =
-                        listOf(
-                            Message.User(content = "Weather in Madrid?", metaInfo = RequestMetaInfo.Empty),
-                        ),
-                )
-
-            val result = client.execute(prompt, mockModel(), listOf(getWeatherWithParamsTool))
-
-            assertEquals(1, result.size)
-            assertTrue(result[0] is Message.Tool.Call)
-            val call = result[0] as Message.Tool.Call
-            assertEquals("GetWeatherFromLocation", call.tool)
-            assertEquals("""{"latitude": "40.4168", "longitude": "-3.7038"}""", call.content)
-        }
-
-    @Test
     fun `execute returns assistant message when model responds with none`() =
         runBlockingTest {
             val client =
-                SlimLLMClient(promptExecutor = {
+                SimpleLLMClient(promptExecutor = {
                     """
-                    <function>none</function>
+                    {"tool":"none"}
                     The weather is sunny today!
                     """.trimIndent()
                 })
@@ -561,7 +378,7 @@ class SlimLLMClientTest {
     @Test
     fun `execute handles model returning null`() =
         runBlockingTest {
-            val client = SlimLLMClient(promptExecutor = { null })
+            val client = SimpleLLMClient(promptExecutor = { null })
 
             val prompt =
                 Prompt(
@@ -582,9 +399,9 @@ class SlimLLMClientTest {
         runBlockingTest {
             var capturedPrompt = ""
             val client =
-                SlimLLMClient(promptExecutor = { prompt ->
+                SimpleLLMClient(promptExecutor = { prompt ->
                     capturedPrompt = prompt
-                    "<function>none</function> Hello!"
+                    """{"tool":"none"} Hello!"""
                 })
 
             val promptObj =
@@ -601,9 +418,50 @@ class SlimLLMClientTest {
 
             // Verify the built prompt
             assertTrue(capturedPrompt.contains("You are helpful"))
-            assertTrue(capturedPrompt.contains("Available functions:"))
+            assertTrue(capturedPrompt.contains("Available tools:"))
             assertTrue(capturedPrompt.contains("- GetWeather: Gets current weather"))
-            assertTrue(capturedPrompt.contains("Hi"))
+            assertTrue(capturedPrompt.contains("User: Hi"))
+        }
+
+    @Test
+    fun `execute passes conversation history correctly`() =
+        runBlockingTest {
+            var capturedPrompt = ""
+            val client =
+                SimpleLLMClient(promptExecutor = { prompt ->
+                    capturedPrompt = prompt
+                    """{"tool":"GetWeather"}"""
+                })
+
+            val promptObj =
+                Prompt(
+                    id = "test",
+                    messages =
+                        listOf(
+                            Message.User(content = "What's the weather?", metaInfo = RequestMetaInfo.Empty),
+                            Message.Tool.Call(
+                                id = "1",
+                                tool = "GetWeather",
+                                content = "{}",
+                                metaInfo = ResponseMetaInfo.Empty,
+                            ),
+                            Message.Tool.Result(
+                                id = "1",
+                                tool = "GetWeather",
+                                content = "Sunny, 72°F",
+                                metaInfo = RequestMetaInfo.Empty,
+                            ),
+                            Message.User(content = "What about tomorrow?", metaInfo = RequestMetaInfo.Empty),
+                        ),
+                )
+
+            client.execute(promptObj, mockModel(), listOf(getWeatherTool))
+
+            // Verify conversation history is included
+            assertTrue(capturedPrompt.contains("User: What's the weather?"))
+            assertTrue(capturedPrompt.contains("""Assistant: {"tool":"GetWeather"}"""))
+            assertTrue(capturedPrompt.contains("Tool 'GetWeather' returned: Sunny, 72°F"))
+            assertTrue(capturedPrompt.contains("User: What about tomorrow?"))
         }
 
     // Helper to create a mock LLModel

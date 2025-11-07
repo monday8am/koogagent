@@ -1,4 +1,4 @@
-package com.monday8am.agent.gemma
+package com.monday8am.agent.local
 
 import ai.koog.agents.core.tools.ToolDescriptor
 import ai.koog.prompt.dsl.ModerationResult
@@ -10,7 +10,6 @@ import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.message.ResponseMetaInfo
 import co.touchlab.kermit.Logger
-import io.ktor.http.cio.parseResponse
 import java.util.UUID
 
 /**
@@ -33,7 +32,7 @@ import java.util.UUID
  *
  * See [buildToolInstructions] for the protocol specification.
  */
-internal class GemmaLLMClient(
+internal class SimpleLLMClient(
     private val promptExecutor: suspend (String) -> String?,
 ) : LLMClient {
     private val logger = Logger.withTag("GemmaLLMClient")

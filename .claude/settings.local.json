@@ -18,7 +18,8 @@
       "Bash(echo:*)",
       "Bash(cat:*)",
       "WebFetch(domain:llmware-ai.github.io)",
-      "WebFetch(domain:medium.com)"
+      "WebFetch(domain:medium.com)",
+      "WebFetch(domain:code.claude.com)"
     ],
     "deny": [],
     "ask": []
