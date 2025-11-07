@@ -249,7 +249,7 @@ IMPORTANT RULES:
 - After receiving a tool result, provide a Final Answer
 - DO NOT call the same tool repeatedly with the same parameters
 - If you don't need a tool, skip directly to Final Answer
-        """.trimIndent()
+            """.trimIndent()
     }
 
     /**
@@ -334,9 +334,10 @@ Final Answer: 2 + 2 equals 4.
     ): List<Message.Response> {
         // Look for "Action: I should use the tool `ToolName` with input ..."
         // Allow variations in phrasing
-        val actionRegex = """Action:\s*I should use the tool [`']([^`']+)[`']\s*with input\s*[`']?([^`'\n]*)[`']?""".toRegex(
-            RegexOption.IGNORE_CASE,
-        )
+        val actionRegex =
+            """Action:\s*I should use the tool [`']([^`']+)[`']\s*with input\s*[`']?([^`'\n]*)[`']?""".toRegex(
+                RegexOption.IGNORE_CASE,
+            )
         val actionMatch = actionRegex.find(response)
 
         if (actionMatch != null) {

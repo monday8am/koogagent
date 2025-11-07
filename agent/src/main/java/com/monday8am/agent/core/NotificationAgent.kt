@@ -9,9 +9,9 @@ import ai.koog.prompt.llm.LLMCapability
 import ai.koog.prompt.llm.LLMProvider
 import ai.koog.prompt.llm.LLModel
 import co.touchlab.kermit.Logger
-import com.monday8am.agent.local.SimpleLLMClient
 import com.monday8am.agent.local.OpenApiLLMClient
 import com.monday8am.agent.local.ReActLLMClient
+import com.monday8am.agent.local.SimpleLLMClient
 import com.monday8am.agent.local.SlimLLMClient
 
 /**
@@ -35,6 +35,7 @@ enum class ToolFormat {
 enum class AgentBackend {
     /** Local inference (LiteRT-LM, etc.) - requires promptExecutor and toolFormat */
     LOCAL,
+
     /** Koog framework agent (Ollama, etc.) - uses built-in executors */
     KOOG,
 }
@@ -93,14 +94,13 @@ class NotificationAgent private constructor(
          *
          * @param model LLModel instance (typically from OllamaClient.getModels().toLLModel())
          */
-        fun koog(
-            model: LLModel,
-        ) = NotificationAgent(
-            backend = AgentBackend.KOOG,
-            promptExecutor = null,
-            model = model,
-            toolFormat = null,
-        )
+        fun koog(model: LLModel) =
+            NotificationAgent(
+                backend = AgentBackend.KOOG,
+                promptExecutor = null,
+                model = model,
+                toolFormat = null,
+            )
     }
 
     private var registry: ToolRegistry? = null

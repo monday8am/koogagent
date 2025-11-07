@@ -40,11 +40,12 @@ fun main() =
         logger.i { "Using Ollama model: ${llModel.id}" }
 
         val agent =
-            NotificationAgent.koog(
-                model = llModel,
-            ).apply {
-                initializeWithTools(toolRegistry)
-            }
+            NotificationAgent
+                .koog(
+                    model = llModel,
+                ).apply {
+                    initializeWithTools(toolRegistry)
+                }
 
         val message =
             NotificationGenerator(agent = agent).generate(
