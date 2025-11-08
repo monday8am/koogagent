@@ -9,6 +9,7 @@ import ai.koog.prompt.llm.LLMCapability
 import ai.koog.prompt.llm.LLMProvider
 import ai.koog.prompt.llm.LLModel
 import co.touchlab.kermit.Logger
+import com.monday8am.agent.local.HermesLLMClient
 import com.monday8am.agent.local.OpenApiLLMClient
 import com.monday8am.agent.local.ReActLLMClient
 import com.monday8am.agent.local.SimpleLLMClient
@@ -21,12 +22,14 @@ import com.monday8am.agent.local.SlimLLMClient
  * @property OPENAPI OpenAPI specification format: `{"name":"FunctionName", "parameters":{...}}`
  * @property SLIM XML-like tag format: `<function>FunctionName</function>` with optional `<parameters>{...}</parameters>`
  * @property REACT ReAct (Reasoning and Acting) pattern: Natural language with `Thought:` and `Action:` (recommended by Google)
+ * @property HERMES Hermes-style Qwen format: XML tags with `<tools></tools>` for definitions and `<tool_call></tool_call>` for invocations
  */
 enum class ToolFormat {
     SIMPLE,
     OPENAPI,
     SLIM,
     REACT,
+    HERMES,
 }
 
 /**
@@ -166,6 +169,7 @@ class NotificationAgent private constructor(
             ToolFormat.OPENAPI -> OpenApiLLMClient(promptExecutor = executor)
             ToolFormat.SLIM -> SlimLLMClient(promptExecutor = executor)
             ToolFormat.REACT -> ReActLLMClient(promptExecutor = executor)
+            ToolFormat.HERMES -> HermesLLMClient(promptExecutor = executor)
         }
     }
 }

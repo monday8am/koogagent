@@ -19,7 +19,9 @@
       "Bash(cat:*)",
       "WebFetch(domain:llmware-ai.github.io)",
       "WebFetch(domain:medium.com)",
-      "WebFetch(domain:code.claude.com)"
+      "WebFetch(domain:code.claude.com)",
+      "WebFetch(domain:claude.ai)",
+      "Bash(../gradlew:*)"
     ],
     "deny": [],
     "ask": []
