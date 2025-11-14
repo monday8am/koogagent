@@ -35,7 +35,8 @@ import kotlinx.coroutines.flow.scan
 import kotlinx.coroutines.launch
 
 private const val MODEL_URL = "https://github.com/monday8am/koogagent/releases/download/0.0.1/gemma3-1b-it-int4.zip"
-private const val MODEL_NAME = "gemma3-1b-it-int4.litertlm"
+private const val MODEL_NAME1 = "gemma3-1b-it-int4.litertlm"
+private const val MODEL_NAME = "qwen3_0.6b.task"
 
 val defaultNotificationContext =
     NotificationContext(
