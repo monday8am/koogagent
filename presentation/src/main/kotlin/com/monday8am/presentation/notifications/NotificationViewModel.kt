@@ -36,7 +36,7 @@ import kotlinx.coroutines.launch
 
 private const val MODEL_URL = "https://github.com/monday8am/koogagent/releases/download/0.0.1/gemma3-1b-it-int4.zip"
 private const val MODEL_NAME1 = "gemma3-1b-it-int4.litertlm"
-private const val MODEL_NAME = "qwen3_0.6b.task"
+private const val MODEL_NAME = "qwen3_0.6b_q8_ekv4096.litertlm"
 
 val defaultNotificationContext =
     NotificationContext(
@@ -243,13 +243,16 @@ class NotificationViewModelImpl(
                     country = deviceContext.country,
                 )
 
+            // Note: Using REACT format due to 1024 token context limit in current Qwen3 model
+            // HERMES format requires ~4096+ tokens (verbose XML schemas)
+            // To use HERMES: re-export model with larger context (ekv4096 or ekv8192)
             val agent =
                 NotificationAgent.local(
                     promptExecutor = { prompt ->
                         promptExecutor(prompt).getOrThrow()
                     },
-                    modelId = "gemma3-1b-it-int4",
-                    toolFormat = ToolFormat.REACT,
+                    modelId = MODEL_NAME.removeSuffix(".litertlm"),
+                    toolFormat = ToolFormat.REACT, // REACT is more compact than HERMES
                 )
             agent.initializeWithTools(toolRegistry = toolRegistry)
             val content = NotificationGenerator(agent = agent).generate(notificationContext)

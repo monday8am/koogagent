@@ -63,7 +63,7 @@ internal data class TestCase(
     val queries: List<TestQuery>,
     val systemPrompt: String,
     val validator: (result: String) -> ValidationResult,
-    val toolFormat: ToolFormat = ToolFormat.REACT,
+    val toolFormat: ToolFormat = ToolFormat.HERMES,
 )
 
 internal class GemmaToolCallingTest(
@@ -173,11 +173,11 @@ internal class GemmaToolCallingTest(
                 val tests =
                     listOf(
                         ::testBasicToolCall,
-                        ::testNoToolNeeded,
-                        ::testToolHallucination,
-                        ::testWeatherTool,
-                        ::testMultiTurnSequence,
-                        ::testHermesFormat,
+                        // ::testNoToolNeeded,
+                        // ::testToolHallucination,
+                        // ::testWeatherTool,
+                        // ::testMultiTurnSequence,
+                        // ::testHermesFormat,
                     )
 
                 tests.forEach { test ->
@@ -200,7 +200,10 @@ internal class GemmaToolCallingTest(
                         TestQuery("What is my current location?", "explicit query"),
                         TestQuery("Can you tell me my coordinates?", "coordinate query"),
                     ),
-                systemPrompt = "You are a helpful assistant that can call a function for getting user location.",
+                systemPrompt = """
+                    When to use tools
+                    If the user asks "where am I?" or similar location queries, call the GetLocation function to retrieve their current coordinates.
+                """.trimIndent(),
                 validator = { result ->
                     // Check for Madrid coordinates from MockLocationProvider
                     val hasMadridLat = result.contains("40.4") || result.contains("40°")

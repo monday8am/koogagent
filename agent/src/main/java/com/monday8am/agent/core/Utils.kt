@@ -7,13 +7,15 @@ import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.lettuce.core.AclSetuserArgs.Builder.on
 
-// Gemma 3n-1b-it context lengths: 1280, 2048, or 4096 tokens
-// We use 4096 as the total context window (input + output combined)
+// Model context lengths (MUST match .litertlm compilation settings):
+// - Gemma 3n-1b-it: 1280, 2048, or 4096 tokens
+// - Qwen3-0.6B: 32768 tokens max (32K), but compiled .litertlm may be smaller
+// Current Qwen3 model compiled with: 1024 tokens (ekv1024 = extended KV cache 1024)
 const val DEFAULT_CONTEXT_LENGTH = 4096
-const val DEFAULT_MAX_OUTPUT_TOKENS = 512 // Leave ~3584 tokens for input
+const val DEFAULT_MAX_OUTPUT_TOKENS = (DEFAULT_CONTEXT_LENGTH * 0.25).toInt()
 const val DEFAULT_TOPK = 40
 const val DEFAULT_TOPP = 0.9f
-const val DEFAULT_TEMPERATURE = 0.5f
+const val DEFAULT_TEMPERATURE = 0.7f
 
 data class LocalLLModel(
     val path: String,

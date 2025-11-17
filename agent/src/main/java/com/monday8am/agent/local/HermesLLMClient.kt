@@ -238,11 +238,8 @@ internal class HermesLLMClient(
 
         val toolsJson = prettyJson.encodeToString(JsonArray.serializer(), JsonArray(toolsArray))
 
-        return """
-# Tools
-
+        return """# Tools
 You may call one or more functions to assist with the user query.
-
 You are provided with function signatures within <tools></tools> XML tags:
 <tools>
 $toolsJson
