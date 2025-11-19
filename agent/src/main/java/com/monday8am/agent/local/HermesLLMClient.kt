@@ -461,4 +461,8 @@ For each function call, return a json object with function name and arguments wi
     ): ModerationResult = throw Exception("Not supported")
 
     override fun llmProvider(): LLMProvider = object : LLMProvider("qwen", "Qwen") {}
+
+    override fun close() {
+        // No resources to clean up - client is stateless
+    }
 }

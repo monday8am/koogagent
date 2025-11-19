@@ -61,7 +61,7 @@ class LocalInferenceEngineImpl(
                 // Create and initialize engine
                 val engine = Engine(engineConfig)
                 engine.initialize()
-
+                session
                 val conversationConfig =
                     ConversationConfig(
                         samplerConfig =

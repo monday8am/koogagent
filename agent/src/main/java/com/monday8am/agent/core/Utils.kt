@@ -15,7 +15,7 @@ const val DEFAULT_CONTEXT_LENGTH = 4096
 const val DEFAULT_MAX_OUTPUT_TOKENS = (DEFAULT_CONTEXT_LENGTH * 0.25).toInt()
 const val DEFAULT_TOPK = 40
 const val DEFAULT_TOPP = 0.9f
-const val DEFAULT_TEMPERATURE = 0.7f
+const val DEFAULT_TEMPERATURE = 0.5f
 
 data class LocalLLModel(
     val path: String,

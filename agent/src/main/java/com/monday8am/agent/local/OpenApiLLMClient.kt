@@ -298,4 +298,8 @@ You SHOULD NOT include any other text in the response if you call a function.
     ): ModerationResult = throw Exception("Not supported")
 
     override fun llmProvider(): LLMProvider = object : LLMProvider("gemma", "Gemma") {}
+
+    override fun close() {
+        // No resources to clean up - client is stateless
+    }
 }

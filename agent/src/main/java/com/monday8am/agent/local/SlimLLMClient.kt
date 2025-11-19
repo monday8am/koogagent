@@ -401,4 +401,8 @@ internal class SlimLLMClient(
     ): ModerationResult = throw Exception("Not supported")
 
     override fun llmProvider(): LLMProvider = object : LLMProvider("gemma-slim", "Gemma with SLIM Format") {}
+
+    override fun close() {
+        // No resources to clean up - client is stateless
+    }
 }

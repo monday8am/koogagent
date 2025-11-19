@@ -21,7 +21,10 @@
       "WebFetch(domain:medium.com)",
       "WebFetch(domain:code.claude.com)",
       "WebFetch(domain:claude.ai)",
-      "Bash(../gradlew:*)"
+      "Bash(../gradlew:*)",
+      "Bash(/usr/libexec/java_home:*)",
+      "Bash(/opt/homebrew/Cellar/openjdk@21/21.0.9/bin/java:*)",
+      "Bash(export JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.9/libexec/openjdk.jdk/Contents/Home)"
     ],
     "deny": [],
     "ask": []

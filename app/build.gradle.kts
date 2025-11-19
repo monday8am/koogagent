@@ -61,7 +61,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.work.runtime.ktx)
 
-    implementation(libs.litertlm)
+    implementation(libs.litertlm.android)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
