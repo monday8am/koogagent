@@ -63,7 +63,7 @@ internal data class TestCase(
     val queries: List<TestQuery>,
     val systemPrompt: String,
     val validator: (result: String) -> ValidationResult,
-    val toolFormat: ToolFormat = ToolFormat.HERMES,
+    val toolFormat: ToolFormat = ToolFormat.NATIVE,
 )
 
 internal class GemmaToolCallingTest(

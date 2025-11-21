@@ -33,7 +33,15 @@ private data class LlmModelInstance(
     val model: LocalLLModel,
 )
 
+/**
+ * LiteRT-LM implementation with native tool calling support.
+ *
+ * @param tools List of tool objects annotated with @Tool. These are passed to
+ *              ConversationConfig for native tool calling via Qwen3DataProcessor.
+ * @param dispatcher Coroutine dispatcher for blocking operations
+ */
 class LocalInferenceEngineImpl(
+    private val tools: List<Any> = emptyList(),
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : LocalInferenceEngine {
     private var currentInstance: LlmModelInstance? = null
@@ -61,9 +69,11 @@ class LocalInferenceEngineImpl(
                 // Create and initialize engine
                 val engine = Engine(engineConfig)
                 engine.initialize()
-                session
+
+                // Configure conversation with tools for native tool calling
                 val conversationConfig =
                     ConversationConfig(
+                        tools = tools,  // Native LiteRT-LM tools with @Tool annotations
                         samplerConfig =
                             SamplerConfig(
                                 topK = model.topK,
@@ -89,7 +99,7 @@ class LocalInferenceEngineImpl(
                 }
 
                 val userMessage = Message.of(prompt)
-                instance.conversation.sendMessageAsync(userMessage)
+                instance.conversation.sendMessageWithCallback(userMessage)
             }
         }
     }
@@ -110,6 +120,7 @@ class LocalInferenceEngineImpl(
             instance.conversation.close()
             val conversationConfig =
                 ConversationConfig(
+                    tools = tools,  // Maintain tools across conversation resets
                     samplerConfig =
                         SamplerConfig(
                             topK = instance.model.topK,
@@ -134,9 +145,12 @@ class LocalInferenceEngineImpl(
 /**
  * Extension function to convert LiteRT-LM's MessageCallback to coroutine-based suspend function.
  * Collects streaming message responses and returns the complete generated text.
+ *
+ * Note: Named sendMessageWithCallback to avoid collision with alpha06's new
+ * sendMessageAsync(Message): Flow<Message> overload.
  */
 @OptIn(InternalCoroutinesApi::class)
-private suspend fun Conversation.sendMessageAsync(message: Message): String =
+private suspend fun Conversation.sendMessageWithCallback(message: Message): String =
     suspendCancellableCoroutine { continuation ->
         val resultBuilder = StringBuilder()
 

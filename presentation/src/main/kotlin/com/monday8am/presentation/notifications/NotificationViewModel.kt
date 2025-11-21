@@ -243,16 +243,16 @@ class NotificationViewModelImpl(
                     country = deviceContext.country,
                 )
 
-            // Note: Using REACT format due to 1024 token context limit in current Qwen3 model
-            // HERMES format requires ~4096+ tokens (verbose XML schemas)
-            // To use HERMES: re-export model with larger context (ekv4096 or ekv8192)
+            // Using NATIVE format for LiteRT-LM's native tool calling
+            // Tools are passed via ConversationConfig (in LocalInferenceEngineImpl)
+            // and handled by Qwen3DataProcessor automatically
             val agent =
                 NotificationAgent.local(
                     promptExecutor = { prompt ->
                         promptExecutor(prompt).getOrThrow()
                     },
                     modelId = MODEL_NAME.removeSuffix(".litertlm"),
-                    toolFormat = ToolFormat.REACT, // REACT is more compact than HERMES
+                    toolFormat = ToolFormat.NATIVE, // Native LiteRT-LM tool calling
                 )
             agent.initializeWithTools(toolRegistry = toolRegistry)
             val content = NotificationGenerator(agent = agent).generate(notificationContext)
