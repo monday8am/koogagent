@@ -35,7 +35,8 @@ import kotlinx.coroutines.flow.scan
 import kotlinx.coroutines.launch
 
 private const val MODEL_URL = "https://github.com/monday8am/koogagent/releases/download/0.0.1/gemma3-1b-it-int4.zip"
-private const val MODEL_NAME = "gemma3-1b-it-int4.litertlm"
+private const val MODEL_NAME1 = "gemma3-1b-it-int4.litertlm"
+private const val MODEL_NAME = "qwen3_0.6b_q8_ekv4096.litertlm"
 
 val defaultNotificationContext =
     NotificationContext(
@@ -242,13 +243,16 @@ class NotificationViewModelImpl(
                     country = deviceContext.country,
                 )
 
+            // Using NATIVE format for LiteRT-LM's native tool calling
+            // Tools are passed via ConversationConfig (in LocalInferenceEngineImpl)
+            // and handled by Qwen3DataProcessor automatically
             val agent =
                 NotificationAgent.local(
                     promptExecutor = { prompt ->
                         promptExecutor(prompt).getOrThrow()
                     },
-                    modelId = "gemma3-1b-it-int4",
-                    toolFormat = ToolFormat.REACT,
+                    modelId = MODEL_NAME.removeSuffix(".litertlm"),
+                    toolFormat = ToolFormat.NATIVE, // Native LiteRT-LM tool calling
                 )
             agent.initializeWithTools(toolRegistry = toolRegistry)
             val content = NotificationGenerator(agent = agent).generate(notificationContext)

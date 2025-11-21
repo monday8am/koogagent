@@ -1,5 +1,5 @@
 [versions]
-agp = "8.13.0"
+agp = "8.13.1"
 json = "20250517"
 kotlin = "2.2.21"
 coreKtx = "1.17.0"
@@ -9,11 +9,11 @@ espressoCore = "3.7.0"
 kermit = "2.0.8"
 lifecycleRuntimeKtx = "2.9.4"
 activityCompose = "1.11.0"
-composeBom = "2025.10.01"
-koog = "0.5.1"
-litertlm = "0.0.0-alpha05"
+composeBom = "2025.11.00"
+koog = "0.5.3"
 kotlinxCoroutines = "1.10.2"
-okhttp = "5.2.1"
+litertlmAndroid = "latest.release"
+okhttp = "5.3.2"
 workRuntime = "2.11.0"
 turbine = "1.2.1"
 
@@ -35,7 +35,7 @@ androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-te
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
 koog-agents = { group = "ai.koog", name = "koog-agents", version.ref = "koog" }
 kermit = { group = "co.touchlab", name = "kermit", version.ref = "kermit" }
-litertlm = { group = "com.google.ai.edge.litertlm", name = "litertlm", version.ref = "litertlm" }
+litertlm-android = { group = "com.google.ai.edge.litertlm", name="litertlm-android", version.ref = "litertlmAndroid" }
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "kotlinxCoroutines" }
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "kotlinxCoroutines" }
 androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "workRuntime" }

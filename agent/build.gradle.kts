@@ -19,6 +19,7 @@ dependencies {
         exclude(group = "io.modelcontextprotocol", module = "kotlin-sdk-core-jvm")
     }
     api(libs.kermit)
-    implementation(libs.litertlm)
+    // Note: LiteRT-LM is only used in :app module (Android implementation)
+    // :agent module is pure Kotlin/JVM and uses interfaces only
     testImplementation(kotlin("test"))
 }

@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -33,7 +32,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.key.Key.Companion.U
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -47,6 +45,8 @@ import com.monday8am.koogagent.download.ModelDownloadManagerImpl
 import com.monday8am.koogagent.litert.LocalInferenceEngineImpl
 import com.monday8am.koogagent.ui.AndroidNotificationViewModel
 import com.monday8am.koogagent.ui.DeviceContextProviderImpl
+import com.monday8am.koogagent.litert.tools.NativeLocationTools
+import com.monday8am.koogagent.litert.tools.NativeWeatherTools
 import com.monday8am.koogagent.ui.NotificationEngineImpl
 import com.monday8am.koogagent.ui.NotificationViewModelFactory
 import com.monday8am.koogagent.ui.theme.KoogAgentTheme
@@ -62,7 +62,14 @@ class MainActivity : ComponentActivity() {
     private val viewModelFactory: NotificationViewModelFactory by lazy {
         val applicationContext = this.applicationContext
 
-        val inferenceEngine = LocalInferenceEngineImpl()
+        // Native LiteRT-LM tools with @Tool annotations
+        // These are passed to ConversationConfig for native tool calling
+        val nativeTools = listOf(
+            NativeLocationTools(),
+            NativeWeatherTools()
+        )
+
+        val inferenceEngine = LocalInferenceEngineImpl(tools = nativeTools)
         val notificationEngine = notificationEngine
         val weatherProvider = WeatherProviderImpl()
         val locationProvider = MockLocationProvider() // <-- using Mock for now.

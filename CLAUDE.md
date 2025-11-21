@@ -237,11 +237,11 @@ The `GemmaFormatter` (from `com.google.ai.edge.localagents:localagents-fc:0.1.0`
 - Response parsers detect tool calls via pattern matching (JSON, XML, or natural language)
 
 **5 Tool Calling Formats:**
-1. **SIMPLE** - Simplified JSON: `{"tool":"ToolName"}` (no parameters)
-2. **OPENAPI** - OpenAPI spec: `{"name":"FunctionName", "parameters":{...}}`
-3. **SLIM** - XML-like tags: `<function>FunctionName</function>` with optional `<parameters>`
-4. **REACT** - Natural language: `Thought:` and `Action:` patterns (recommended by Google for small models)
-5. **NATIVE** - Ollama's OpenAI-compatible tool calling API (for server-based models)
+1. **SIMPLE** - Simplified JSON: `{"tool":"ToolName"}` (no parameters) - for Gemma
+2. **OPENAPI** - OpenAPI spec: `{"name":"FunctionName", "parameters":{...}}` - for Gemma
+3. **SLIM** - XML-like tags: `<function>FunctionName</function>` with optional `<parameters>` - for Gemma
+4. **REACT** - Natural language: `Thought:` and `Action:` patterns (recommended by Google for small models like Gemma)
+5. **HERMES** - Qwen format: XML tags `<tools></tools>` for definitions, `<tool_call></tool_call>` for invocations - **Use for Qwen3**
 
 **Alternative Options Investigated:**
 1. **Custom Text-Based Protocols** (formats 1-4) - Works with LiteRT-LM inference ✅
@@ -321,6 +321,41 @@ Not enabled for release builds (prototype phase)
 - UI tests in `app/src/androidTest`
 - Tool calling tests verify custom protocol (not LiteRT native tools due to Gemma limitation)
 
+## Re-exporting Models with Larger Context
+
+If you need to increase the context window (e.g., to use HERMES format with Qwen3):
+
+### Option 1: Using AI Edge Torch (Recommended)
+```bash
+# Install dependencies
+pip install ai-edge-torch torch transformers
+
+# Export with custom context length
+python export_to_litert.py \
+  --model_id Qwen/Qwen3-0.6B-Instruct \
+  --output_path qwen3_0.6b_q8_ekv4096.litertlm \
+  --max_seq_len 4096 \
+  --quantize int8
+```
+
+### Option 2: Using Google's Model Explorer
+1. Download HuggingFace model: `Qwen/Qwen3-0.6B-Instruct`
+2. Convert to TFLite with custom KV cache size
+3. Use LiteRT-LM packaging tool to create `.litertlm` bundle
+
+### Key Parameters
+- `max_seq_len` / `max_context_length`: Total tokens (input + output)
+- `kv_cache_max`: KV cache size (should match or exceed max_seq_len)
+- Quantization: `int4`, `int8`, `fp16` (smaller = faster, less accurate)
+
+### Context Size Recommendations
+- **1024 tokens**: REACT format only (current model)
+- **2048 tokens**: REACT + SIMPLE formats
+- **4096 tokens**: All formats including HERMES (recommended)
+- **8192+ tokens**: Long conversations with tool calling
+
+**Note**: Larger context = more memory usage. Test on target device to ensure acceptable performance.
+
 ## Common Patterns
 
 ### Adding New Meal Types
@@ -335,16 +370,28 @@ Not enabled for release builds (prototype phase)
 - Parser in `NotificationGenerator.parseResponse()` expects specific keys
 
 ### Changing Model Parameters
-- Defaults:
+- Defaults (in `agent/core/Utils.kt`):
   - `DEFAULT_CONTEXT_LENGTH = 4096` (total tokens for input + output)
   - `DEFAULT_MAX_OUTPUT_TOKENS = 512` (max tokens to generate, leaves ~3584 for input)
-  - `DEFAULT_TEMPERATURE = 0.5f`
+  - `DEFAULT_TEMPERATURE = 0.7f`
   - `DEFAULT_TOPK = 40`
   - `DEFAULT_TOPP = 0.9f`
-- Override in `LocalLLModel` data class
-- `NotificationViewModel` sets temperature to 0.8f for Gemma model
-- **Note**: Gemma 3n-1b-it supports 1280, 2048, or 4096 token context windows
+- Override in `LocalLLModel` data class (e.g., `getLocalModel()` in NotificationViewModel)
+- `NotificationViewModel` sets temperature to 0.8f
+- **Model-specific context windows**:
+  - Gemma 3n-1b-it: 1280, 2048, or 4096 tokens
+  - Qwen3-0.6B: 32768 tokens (32K)
+  - Qwen3-8B: 131072 tokens (128K)
 - LiteRT-LM's `EngineConfig.maxNumTokens` sets the TOTAL context (input + output combined)
+- **CRITICAL**: Runtime context CANNOT exceed the model's compiled context window
+  - The `.litertlm` model has hardcoded KV cache buffers set during TFLite export
+  - Model filename often indicates context: `qwen3_0.6b_q8_ekv1024.litertlm` = 1024 tokens
+  - Attempting to exceed compiled context causes `GATHER_ND index out of bounds` errors
+  - To increase context: Must re-export model from HuggingFace with larger KV cache
+- **Tool Format vs Context Size**:
+  - HERMES format: Requires 4096+ tokens (verbose XML schemas ~600-800 tokens)
+  - REACT format: Works with 1024 tokens (compact natural language prompts ~200-300 tokens)
+  - SIMPLE/OPENAPI: Medium verbosity (~300-400 tokens)
 
 ### Working with LiteRT-LM Conversations
 - `Conversation` maintains conversation state across multiple queries

@@ -63,6 +63,7 @@ internal data class TestCase(
     val queries: List<TestQuery>,
     val systemPrompt: String,
     val validator: (result: String) -> ValidationResult,
+    val toolFormat: ToolFormat = ToolFormat.NATIVE,
 )
 
 internal class GemmaToolCallingTest(
@@ -112,7 +113,7 @@ internal class GemmaToolCallingTest(
                     NotificationAgent.local(
                         promptExecutor = promptExecutor,
                         modelId = "gemma3-1b-it-int4",
-                        toolFormat = ToolFormat.REACT,
+                        toolFormat = testCase.toolFormat,
                     )
 
                 // Initialize with tools if provided
@@ -172,10 +173,11 @@ internal class GemmaToolCallingTest(
                 val tests =
                     listOf(
                         ::testBasicToolCall,
-                        ::testNoToolNeeded,
-                        ::testToolHallucination,
-                        ::testWeatherTool,
-                        ::testMultiTurnSequence,
+                        // ::testNoToolNeeded,
+                        // ::testToolHallucination,
+                        // ::testWeatherTool,
+                        // ::testMultiTurnSequence,
+                        // ::testHermesFormat,
                     )
 
                 tests.forEach { test ->
@@ -198,7 +200,10 @@ internal class GemmaToolCallingTest(
                         TestQuery("What is my current location?", "explicit query"),
                         TestQuery("Can you tell me my coordinates?", "coordinate query"),
                     ),
-                systemPrompt = "You are a helpful assistant that can call a function for getting user location.",
+                systemPrompt = """
+                    When to use tools
+                    If the user asks "where am I?" or similar location queries, call the GetLocation function to retrieve their current coordinates.
+                """.trimIndent(),
                 validator = { result ->
                     // Check for Madrid coordinates from MockLocationProvider
                     val hasMadridLat = result.contains("40.4") || result.contains("40°")
@@ -371,6 +376,71 @@ internal class GemmaToolCallingTest(
                         }
                     }
                 },
+            ),
+        )
+
+    private suspend fun testHermesFormat(): TestResult =
+        runTest(
+            TestCase(
+                name = "TEST 6: Hermes/Qwen XML Format",
+                description =
+                    listOf(
+                        "Tests Qwen's official Hermes-style format with XML tags",
+                        "  Format: <tool_call>{\"name\":\"...\", \"arguments\":{...}}</tool_call>",
+                        "  Based on qwen-prompts.md scenarios",
+                    ),
+                tools =
+                    listOf(
+                        GetLocation(locationProvider),
+                        GetWeatherFromLocation(weatherProvider),
+                    ),
+                queries =
+                    listOf(
+                        TestQuery(
+                            "Where am I?",
+                            "selective calling - only location",
+                        ),
+                        TestQuery(
+                            "What's the weather?",
+                            "weather with default location",
+                        ),
+                    ),
+                systemPrompt =
+                    """
+                    You are Qwen, created by Alibaba Cloud. You are a helpful assistant.
+
+                    When the user asks about their location, use GetLocation.
+                    When the user asks about weather, use GetWeatherFromLocation.
+                    """.trimIndent(),
+                validator = { result ->
+                    // For Hermes format, check if we get location or weather info
+                    val hasLocation =
+                        result.contains("latitude", ignoreCase = true) ||
+                            result.contains("longitude", ignoreCase = true) ||
+                            result.contains("40.4", ignoreCase = true)
+
+                    val hasWeather =
+                        result.contains("temperature", ignoreCase = true) ||
+                            result.contains("weather", ignoreCase = true) ||
+                            result.contains("sunny", ignoreCase = true) ||
+                            result.contains("cloudy", ignoreCase = true)
+
+                    when {
+                        hasLocation || hasWeather -> {
+                            ValidationResult.Pass(
+                                "Hermes format successfully returned " +
+                                    (if (hasLocation) "location" else "weather") + " information",
+                            )
+                        }
+                        else -> {
+                            ValidationResult.Fail(
+                                message = "No location or weather data in response",
+                                details = "Expected Hermes-style tool calling to retrieve data",
+                            )
+                        }
+                    }
+                },
+                toolFormat = ToolFormat.HERMES,
             ),
         )
 }

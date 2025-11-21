@@ -9,6 +9,8 @@ import ai.koog.prompt.llm.LLMCapability
 import ai.koog.prompt.llm.LLMProvider
 import ai.koog.prompt.llm.LLModel
 import co.touchlab.kermit.Logger
+import com.monday8am.agent.local.HermesLLMClient
+import com.monday8am.agent.local.LiteRTLLMClient
 import com.monday8am.agent.local.OpenApiLLMClient
 import com.monday8am.agent.local.ReActLLMClient
 import com.monday8am.agent.local.SimpleLLMClient
@@ -17,16 +19,20 @@ import com.monday8am.agent.local.SlimLLMClient
 /**
  * Tool calling format options for the notification agent.
  *
- * @property SIMPLE Simplified JSON format: `{"tool":"ToolName"}` (no parameters)
- * @property OPENAPI OpenAPI specification format: `{"name":"FunctionName", "parameters":{...}}`
- * @property SLIM XML-like tag format: `<function>FunctionName</function>` with optional `<parameters>{...}</parameters>`
- * @property REACT ReAct (Reasoning and Acting) pattern: Natural language with `Thought:` and `Action:` (recommended by Google)
+ * @property SIMPLE Simplified JSON format: `{"tool":"ToolName"}` (no parameters) - Custom protocol for Gemma
+ * @property OPENAPI OpenAPI specification format: `{"name":"FunctionName", "parameters":{...}}` - Custom protocol for Gemma
+ * @property SLIM XML-like tag format: `<function>FunctionName</function>` with optional `<parameters>{...}</parameters>` - Custom protocol for Gemma
+ * @property REACT ReAct (Reasoning and Acting) pattern: Natural language with `Thought:` and `Action:` (recommended by Google) - Custom protocol for Gemma
+ * @property HERMES Hermes-style Qwen format: XML tags with `<tools></tools>` for definitions and `<tool_call></tool_call>` for invocations - Custom protocol
+ * @property NATIVE Native LiteRT-LM tool calling: Tools passed via ConversationConfig, handled by model-specific processors (Qwen3DataProcessor, etc.)
  */
 enum class ToolFormat {
     SIMPLE,
     OPENAPI,
     SLIM,
     REACT,
+    HERMES,
+    NATIVE,
 }
 
 /**
@@ -55,17 +61,19 @@ class NotificationAgent private constructor(
 ) {
     companion object {
         /**
-         * Creates an agent for local inference (e.g., LiteRT-LM with Gemma).
+         * Creates an agent for local inference (e.g., LiteRT-LM with Gemma or Qwen3).
          *
          * @param promptExecutor Function that executes prompts against the local LLM
-         * @param modelId Model identifier (e.g., "gemma3-1b-it-int4")
-         * @param toolFormat Tool calling protocol (SIMPLE, OPENAPI, SLIM, REACT)
+         * @param modelId Model identifier (e.g., "gemma3-1b-it-int4", "qwen3-0.6b")
+         * @param toolFormat Tool calling protocol:
+         *                   - NATIVE: Use LiteRT-LM's native tool calling (for Qwen3, etc.)
+         *                   - REACT/HERMES/etc: Use custom text-based protocols (for Gemma, etc.)
          * @param modelProvider LLM provider (default: Google)
          */
         fun local(
             promptExecutor: suspend (String) -> String?,
             modelId: String,
-            toolFormat: ToolFormat = ToolFormat.REACT,
+            toolFormat: ToolFormat = ToolFormat.NATIVE,
             modelProvider: LLMProvider = LLMProvider.Google,
         ) = NotificationAgent(
             backend = AgentBackend.LOCAL,
@@ -166,6 +174,8 @@ class NotificationAgent private constructor(
             ToolFormat.OPENAPI -> OpenApiLLMClient(promptExecutor = executor)
             ToolFormat.SLIM -> SlimLLMClient(promptExecutor = executor)
             ToolFormat.REACT -> ReActLLMClient(promptExecutor = executor)
+            ToolFormat.HERMES -> HermesLLMClient(promptExecutor = executor)
+            ToolFormat.NATIVE -> LiteRTLLMClient(promptExecutor = executor)
         }
     }
 }

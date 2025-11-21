@@ -19,7 +19,14 @@
       "Bash(cat:*)",
       "WebFetch(domain:llmware-ai.github.io)",
       "WebFetch(domain:medium.com)",
-      "WebFetch(domain:code.claude.com)"
+      "WebFetch(domain:code.claude.com)",
+      "WebFetch(domain:claude.ai)",
+      "Bash(../gradlew:*)",
+      "Bash(/usr/libexec/java_home:*)",
+      "Bash(/opt/homebrew/Cellar/openjdk@21/21.0.9/bin/java:*)",
+      "Bash(export JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.9/libexec/openjdk.jdk/Contents/Home)",
+      "WebFetch(domain:dl.google.com)",
+      "Bash(javap:*)"
     ],
     "deny": [],
     "ask": []
