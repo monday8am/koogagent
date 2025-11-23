@@ -98,8 +98,23 @@ class LocalInferenceEngineImpl(
                     throw IllegalArgumentException("Prompt cannot be blank")
                 }
 
+                Logger.i("LocalInferenceEngine") { "▶️ Starting inference (prompt: ${prompt.length} chars)" }
+                val startTime = System.currentTimeMillis()
+
                 val userMessage = Message.of(prompt)
-                instance.conversation.sendMessageWithCallback(userMessage)
+                val response = instance.conversation.sendMessageWithCallback(userMessage)
+
+                val duration = System.currentTimeMillis() - startTime
+                val tokensApprox = response.length / 4  // Rough estimate: 1 token ≈ 4 chars
+                val tokensPerSec = if (duration > 0) (tokensApprox * 1000.0 / duration) else 0.0
+
+                Logger.i("LocalInferenceEngine") {
+                    "✅ Inference complete: ${duration}ms | " +
+                        "Response: ${response.length} chars (~$tokensApprox tokens) | " +
+                        "Speed: %.2f tokens/sec".format(tokensPerSec)
+                }
+
+                response
             }
         }
     }

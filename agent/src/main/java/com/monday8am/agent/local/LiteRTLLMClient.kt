@@ -51,6 +51,7 @@ internal class LiteRTLLMClient(
         val promptText = buildPromptString(prompt.messages)
 
         logger.d { "Executing prompt with LiteRT-LM (${promptText.length} chars)" }
+        logger.d { promptText }
 
         // Execute via LiteRT-LM
         val response = promptExecutor(promptText)

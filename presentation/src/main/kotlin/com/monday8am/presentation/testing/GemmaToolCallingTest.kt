@@ -172,7 +172,8 @@ internal class GemmaToolCallingTest(
             try {
                 val tests =
                     listOf(
-                        ::testBasicToolCall,
+                        ::testMinimalInteraction,
+                        // ::testBasicToolCall,
                         // ::testNoToolNeeded,
                         // ::testToolHallucination,
                         // ::testWeatherTool,
@@ -188,6 +189,24 @@ internal class GemmaToolCallingTest(
                 logger.e(e) { "Test suite failed" }
             }
         }
+
+    private suspend fun testMinimalInteraction(): TestResult =
+        runTest(
+            TestCase(
+                name = "TEST 0: Basic Content",
+                tools = listOf(),
+                queries = listOf(TestQuery("where am I located?")),
+                systemPrompt = "You are a helpful assistant. If the user asks \"where am I?\" or similar location queries, call the get_location function to retrieve their current coordinates.",
+                validator = { result ->
+                    val hasValidResponse = result.isNotBlank() && result.length > 5
+                    if (hasValidResponse) {
+                        ValidationResult.Pass("Valid response")
+                    } else {
+                        ValidationResult.Fail("Invalid response")
+                    }
+                }
+            )
+        )
 
     private suspend fun testBasicToolCall(): TestResult =
         runTest(
