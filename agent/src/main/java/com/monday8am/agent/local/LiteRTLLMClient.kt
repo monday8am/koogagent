@@ -8,7 +8,11 @@ import ai.koog.prompt.llm.LLMProvider
 import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.message.ResponseMetaInfo
+import ai.koog.prompt.streaming.StreamFrame
 import co.touchlab.kermit.Logger
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onCompletion
 
 /**
  * Bridge LLMClient between Koog's agent framework and LiteRT-LM native inference.
@@ -35,9 +39,12 @@ import co.touchlab.kermit.Logger
  *
  * @param promptExecutor Function that sends a prompt string to LiteRT-LM and returns the response.
  *                       This should wrap LocalInferenceEngine.prompt()
+ * @param streamPromptExecutor Function that sends a prompt string to LiteRT-LM and streams the response.
+ *                             This should wrap LocalInferenceEngine.promptStreaming()
  */
 internal class LiteRTLLMClient(
     private val promptExecutor: suspend (String) -> String?,
+    private val streamPromptExecutor: ((String) -> Flow<String>)? = null,
 ) : LLMClient {
     private val logger = Logger.withTag("LiteRTLLMClient")
 
@@ -92,10 +99,27 @@ internal class LiteRTLLMClient(
         prompt: Prompt,
         model: LLModel,
         tools: List<ToolDescriptor>,
-    ) = throw UnsupportedOperationException(
-        "LiteRT-LM client does not support streaming. " +
-            "Use execute() instead - LiteRT-LM's Conversation API handles async internally."
-    )
+    ): Flow<StreamFrame> {
+        val executor = streamPromptExecutor
+            ?: throw UnsupportedOperationException(
+                "LiteRT-LM client streaming is not configured. " +
+                        "Provide streamPromptExecutor in constructor."
+            )
+
+        val promptText = buildPromptString(prompt.messages)
+
+        logger.d { "Executing streaming prompt with LiteRT-LM (${promptText.length} chars)" }
+        logger.d { promptText }
+
+        return executor(promptText)
+            .map { chunk ->
+                logger.d { "Streaming chunk: ${chunk.take(50)}..." }
+                StreamFrame.Append(text = chunk) as StreamFrame
+            }
+            .onCompletion {
+                emit(StreamFrame.End(finishReason = "\n"))
+            }
+    }
 
     override suspend fun moderate(
         prompt: Prompt,
@@ -103,7 +127,7 @@ internal class LiteRTLLMClient(
     ): ModerationResult {
         throw UnsupportedOperationException(
             "LiteRT-LM client does not support moderation. " +
-                "Implement content filtering in your application layer if needed."
+                    "Implement content filtering in your application layer if needed."
         )
     }
 

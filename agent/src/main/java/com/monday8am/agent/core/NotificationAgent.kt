@@ -15,6 +15,7 @@ import com.monday8am.agent.local.OpenApiLLMClient
 import com.monday8am.agent.local.ReActLLMClient
 import com.monday8am.agent.local.SimpleLLMClient
 import com.monday8am.agent.local.SlimLLMClient
+import kotlinx.coroutines.flow.Flow
 
 /**
  * Tool calling format options for the notification agent.
@@ -56,6 +57,7 @@ enum class AgentBackend {
 class NotificationAgent private constructor(
     private val backend: AgentBackend,
     private val promptExecutor: (suspend (String) -> String?)?,
+    private val streamPromptExecutor: ((String) -> Flow<String>)?,
     private val model: LLModel,
     private val toolFormat: ToolFormat?,
 ) {
@@ -64,6 +66,7 @@ class NotificationAgent private constructor(
          * Creates an agent for local inference (e.g., LiteRT-LM with Gemma or Qwen3).
          *
          * @param promptExecutor Function that executes prompts against the local LLM
+         * @param streamPromptExecutor Optional function that streams responses from the local LLM
          * @param modelId Model identifier (e.g., "gemma3-1b-it-int4", "qwen3-0.6b")
          * @param toolFormat Tool calling protocol:
          *                   - NATIVE: Use LiteRT-LM's native tool calling (for Qwen3, etc.)
@@ -72,12 +75,14 @@ class NotificationAgent private constructor(
          */
         fun local(
             promptExecutor: suspend (String) -> String?,
+            streamPromptExecutor: ((String) -> Flow<String>)? = null,
             modelId: String,
             toolFormat: ToolFormat = ToolFormat.NATIVE,
             modelProvider: LLMProvider = LLMProvider.Google,
         ) = NotificationAgent(
             backend = AgentBackend.LOCAL,
             promptExecutor = promptExecutor,
+            streamPromptExecutor = streamPromptExecutor,
             model =
                 LLModel(
                     provider = modelProvider,
@@ -106,6 +111,7 @@ class NotificationAgent private constructor(
             NotificationAgent(
                 backend = AgentBackend.KOOG,
                 promptExecutor = null,
+                streamPromptExecutor = null,
                 model = model,
                 toolFormat = null,
             )
@@ -175,7 +181,10 @@ class NotificationAgent private constructor(
             ToolFormat.SLIM -> SlimLLMClient(promptExecutor = executor)
             ToolFormat.REACT -> ReActLLMClient(promptExecutor = executor)
             ToolFormat.HERMES -> HermesLLMClient(promptExecutor = executor)
-            ToolFormat.NATIVE -> LiteRTLLMClient(promptExecutor = executor)
+            ToolFormat.NATIVE -> LiteRTLLMClient(
+                promptExecutor = executor,
+                streamPromptExecutor = streamPromptExecutor
+            )
         }
     }
 }

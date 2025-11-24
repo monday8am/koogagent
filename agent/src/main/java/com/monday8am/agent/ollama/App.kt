@@ -6,7 +6,6 @@ import ai.koog.prompt.executor.ollama.client.toLLModel
 import co.touchlab.kermit.Logger
 import com.monday8am.agent.core.NotificationAgent
 import com.monday8am.agent.core.NotificationGenerator
-import com.monday8am.agent.core.ToolFormat
 import com.monday8am.agent.tools.GetLocation
 import com.monday8am.agent.tools.GetWeather
 import com.monday8am.koogagent.data.MealType
