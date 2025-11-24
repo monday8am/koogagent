@@ -15,10 +15,9 @@ class NativeLocationTools {
      * Returns hardcoded Madrid coordinates for testing.
      */
     @Tool(description = "Get the user's current location coordinates")
-    fun getLocation(): Map<String, Double> {
-        return mapOf(
+    fun getLocation(): Map<String, Double> =
+        mapOf(
             "latitude" to 40.4168,
-            "longitude" to -3.7038
+            "longitude" to -3.7038,
         )
-    }
 }

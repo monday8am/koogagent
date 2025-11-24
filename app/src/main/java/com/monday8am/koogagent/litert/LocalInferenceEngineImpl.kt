@@ -19,19 +19,19 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.InternalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.flatMapConcat
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import java.io.File
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
-import kotlinx.coroutines.flow.emptyFlow
-import kotlinx.coroutines.flow.flatMapConcat
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.onEach
 
 /**
  * LiteRT-LM based implementation of LocalInferenceEngine.
@@ -83,7 +83,7 @@ class LocalInferenceEngineImpl(
                 // Configure conversation with tools for native tool calling
                 val conversationConfig =
                     ConversationConfig(
-                        tools = tools,  // Native LiteRT-LM tools with @Tool annotations
+                        tools = tools, // Native LiteRT-LM tools with @Tool annotations
                         samplerConfig =
                             SamplerConfig(
                                 topK = model.topK,
@@ -115,7 +115,7 @@ class LocalInferenceEngineImpl(
                 val response = instance.conversation.sendMessageWithCallback(userMessage)
 
                 val duration = System.currentTimeMillis() - startTime
-                val tokensApprox = response.length / 4  // Rough estimate: 1 token ≈ 4 chars
+                val tokensApprox = response.length / 4 // Rough estimate: 1 token ≈ 4 chars
                 val tokensPerSec = if (duration > 0) (tokensApprox * 1000.0 / duration) else 0.0
 
                 Logger.i("LocalInferenceEngine") {
@@ -130,27 +130,26 @@ class LocalInferenceEngineImpl(
     }
 
     override fun promptStreaming(prompt: String): Flow<String> {
-        val instance = currentInstance ?: run {
-            Logger.e("LocalInferenceEngine") { "Inference instance is not available." }
-            return emptyFlow() // Return an empty flow if there's no instance.
-        }
+        val instance =
+            currentInstance ?: run {
+                Logger.e("LocalInferenceEngine") { "Inference instance is not available." }
+                return emptyFlow() // Return an empty flow if there's no instance.
+            }
         val userMessage = UserMessage(text = prompt)
         var startTime = 0L
 
-        return instance.conversation.sendMessageAsync(userMessage)
+        return instance.conversation
+            .sendMessageAsync(userMessage)
             .map { message ->
                 message.contents.filterIsInstance<Content.Text>().joinToString("") { it.text }
-            }
-            .filter { it.isNotEmpty() }
+            }.filter { it.isNotEmpty() }
             .onStart {
                 startTime = System.currentTimeMillis()
                 Logger.i("LocalInferenceEngine") { "Streaming inference started." }
-            }
-            .onCompletion {
+            }.onCompletion {
                 val duration = System.currentTimeMillis() - startTime
                 Logger.i("LocalInferenceEngine") { "✅ Streaming inference complete: ${duration}ms" }
-            }
-            .flowOn(dispatcher)
+            }.flowOn(dispatcher)
     }
 
     override fun initializeAsFlow(model: LocalLLModel): Flow<LocalInferenceEngine> =
@@ -169,7 +168,7 @@ class LocalInferenceEngineImpl(
             instance.conversation.close()
             val conversationConfig =
                 ConversationConfig(
-                    tools = tools,  // Maintain tools across conversation resets
+                    tools = tools, // Maintain tools across conversation resets
                     samplerConfig =
                         SamplerConfig(
                             topK = instance.model.topK,

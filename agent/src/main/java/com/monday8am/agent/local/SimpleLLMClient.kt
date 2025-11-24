@@ -139,10 +139,22 @@ internal class SimpleLLMClient(
                 .lastOrNull()
 
         return when (latestMessage) {
-            is Message.User -> "User:${latestMessage.content}"
-            is Message.Tool.Result -> "Tool '${latestMessage.tool}' returned: ${latestMessage.content}"
-            is Message.Assistant -> "Assistant:${latestMessage.content}"
-            is Message.Tool.Call -> "Assistant:{\"tool\":\"${latestMessage.tool}\"}"
+            is Message.User -> {
+                "User:${latestMessage.content}"
+            }
+
+            is Message.Tool.Result -> {
+                "Tool '${latestMessage.tool}' returned: ${latestMessage.content}"
+            }
+
+            is Message.Assistant -> {
+                "Assistant:${latestMessage.content}"
+            }
+
+            is Message.Tool.Call -> {
+                "Assistant:{\"tool\":\"${latestMessage.tool}\"}"
+            }
+
             else -> {
                 logger.w { "No valid latest message found, returning empty string" }
                 ""

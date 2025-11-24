@@ -61,8 +61,9 @@ internal class LiteRTLLMClient(
         logger.d { promptText }
 
         // Execute via LiteRT-LM
-        val response = promptExecutor(promptText)
-            ?: throw IllegalStateException("LiteRT-LM returned null response")
+        val response =
+            promptExecutor(promptText)
+                ?: throw IllegalStateException("LiteRT-LM returned null response")
 
         logger.d { "LiteRT-LM response: ${response.take(100)}..." }
 
@@ -70,8 +71,8 @@ internal class LiteRTLLMClient(
         return listOf(
             Message.Assistant(
                 content = response,
-                metaInfo = ResponseMetaInfo.Empty
-            )
+                metaInfo = ResponseMetaInfo.Empty,
+            ),
         )
     }
 
@@ -82,8 +83,8 @@ internal class LiteRTLLMClient(
      * Since LiteRT-LM's Conversation maintains history internally,
      * we typically only send the latest user message here.
      */
-    private fun buildPromptString(messages: List<Message>): String {
-        return messages.joinToString("\n") { message ->
+    private fun buildPromptString(messages: List<Message>): String =
+        messages.joinToString("\n") { message ->
             when (message) {
                 is Message.System -> "System:${message.content}"
                 is Message.User -> "User:${message.content}"
@@ -93,18 +94,18 @@ internal class LiteRTLLMClient(
                 is Message.Reasoning -> "Reasoning:${message.content}"
             }
         }
-    }
 
     override fun executeStreaming(
         prompt: Prompt,
         model: LLModel,
         tools: List<ToolDescriptor>,
     ): Flow<StreamFrame> {
-        val executor = streamPromptExecutor
-            ?: throw UnsupportedOperationException(
-                "LiteRT-LM client streaming is not configured. " +
-                        "Provide streamPromptExecutor in constructor."
-            )
+        val executor =
+            streamPromptExecutor
+                ?: throw UnsupportedOperationException(
+                    "LiteRT-LM client streaming is not configured. " +
+                        "Provide streamPromptExecutor in constructor.",
+                )
 
         val promptText = buildPromptString(prompt.messages)
 
@@ -115,8 +116,7 @@ internal class LiteRTLLMClient(
             .map { chunk ->
                 logger.d { "Streaming chunk: ${chunk.take(50)}..." }
                 StreamFrame.Append(text = chunk) as StreamFrame
-            }
-            .onCompletion {
+            }.onCompletion {
                 emit(StreamFrame.End(finishReason = "\n"))
             }
     }
@@ -124,12 +124,11 @@ internal class LiteRTLLMClient(
     override suspend fun moderate(
         prompt: Prompt,
         model: LLModel,
-    ): ModerationResult {
+    ): ModerationResult =
         throw UnsupportedOperationException(
             "LiteRT-LM client does not support moderation. " +
-                    "Implement content filtering in your application layer if needed."
+                "Implement content filtering in your application layer if needed.",
         )
-    }
 
     override fun llmProvider(): LLMProvider = object : LLMProvider("litert-lm", "LiteRT-LM") {}
 

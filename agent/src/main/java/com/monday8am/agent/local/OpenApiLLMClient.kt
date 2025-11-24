@@ -122,10 +122,22 @@ internal class OpenApiLLMClient(
                 .lastOrNull()
 
         return when (latestMessage) {
-            is Message.User -> latestMessage.content
-            is Message.Tool.Result -> "Result: ${latestMessage.content}"
-            is Message.Assistant -> latestMessage.content
-            is Message.Tool.Call -> "{\"name\":\"${latestMessage.tool}\", \"parameters\":${latestMessage.content}}"
+            is Message.User -> {
+                latestMessage.content
+            }
+
+            is Message.Tool.Result -> {
+                "Result: ${latestMessage.content}"
+            }
+
+            is Message.Assistant -> {
+                latestMessage.content
+            }
+
+            is Message.Tool.Call -> {
+                "{\"name\":\"${latestMessage.tool}\", \"parameters\":${latestMessage.content}}"
+            }
+
             else -> {
                 logger.w { "No valid latest message found, returning empty string" }
                 ""
@@ -215,18 +227,37 @@ You SHOULD NOT include any other text in the response if you call a function.
 
     private fun toJsonElement(value: Any?): JsonElement =
         when (value) {
-            is String -> JsonPrimitive(value)
-            is Number -> JsonPrimitive(value)
-            is Boolean -> JsonPrimitive(value)
-            is Map<*, *> ->
+            is String -> {
+                JsonPrimitive(value)
+            }
+
+            is Number -> {
+                JsonPrimitive(value)
+            }
+
+            is Boolean -> {
+                JsonPrimitive(value)
+            }
+
+            is Map<*, *> -> {
                 JsonObject(
                     value
                         .mapKeys { it.key.toString() }
                         .mapValues { toJsonElement(it.value) },
                 )
-            is List<*> -> JsonArray(value.map { toJsonElement(it) })
-            null -> JsonNull
-            else -> JsonPrimitive(value.toString())
+            }
+
+            is List<*> -> {
+                JsonArray(value.map { toJsonElement(it) })
+            }
+
+            null -> {
+                JsonNull
+            }
+
+            else -> {
+                JsonPrimitive(value.toString())
+            }
         }
 
     internal fun parseResponse(

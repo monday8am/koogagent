@@ -43,10 +43,10 @@ import com.monday8am.koogagent.data.NotificationContext
 import com.monday8am.koogagent.data.WeatherProviderImpl
 import com.monday8am.koogagent.download.ModelDownloadManagerImpl
 import com.monday8am.koogagent.litert.LocalInferenceEngineImpl
-import com.monday8am.koogagent.ui.AndroidNotificationViewModel
-import com.monday8am.koogagent.ui.DeviceContextProviderImpl
 import com.monday8am.koogagent.litert.tools.NativeLocationTools
 import com.monday8am.koogagent.litert.tools.NativeWeatherTools
+import com.monday8am.koogagent.ui.AndroidNotificationViewModel
+import com.monday8am.koogagent.ui.DeviceContextProviderImpl
 import com.monday8am.koogagent.ui.NotificationEngineImpl
 import com.monday8am.koogagent.ui.NotificationViewModelFactory
 import com.monday8am.koogagent.ui.theme.KoogAgentTheme
@@ -64,10 +64,11 @@ class MainActivity : ComponentActivity() {
 
         // Native LiteRT-LM tools with @Tool annotations
         // These are passed to ConversationConfig for native tool calling
-        val nativeTools = listOf(
-            NativeLocationTools(),
-            NativeWeatherTools()
-        )
+        val nativeTools =
+            listOf(
+                NativeLocationTools(),
+                NativeWeatherTools(),
+            )
 
         val inferenceEngine = LocalInferenceEngineImpl(tools = nativeTools)
         val notificationEngine = notificationEngine

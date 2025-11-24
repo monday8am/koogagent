@@ -29,8 +29,8 @@ class NativeWeatherTools {
         latitude: Double,
         @ToolParam(description = "Longitude coordinate (between -180 and 180)")
         longitude: Double,
-    ): String {
-        return runBlocking {
+    ): String =
+        runBlocking {
             try {
                 val weatherCondition = weatherProvider.getCurrentWeather(latitude, longitude)
 
@@ -46,5 +46,4 @@ class NativeWeatherTools {
                 "Failed to fetch weather: ${e.message}"
             }
         }
-    }
 }

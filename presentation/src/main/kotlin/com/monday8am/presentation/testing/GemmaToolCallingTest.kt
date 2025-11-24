@@ -44,6 +44,7 @@ data class TestResult(
                 is ValidationResult.Pass -> {
                     output.appendLine("✓ PASS (duration: ${duration}ms): ${validationResult.message}")
                 }
+
                 is ValidationResult.Fail -> {
                     output.appendLine("✗ FAIL (duration: ${duration}ms): ${validationResult.message}")
                     validationResult.details?.let { details ->
@@ -141,6 +142,7 @@ internal class GemmaToolCallingTest(
                         output.appendLine("✓ PASS: ${validationResult.message}")
                         passCount++
                     }
+
                     is ValidationResult.Fail -> {
                         output.appendLine("✗ FAIL: ${validationResult.message}")
                         validationResult.details?.let { details ->
@@ -204,8 +206,8 @@ internal class GemmaToolCallingTest(
                     } else {
                         ValidationResult.Fail("Invalid response")
                     }
-                }
-            )
+                },
+            ),
         )
 
     private suspend fun testBasicToolCall(): TestResult =
@@ -219,10 +221,11 @@ internal class GemmaToolCallingTest(
                         TestQuery("What is my current location?", "explicit query"),
                         TestQuery("Can you tell me my coordinates?", "coordinate query"),
                     ),
-                systemPrompt = """
+                systemPrompt =
+                    """
                     When to use tools
                     If the user asks "where am I?" or similar location queries, call the GetLocation function to retrieve their current coordinates.
-                """.trimIndent(),
+                    """.trimIndent(),
                 validator = { result ->
                     // Check for Madrid coordinates from MockLocationProvider
                     val hasMadridLat = result.contains("40.4") || result.contains("40°")
@@ -376,12 +379,14 @@ internal class GemmaToolCallingTest(
                                     "    This suggests agent made multiple tool calls somehow",
                             )
                         }
+
                         hasWeather -> {
                             ValidationResult.Pass(
                                 "Weather information retrieved\n" +
                                     "    (But we don't know how it got coordinates)",
                             )
                         }
+
                         hasLocation -> {
                             ValidationResult.Fail(
                                 message = "⚠️  PARTIAL: Got location, but not weather",
@@ -390,6 +395,7 @@ internal class GemmaToolCallingTest(
                                         "    Would need another turn to get weather",
                             )
                         }
+
                         else -> {
                             ValidationResult.Fail("No location or weather information")
                         }
@@ -451,6 +457,7 @@ internal class GemmaToolCallingTest(
                                     (if (hasLocation) "location" else "weather") + " information",
                             )
                         }
+
                         else -> {
                             ValidationResult.Fail(
                                 message = "No location or weather data in response",

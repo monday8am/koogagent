@@ -117,15 +117,31 @@ class NotificationViewModelImpl(
             .flatMapConcat { action ->
                 val actionFlow =
                     when (action) {
-                        UiAction.Initialize -> flowOf(value = modelManager.modelExists(modelName = MODEL_NAME))
-                        UiAction.DownloadModel -> modelManager.downloadModel(url = MODEL_URL, modelName = MODEL_NAME)
-                        UiAction.ShowNotification -> inferenceEngine.initializeAsFlow(model = getLocalModel())
-                        UiAction.RunModelTests ->
+                        UiAction.Initialize -> {
+                            flowOf(value = modelManager.modelExists(modelName = MODEL_NAME))
+                        }
+
+                        UiAction.DownloadModel -> {
+                            modelManager.downloadModel(url = MODEL_URL, modelName = MODEL_NAME)
+                        }
+
+                        UiAction.ShowNotification -> {
+                            inferenceEngine.initializeAsFlow(model = getLocalModel())
+                        }
+
+                        UiAction.RunModelTests -> {
                             inferenceEngine.initializeAsFlow(model = getLocalModel()).flatMapConcat { engine ->
                                 runModelTests(promptExecutor = engine::prompt, resetConversation = engine::resetConversation)
                             }
-                        is UiAction.UpdateContext -> flowOf(value = action.context)
-                        is UiAction.NotificationReady -> flowOf(value = action.content)
+                        }
+
+                        is UiAction.UpdateContext -> {
+                            flowOf(value = action.context)
+                        }
+
+                        is UiAction.NotificationReady -> {
+                            flowOf(value = action.content)
+                        }
                     }
 
                 actionFlow

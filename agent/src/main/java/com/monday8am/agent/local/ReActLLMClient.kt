@@ -184,16 +184,24 @@ internal class ReActLLMClient(
                 .lastOrNull()
 
         return when (latestMessage) {
-            is Message.User -> "User: ${latestMessage.content}"
+            is Message.User -> {
+                "User: ${latestMessage.content}"
+            }
+
             is Message.Tool.Result -> {
                 // Format tool result as per ReAct pattern
                 "result of ${latestMessage.tool}:\n${latestMessage.content}"
             }
-            is Message.Assistant -> latestMessage.content
+
+            is Message.Assistant -> {
+                latestMessage.content
+            }
+
             is Message.Tool.Call -> {
                 // This shouldn't normally appear in subsequent turns, but handle it
                 "Action: I should use the tool `${latestMessage.tool}` with input `${latestMessage.content}`"
             }
+
             else -> {
                 logger.w { "No valid latest message found, returning empty string" }
                 ""

@@ -159,7 +159,10 @@ class NotificationAgent private constructor(
                     requireNotNull(toolFormat) { "toolFormat required for LOCAL backend" }
                     LocalInferenceAIExecutor(llmClient = createLLMClient())
                 }
-                AgentBackend.KOOG -> simpleOllamaAIExecutor()
+
+                AgentBackend.KOOG -> {
+                    simpleOllamaAIExecutor()
+                }
             }
 
         return AIAgent(
@@ -176,15 +179,32 @@ class NotificationAgent private constructor(
         val executor = requireNotNull(promptExecutor) { "promptExecutor required for LOCAL backend" }
         val format = requireNotNull(toolFormat) { "toolFormat required for LOCAL backend" }
         return when (format) {
-            ToolFormat.SIMPLE -> SimpleLLMClient(promptExecutor = executor)
-            ToolFormat.OPENAPI -> OpenApiLLMClient(promptExecutor = executor)
-            ToolFormat.SLIM -> SlimLLMClient(promptExecutor = executor)
-            ToolFormat.REACT -> ReActLLMClient(promptExecutor = executor)
-            ToolFormat.HERMES -> HermesLLMClient(promptExecutor = executor)
-            ToolFormat.NATIVE -> LiteRTLLMClient(
-                promptExecutor = executor,
-                streamPromptExecutor = streamPromptExecutor
-            )
+            ToolFormat.SIMPLE -> {
+                SimpleLLMClient(promptExecutor = executor)
+            }
+
+            ToolFormat.OPENAPI -> {
+                OpenApiLLMClient(promptExecutor = executor)
+            }
+
+            ToolFormat.SLIM -> {
+                SlimLLMClient(promptExecutor = executor)
+            }
+
+            ToolFormat.REACT -> {
+                ReActLLMClient(promptExecutor = executor)
+            }
+
+            ToolFormat.HERMES -> {
+                HermesLLMClient(promptExecutor = executor)
+            }
+
+            ToolFormat.NATIVE -> {
+                LiteRTLLMClient(
+                    promptExecutor = executor,
+                    streamPromptExecutor = streamPromptExecutor,
+                )
+            }
         }
     }
 }

@@ -59,14 +59,25 @@ class WeatherProviderImpl(
         when {
             // Temperature-based conditions
             temperature > 30 -> WeatherCondition.HOT
+
             temperature < 5 -> WeatherCondition.COLD
 
             // Weather code based
-            weatherCode == 0 -> WeatherCondition.SUNNY // Clear sky
-            weatherCode in 1..3 -> WeatherCondition.CLOUDY // Mainly clear, partly cloudy, overcast
-            weatherCode in 51..67 || weatherCode in 80..82 -> WeatherCondition.RAINY // Drizzle, rain, showers
-            weatherCode in 71..77 || weatherCode in 85..86 -> WeatherCondition.RAINY // Snow (treat as rainy for notification purposes)
-            weatherCode in 95..99 -> WeatherCondition.RAINY // Thunderstorm
+            weatherCode == 0 -> WeatherCondition.SUNNY
+
+            // Clear sky
+            weatherCode in 1..3 -> WeatherCondition.CLOUDY
+
+            // Mainly clear, partly cloudy, overcast
+            weatherCode in 51..67 || weatherCode in 80..82 -> WeatherCondition.RAINY
+
+            // Drizzle, rain, showers
+            weatherCode in 71..77 || weatherCode in 85..86 -> WeatherCondition.RAINY
+
+            // Snow (treat as rainy for notification purposes)
+            weatherCode in 95..99 -> WeatherCondition.RAINY
+
+            // Thunderstorm
 
             else -> WeatherCondition.CLOUDY
         }
