@@ -1,6 +1,7 @@
 package com.monday8am.koogagent.ui
 
 import com.monday8am.presentation.notifications.LogMessage
+import com.monday8am.presentation.testing.TestResultFrame
 
 fun LogMessage.toDisplayString(): String =
     when (this) {
@@ -50,6 +51,10 @@ fun LogMessage.toDisplayString(): String =
         }
 
         is LogMessage.TestResultMessage -> {
-            "Test result: ${content.toFormattedString()}"
+            when (content) {
+                is TestResultFrame.Content -> { "Content: ${(content as TestResultFrame.Content).chunk}" }
+                is TestResultFrame.Tool -> TODO()
+                is TestResultFrame.Validation ->  { "Validation: ${(content as TestResultFrame.Validation).result}" }
+            }
         }
     }

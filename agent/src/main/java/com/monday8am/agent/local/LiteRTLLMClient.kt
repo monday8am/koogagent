@@ -42,7 +42,7 @@ import kotlinx.coroutines.flow.onCompletion
  * @param streamPromptExecutor Function that sends a prompt string to LiteRT-LM and streams the response.
  *                             This should wrap LocalInferenceEngine.promptStreaming()
  */
-internal class LiteRTLLMClient(
+class LiteRTLLMClient(
     private val promptExecutor: suspend (String) -> String?,
     private val streamPromptExecutor: ((String) -> Flow<String>)? = null,
 ) : LLMClient {
@@ -104,20 +104,29 @@ internal class LiteRTLLMClient(
             streamPromptExecutor
                 ?: throw UnsupportedOperationException(
                     "LiteRT-LM client streaming is not configured. " +
-                        "Provide streamPromptExecutor in constructor.",
+                            "Provide streamPromptExecutor in constructor.",
                 )
 
-        val promptText = buildPromptString(prompt.messages)
+        // val promptText = buildPromptString(prompt.messages)
 
-        logger.d { "Executing streaming prompt with LiteRT-LM (${promptText.length} chars)" }
-        logger.d { promptText }
+        val lastUserMessage = prompt.messages
+            .filterIsInstance<Message.User>()
+            .lastOrNull()?.content
+            ?: throw IllegalArgumentException("No user message in prompt")
 
-        return executor(promptText)
-            .map { chunk ->
-                logger.d { "Streaming chunk: ${chunk.take(50)}..." }
-                StreamFrame.Append(text = chunk) as StreamFrame
-            }.onCompletion {
-                emit(StreamFrame.End(finishReason = "\n"))
+        logger.d { "Executing streaming prompt with LiteRT-LM (${lastUserMessage.length} chars)" }
+        logger.d { lastUserMessage }
+
+        return executor(lastUserMessage)
+            .map<String, StreamFrame> { chunk ->
+                logger.d { "Streaming chunk: $chunk" }
+                StreamFrame.Append(text = chunk)
+            }
+            .onCompletion { error ->
+                logger.d { "Streaming ended: $error" }
+                if (error == null) {
+                    emit(StreamFrame.End(finishReason = "stop"))
+                }
             }
     }
 

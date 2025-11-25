@@ -27,7 +27,8 @@
       "Bash(export JAVA_HOME=/opt/homebrew/Cellar/openjdk@21/21.0.9/libexec/openjdk.jdk/Contents/Home)",
       "WebFetch(domain:dl.google.com)",
       "Bash(javap:*)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "WebFetch(domain:docs.koog.ai)"
     ],
     "deny": [],
     "ask": []

@@ -9,13 +9,18 @@ import ai.koog.prompt.llm.LLMCapability
 import ai.koog.prompt.llm.LLMProvider
 import ai.koog.prompt.llm.LLModel
 import co.touchlab.kermit.Logger
+import com.monday8am.agent.core.ToolFormat.HERMES
+import com.monday8am.agent.core.ToolFormat.NATIVE
+import com.monday8am.agent.core.ToolFormat.OPENAPI
+import com.monday8am.agent.core.ToolFormat.REACT
+import com.monday8am.agent.core.ToolFormat.SIMPLE
+import com.monday8am.agent.core.ToolFormat.SLIM
 import com.monday8am.agent.local.HermesLLMClient
 import com.monday8am.agent.local.LiteRTLLMClient
 import com.monday8am.agent.local.OpenApiLLMClient
 import com.monday8am.agent.local.ReActLLMClient
 import com.monday8am.agent.local.SimpleLLMClient
 import com.monday8am.agent.local.SlimLLMClient
-import kotlinx.coroutines.flow.Flow
 
 /**
  * Tool calling format options for the notification agent.
@@ -57,7 +62,6 @@ enum class AgentBackend {
 class NotificationAgent private constructor(
     private val backend: AgentBackend,
     private val promptExecutor: (suspend (String) -> String?)?,
-    private val streamPromptExecutor: ((String) -> Flow<String>)?,
     private val model: LLModel,
     private val toolFormat: ToolFormat?,
 ) {
@@ -66,7 +70,6 @@ class NotificationAgent private constructor(
          * Creates an agent for local inference (e.g., LiteRT-LM with Gemma or Qwen3).
          *
          * @param promptExecutor Function that executes prompts against the local LLM
-         * @param streamPromptExecutor Optional function that streams responses from the local LLM
          * @param modelId Model identifier (e.g., "gemma3-1b-it-int4", "qwen3-0.6b")
          * @param toolFormat Tool calling protocol:
          *                   - NATIVE: Use LiteRT-LM's native tool calling (for Qwen3, etc.)
@@ -75,14 +78,12 @@ class NotificationAgent private constructor(
          */
         fun local(
             promptExecutor: suspend (String) -> String?,
-            streamPromptExecutor: ((String) -> Flow<String>)? = null,
             modelId: String,
-            toolFormat: ToolFormat = ToolFormat.NATIVE,
+            toolFormat: ToolFormat = NATIVE,
             modelProvider: LLMProvider = LLMProvider.Google,
         ) = NotificationAgent(
             backend = AgentBackend.LOCAL,
             promptExecutor = promptExecutor,
-            streamPromptExecutor = streamPromptExecutor,
             model =
                 LLModel(
                     provider = modelProvider,
@@ -111,7 +112,6 @@ class NotificationAgent private constructor(
             NotificationAgent(
                 backend = AgentBackend.KOOG,
                 promptExecutor = null,
-                streamPromptExecutor = null,
                 model = model,
                 toolFormat = null,
             )
@@ -175,34 +175,34 @@ class NotificationAgent private constructor(
         )
     }
 
+
     private fun createLLMClient(): LLMClient {
         val executor = requireNotNull(promptExecutor) { "promptExecutor required for LOCAL backend" }
         val format = requireNotNull(toolFormat) { "toolFormat required for LOCAL backend" }
         return when (format) {
-            ToolFormat.SIMPLE -> {
+            SIMPLE -> {
                 SimpleLLMClient(promptExecutor = executor)
             }
 
-            ToolFormat.OPENAPI -> {
+            OPENAPI -> {
                 OpenApiLLMClient(promptExecutor = executor)
             }
 
-            ToolFormat.SLIM -> {
+            SLIM -> {
                 SlimLLMClient(promptExecutor = executor)
             }
 
-            ToolFormat.REACT -> {
+            REACT -> {
                 ReActLLMClient(promptExecutor = executor)
             }
 
-            ToolFormat.HERMES -> {
+            HERMES -> {
                 HermesLLMClient(promptExecutor = executor)
             }
 
-            ToolFormat.NATIVE -> {
+            NATIVE -> {
                 LiteRTLLMClient(
                     promptExecutor = executor,
-                    streamPromptExecutor = streamPromptExecutor,
                 )
             }
         }

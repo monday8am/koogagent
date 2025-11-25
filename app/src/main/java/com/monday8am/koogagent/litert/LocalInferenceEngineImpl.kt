@@ -1,8 +1,5 @@
 package com.monday8am.koogagent.litert
 
-import androidx.compose.ui.semantics.text
-import androidx.paging.map
-import androidx.preference.isNotEmpty
 import co.touchlab.kermit.Logger
 import com.google.ai.edge.litertlm.Backend
 import com.google.ai.edge.litertlm.Content
@@ -15,23 +12,22 @@ import com.google.ai.edge.litertlm.MessageCallback
 import com.google.ai.edge.litertlm.SamplerConfig
 import com.monday8am.agent.core.LocalInferenceEngine
 import com.monday8am.agent.core.LocalLLModel
+import java.io.File
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.InternalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.flatMapConcat
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.mapNotNull
-import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onCompletion
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
-import java.io.File
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 
 /**
  * LiteRT-LM based implementation of LocalInferenceEngine.
@@ -135,12 +131,13 @@ class LocalInferenceEngineImpl(
                 Logger.e("LocalInferenceEngine") { "Inference instance is not available." }
                 return emptyFlow() // Return an empty flow if there's no instance.
             }
-        val userMessage = UserMessage(text = prompt)
+        val userMessage = Message.of(prompt)
         var startTime = 0L
 
         return instance.conversation
             .sendMessageAsync(userMessage)
             .map { message ->
+                Logger.i("LocalInferenceEngine") { "Message content size: ${message.contents.size}" }
                 message.contents.filterIsInstance<Content.Text>().joinToString("") { it.text }
             }.filter { it.isNotEmpty() }
             .onStart {

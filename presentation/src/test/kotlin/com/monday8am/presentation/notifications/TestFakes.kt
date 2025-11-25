@@ -30,6 +30,8 @@ internal class FakeLocalInferenceEngine : LocalInferenceEngine {
 
     override suspend fun prompt(prompt: String): Result<String> = Result.success("Test response")
 
+    override fun promptStreaming(prompt: String) = flowOf("Hi!")
+
     override fun closeSession(): Result<Unit> = Result.success(Unit)
 }
 

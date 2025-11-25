@@ -16,6 +16,7 @@ import com.monday8am.koogagent.data.NotificationResult
 import com.monday8am.koogagent.data.WeatherProvider
 import com.monday8am.presentation.testing.GemmaToolCallingTest
 import com.monday8am.presentation.testing.TestResult
+import com.monday8am.presentation.testing.TestResultFrame
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -131,7 +132,11 @@ class NotificationViewModelImpl(
 
                         UiAction.RunModelTests -> {
                             inferenceEngine.initializeAsFlow(model = getLocalModel()).flatMapConcat { engine ->
-                                runModelTests(promptExecutor = engine::prompt, resetConversation = engine::resetConversation)
+                                runModelTests(
+                                    promptExecutor = engine::prompt,
+                                    streamPromptExecutor = engine::promptStreaming,
+                                    resetConversation = engine::resetConversation
+                                )
                             }
                         }
 
@@ -237,7 +242,7 @@ class NotificationViewModelImpl(
                     }
 
                     UiAction.RunModelTests -> {
-                        state.copy(statusMessage = LogMessage.TestResultMessage(actionState.result as TestResult))
+                        state.copy(statusMessage = LogMessage.TestResultMessage(actionState.result as TestResultFrame))
                     }
                 }
             }
@@ -278,15 +283,17 @@ class NotificationViewModelImpl(
 
     private fun runModelTests(
         promptExecutor: suspend (String) -> Result<String>,
+        streamPromptExecutor: (String) -> Flow<String>,
         resetConversation: () -> Result<Unit>,
     ) = GemmaToolCallingTest(
         promptExecutor = { prompt ->
             promptExecutor(prompt).getOrThrow()
         },
+        streamPromptExecutor = streamPromptExecutor,
         resetConversation = resetConversation,
         weatherProvider = weatherProvider,
         locationProvider = locationProvider,
-    ).runAllTests()
+    ).runAllTest()
 
     private fun getLocalModel() =
         LocalLLModel(
