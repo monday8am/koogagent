@@ -10,8 +10,11 @@ import com.google.ai.edge.litertlm.EngineConfig
 import com.google.ai.edge.litertlm.Message
 import com.google.ai.edge.litertlm.MessageCallback
 import com.google.ai.edge.litertlm.SamplerConfig
+import com.google.ai.edge.litertlm.SessionConfig
+import com.google.ai.edge.litertlm.ToolManager
 import com.monday8am.agent.core.LocalInferenceEngine
 import com.monday8am.agent.core.LocalLLModel
+import io.opentelemetry.sdk.trace.samplers.Sampler
 import java.io.File
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -79,6 +82,7 @@ class LocalInferenceEngineImpl(
                 // Configure conversation with tools for native tool calling
                 val conversationConfig =
                     ConversationConfig(
+                        systemMessage = Message.of("You are Qwen, created by Alibaba Cloud. You are a helpful assistant."),
                         tools = tools, // Native LiteRT-LM tools with @Tool annotations
                         samplerConfig =
                             SamplerConfig(
@@ -137,7 +141,6 @@ class LocalInferenceEngineImpl(
         return instance.conversation
             .sendMessageAsync(userMessage)
             .map { message ->
-                Logger.i("LocalInferenceEngine") { "Message content size: ${message.contents.size}" }
                 message.contents.filterIsInstance<Content.Text>().joinToString("") { it.text }
             }.filter { it.isNotEmpty() }
             .onStart {
@@ -173,6 +176,7 @@ class LocalInferenceEngineImpl(
                             temperature = instance.model.temperature.toDouble(),
                         ),
                 )
+            Logger.i("LocalInferenceEngine") { "\uD83D\uDCAC Reset conversation!" }
             instance.conversation = instance.engine.createConversation(conversationConfig)
         }
     }

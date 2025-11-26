@@ -3,6 +3,7 @@ package com.monday8am.presentation.testing
 import ai.koog.agents.core.tools.Tool
 import ai.koog.agents.core.tools.ToolRegistry
 import ai.koog.prompt.dsl.Prompt
+import ai.koog.prompt.executor.clients.LLMClient
 import ai.koog.prompt.llm.LLMCapability
 import ai.koog.prompt.llm.LLMProvider
 import ai.koog.prompt.llm.LLModel
@@ -21,6 +22,7 @@ import com.monday8am.agent.tools.GetWeather
 import com.monday8am.agent.tools.GetWeatherFromLocation
 import com.monday8am.koogagent.data.LocationProvider
 import com.monday8am.koogagent.data.WeatherProvider
+import jdk.internal.vm.vector.VectorSupport.test
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asFlow
@@ -48,8 +50,9 @@ sealed class ValidationResult {
 }
 
 sealed interface TestResultFrame {
-    data class Tool(val content: String) : TestResultFrame
-    data class Content(val chunk: String) : TestResultFrame
+    data class Tool(val content: String, val accumulator: String) : TestResultFrame
+    data class Content(val chunk: String, val accumulator: String) : TestResultFrame
+    data class Thinking(val chunk: String, val accumulator: String) : TestResultFrame
     data class Validation(
         val result: ValidationResult,
         val duration: Long,
@@ -105,10 +108,19 @@ internal class GemmaToolCallingTest(
     private val testIterations = 5
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    private fun runTest(testCase: TestCase): Flow<TestResultFrame> {
+    private fun runTest(testCase: TestCase, asStream: Boolean): Flow<TestResultFrame> {
+        val llmClient = LiteRTLLMClient(
+            promptExecutor = promptExecutor,
+            streamPromptExecutor = streamPromptExecutor,
+        )
+
         return testCase.queries.asFlow()
             .flatMapConcat { query ->
-                runSingleQueryStream(testCase, query)
+                if (asStream) {
+                    runSingleQueryStream(llmClient = llmClient, testCase = testCase, query = query)
+                } else {
+                    runSingleQueryExecute(llmClient = llmClient, testCase = testCase, query = query)
+                }
             }
             .onCompletion {
                 resetConversation()
@@ -119,14 +131,12 @@ internal class GemmaToolCallingTest(
      * Executes a single query and returns a Flow of its result frames.
      * This function is more declarative and uses a chain of Flow operators.
      */
-    private fun runSingleQueryStream(testCase: TestCase, query: TestQuery): Flow<TestResultFrame> {
+    private fun runSingleQueryStream(llmClient: LLMClient, testCase: TestCase, query: TestQuery): Flow<TestResultFrame> {
         val accumulatedContent = StringBuilder()
+        var isThinking = false
+        var isToolCall = false
         var duration = 0L
 
-        val llmClient = LiteRTLLMClient(
-            promptExecutor = promptExecutor,
-            streamPromptExecutor = streamPromptExecutor,
-        )
         val prompt = Prompt(
             id = "test",
             messages = listOf(
@@ -141,15 +151,37 @@ internal class GemmaToolCallingTest(
             model = getLLMModel(),
             tools = emptyList(),
         )
-            .mapNotNull<StreamFrame, TestResultFrame> { frame ->
+            .mapNotNull { frame ->
                 when (frame) {
                     is StreamFrame.Append -> {
+                        when {
+                            frame.text.contains("<thinking>") -> {
+                                isThinking = true
+                            }
+                            frame.text.contains("</thinking>") && isThinking -> {
+                                isThinking = false
+                                accumulatedContent.clear()
+                            }
+                            frame.text.contains("<tool_call") -> {
+                                isToolCall = true
+                            }
+                            frame.text.contains("</tool_call>") && isToolCall -> {
+                                accumulatedContent.clear()
+                                isToolCall = false
+                            }
+                        }
                         accumulatedContent.append(frame.text)
-                        TestResultFrame.Content(frame.text)
+                        if (isThinking) {
+                            TestResultFrame.Thinking(frame.text, accumulatedContent.toString())
+                        } else if (isToolCall) {
+                            TestResultFrame.Tool(frame.text, accumulatedContent.toString())
+                        } else {
+                            TestResultFrame.Content(frame.text, accumulatedContent.toString())
+                        }
                     }
                     is StreamFrame.ToolCall -> null
                     is StreamFrame.End -> {
-                        TestResultFrame.Content("\n")
+                        TestResultFrame.Content("", accumulator = accumulatedContent.toString())
                     }
                 }
             }
@@ -185,7 +217,55 @@ internal class GemmaToolCallingTest(
             }
     }
 
-    private suspend fun runTestLegacy(testCase: TestCase): TestResult {
+    private fun runSingleQueryExecute(llmClient: LLMClient, testCase: TestCase, query: TestQuery): Flow<TestResultFrame> {
+        val prompt = Prompt(
+            id = "test",
+            messages = listOf(
+                Message.System(content = testCase.systemPrompt, metaInfo = RequestMetaInfo.Empty),
+                Message.User(content = query.text, metaInfo = RequestMetaInfo.Empty),
+            ),
+        )
+
+        return flow {
+            val startTime = System.currentTimeMillis()
+
+            try {
+                // Execute non-streaming call
+                val result = llmClient.execute(
+                    prompt = prompt,
+                    model = getLLMModel(),
+                    tools = testCase.tools?.map { it.descriptor } ?: listOf(),
+                )
+
+                val duration = System.currentTimeMillis() - startTime
+                val content = result.joinToString { it.content }
+
+                emit(TestResultFrame.Content(chunk = content, accumulator = content))
+                emit(TestResultFrame.Content("\n", accumulator = content))
+
+                val validationResult = testCase.validator(content)
+                emit(
+                    TestResultFrame.Validation(
+                        result = validationResult,
+                        duration = duration,
+                        fullContent = content,
+                    ),
+                )
+            } catch (e: Exception) {
+                logger.e(e) { "Test failed: ${query.text}" }
+                val duration = System.currentTimeMillis() - startTime
+                emit(
+                    TestResultFrame.Validation(
+                        result = ValidationResult.Fail("Exception: ${e.message}"),
+                        duration = duration,
+                        fullContent = "",
+                    ),
+                )
+            }
+        }
+    }
+
+    private suspend fun runTestUsingKoogAgent(testCase: TestCase): TestResult {
         val output = StringBuilder()
         output.appendLine(testCase.name)
         output.appendLine("─".repeat(testIterations))
@@ -325,7 +405,7 @@ internal class GemmaToolCallingTest(
     private fun runAllTestsStreaming(testCases: List<TestCase>): Flow<TestResultFrame> =
         testCases.asFlow()
             .flatMapConcat { testCase ->
-                runTest(testCase)
+                runTest(testCase, asStream = true)
             }
             .catch { e ->
                 // This catches exceptions from the upstream flow (runTest or its processing).
@@ -340,12 +420,12 @@ internal class GemmaToolCallingTest(
             }
 
     private suspend fun testMinimalInteraction(): TestResult =
-        runTestLegacy(
+        runTestUsingKoogAgent(
             TestCase(
                 name = "TEST 0: Basic Content",
                 tools = listOf(),
                 queries = listOf(TestQuery("where am I located?")),
-                systemPrompt = "You are a helpful assistant. If the user asks \"where am I?\" or similar location queries, call the get_location function to retrieve their current coordinates.",
+                systemPrompt = "If I asks \"where am I?\" or similar location queries, call the get_location function to retrieve their current coordinates.",
                 validator = { result ->
                     val hasValidResponse = result.isNotBlank() && result.length > 5
                     if (hasValidResponse) {
@@ -358,7 +438,7 @@ internal class GemmaToolCallingTest(
         )
 
     private suspend fun testBasicToolCall(): TestResult =
-        runTestLegacy(
+        runTestUsingKoogAgent(
             TestCase(
                 name = "TEST 1: Basic Location Tool Call",
                 tools = listOf(GetLocation(locationProvider)),
@@ -399,7 +479,7 @@ internal class GemmaToolCallingTest(
         )
 
     private suspend fun testNoToolNeeded(): TestResult =
-        runTestLegacy(
+        runTestUsingKoogAgent(
             TestCase(
                 name = "TEST 2: No Tool Needed (Normal Conversation)",
                 tools = listOf(GetLocation(locationProvider)),
@@ -429,7 +509,7 @@ internal class GemmaToolCallingTest(
         )
 
     private suspend fun testToolHallucination(): TestResult =
-        runTestLegacy(
+        runTestUsingKoogAgent(
             TestCase(
                 name = "TEST 3: Tool Hallucination Prevention",
                 description =
@@ -462,7 +542,7 @@ internal class GemmaToolCallingTest(
         )
 
     private suspend fun testWeatherTool(): TestResult =
-        runTestLegacy(
+        runTestUsingKoogAgent(
             TestCase(
                 name = "TEST 4: Weather Tool Execution",
                 description = listOf("Note: GetWeather should use default coordinates (no parameters)"),
@@ -487,7 +567,7 @@ internal class GemmaToolCallingTest(
         )
 
     private suspend fun testMultiTurnSequence(): TestResult =
-        runTestLegacy(
+        runTestUsingKoogAgent(
             TestCase(
                 name = "TEST 5: Multi-Turn Tool Sequence",
                 description =
@@ -552,7 +632,7 @@ internal class GemmaToolCallingTest(
         )
 
     private suspend fun testHermesFormat(): TestResult =
-        runTestLegacy(
+        runTestUsingKoogAgent(
             TestCase(
                 name = "TEST 6: Hermes/Qwen XML Format",
                 description =

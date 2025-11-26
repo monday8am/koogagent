@@ -28,7 +28,10 @@
       "WebFetch(domain:dl.google.com)",
       "Bash(javap:*)",
       "Bash(chmod:*)",
-      "WebFetch(domain:docs.koog.ai)"
+      "WebFetch(domain:docs.koog.ai)",
+      "WebFetch(domain:maven.google.com)",
+      "Bash(curl:*)",
+      "mcp__ide__getDiagnostics"
     ],
     "deny": [],
     "ask": []

@@ -75,7 +75,7 @@ import java.util.UUID
  *
  * @see <a href="https://qwen.readthedocs.io/en/latest/">Qwen Documentation</a>
  */
-internal class HermesLLMClient(
+class HermesLLMClient(
     private val promptExecutor: suspend (String) -> String?,
 ) : LLMClient {
     private val logger = Logger.withTag("HermesLLMClient")

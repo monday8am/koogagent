@@ -13,6 +13,7 @@ import co.touchlab.kermit.Logger
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onCompletion
+import kotlinx.coroutines.flow.onEach
 
 /**
  * Bridge LLMClient between Koog's agent framework and LiteRT-LM native inference.
@@ -53,19 +54,24 @@ class LiteRTLLMClient(
         model: LLModel,
         tools: List<ToolDescriptor>,
     ): List<Message.Response> {
-        // Convert Koog's message list to a single concatenated string
-        // LiteRT-LM maintains conversation state internally via Conversation API
-        val promptText = buildPromptString(prompt.messages)
+        val lastUserMessage =  if (prompt.messages.first() is Message.System &&
+            prompt.messages.last() is Message.User && prompt.messages.size == 2) {
+            prompt.messages.joinToString { "${it.content}\n" }
+        } else {
+            prompt.messages
+                .filterIsInstance<Message.User>()
+                .lastOrNull()?.content
+                ?: throw IllegalArgumentException("No user message in prompt")
+        }
 
-        logger.d { "Executing prompt with LiteRT-LM (${promptText.length} chars)" }
-        logger.d { promptText }
+        logger.d { "Executing streaming prompt with LiteRT-LM:\n$lastUserMessage" }
 
         // Execute via LiteRT-LM
         val response =
-            promptExecutor(promptText)
+            promptExecutor(lastUserMessage)
                 ?: throw IllegalStateException("LiteRT-LM returned null response")
 
-        logger.d { "LiteRT-LM response: ${response.take(100)}..." }
+        logger.d { "LiteRT-LM response: $response" }
 
         // Return as Koog message
         return listOf(
@@ -75,25 +81,6 @@ class LiteRTLLMClient(
             ),
         )
     }
-
-    /**
-     * Converts Koog's message list to a simple string.
-     * Format: "Role:Content\nRole:Content\n..."
-     *
-     * Since LiteRT-LM's Conversation maintains history internally,
-     * we typically only send the latest user message here.
-     */
-    private fun buildPromptString(messages: List<Message>): String =
-        messages.joinToString("\n") { message ->
-            when (message) {
-                is Message.System -> "System:${message.content}"
-                is Message.User -> "User:${message.content}"
-                is Message.Assistant -> "Assistant:${message.content}"
-                is Message.Tool.Call -> "ToolCall:${message.tool}(${message.content})"
-                is Message.Tool.Result -> "ToolResult:${message.tool}=${message.content}"
-                is Message.Reasoning -> "Reasoning:${message.content}"
-            }
-        }
 
     override fun executeStreaming(
         prompt: Prompt,
@@ -107,19 +94,21 @@ class LiteRTLLMClient(
                             "Provide streamPromptExecutor in constructor.",
                 )
 
-        // val promptText = buildPromptString(prompt.messages)
+        val lastUserMessage =  if (prompt.messages.first() is Message.System &&
+            prompt.messages.last() is Message.User && prompt.messages.size == 2) {
+            prompt.messages.joinToString { "${it.content}\n" }
+        } else {
+            prompt.messages
+                .filterIsInstance<Message.User>()
+                .lastOrNull()?.content
+                ?: throw IllegalArgumentException("No user message in prompt")
+        }
 
-        val lastUserMessage = prompt.messages
-            .filterIsInstance<Message.User>()
-            .lastOrNull()?.content
-            ?: throw IllegalArgumentException("No user message in prompt")
-
-        logger.d { "Executing streaming prompt with LiteRT-LM (${lastUserMessage.length} chars)" }
-        logger.d { lastUserMessage }
+        logger.d { "Executing streaming prompt with LiteRT-LM:\n$lastUserMessage" }
 
         return executor(lastUserMessage)
+            .onEach { logger.d { it } }
             .map<String, StreamFrame> { chunk ->
-                logger.d { "Streaming chunk: $chunk" }
                 StreamFrame.Append(text = chunk)
             }
             .onCompletion { error ->
