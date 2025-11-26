@@ -168,7 +168,7 @@ class NotificationAgent private constructor(
         return AIAgent(
             promptExecutor = executor,
             systemPrompt = systemPrompt,
-            temperature = 0.7,
+            temperature = 0.2,
             llmModel = model,
             toolRegistry = registry ?: ToolRegistry.EMPTY,
             installFeatures = installCommonEventHandling,

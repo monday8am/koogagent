@@ -1,5 +1,6 @@
 package com.monday8am.koogagent.litert.tools
 
+import android.util.Log
 import com.google.ai.edge.litertlm.Tool
 
 /**
@@ -14,10 +15,10 @@ class NativeLocationTools {
      * Gets the user's current location coordinates.
      * Returns hardcoded Madrid coordinates for testing.
      */
-    @Tool(description = "Doesn't need arguments. Returns the user's current location in latitude and longitude format.")
-    fun get_location(): Map<String, Double> =
-        mapOf(
-            "latitude" to 40.4168,
-            "longitude" to -3.7038,
-        )
+    @Tool(description = "No arguments required. Get the user's current location in latitude and longitude format")
+    fun get_location(): String {
+        val result = """{"latitude": 40.4168, "longitude": -3.7038}"""
+        Log.e("NativeLocationTools", "🔧 Returning: $result")
+        return result
+    }
 }

@@ -22,7 +22,6 @@ import com.monday8am.agent.tools.GetWeather
 import com.monday8am.agent.tools.GetWeatherFromLocation
 import com.monday8am.koogagent.data.LocationProvider
 import com.monday8am.koogagent.data.WeatherProvider
-import jdk.internal.vm.vector.VectorSupport.test
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asFlow
@@ -155,10 +154,10 @@ internal class GemmaToolCallingTest(
                 when (frame) {
                     is StreamFrame.Append -> {
                         when {
-                            frame.text.contains("<thinking>") -> {
+                            frame.text.contains("<think>") -> {
                                 isThinking = true
                             }
-                            frame.text.contains("</thinking>") && isThinking -> {
+                            frame.text.contains("</think>") && isThinking -> {
                                 isThinking = false
                                 accumulatedContent.clear()
                             }
@@ -385,7 +384,7 @@ internal class GemmaToolCallingTest(
             TestCase(
                 name = "TEST 0: Basic Content",
                 tools = listOf(),
-                queries = listOf(TestQuery("What's my location?")),
+                queries = listOf(TestQuery("Tell me my coordinates!")),
                 systemPrompt = "You are a helpful assistant. If the user asks \"where am I?\" or similar location queries, use the get_location function.",
                 validator = { result ->
                     // The if-expression is more concise.
