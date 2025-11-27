@@ -1,4 +1,4 @@
-package com.monday8am.agent.ollama
+package com.monday8am.agent.jvm
 
 import ai.koog.agents.core.tools.ToolRegistry
 import ai.koog.prompt.executor.ollama.client.OllamaClient

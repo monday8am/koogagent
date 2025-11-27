@@ -79,14 +79,6 @@ class LocalInferenceEngineImpl(
                 val engine = Engine(engineConfig)
                 engine.initialize()
 
-                // Debug: Log tool setup
-                if (tools.isNotEmpty()) {
-                    Logger.e("LocalInferenceEngine") { "🔧 Passing ${tools.size} tool objects to ConversationConfig" }
-                    tools.forEach { tool ->
-                        Logger.e("LocalInferenceEngine") { "  - ${tool::class.simpleName}" }
-                    }
-                }
-
                 // Configure conversation with tools for native tool calling
                 val conversationConfig =
                     ConversationConfig(
