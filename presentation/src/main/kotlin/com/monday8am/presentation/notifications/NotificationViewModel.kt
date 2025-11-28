@@ -132,7 +132,7 @@ class NotificationViewModelImpl(
                                 runModelTests(
                                     promptExecutor = engine::prompt,
                                     streamPromptExecutor = engine::promptStreaming,
-                                    resetConversation = engine::resetConversation
+                                    resetConversation = engine::resetConversation,
                                 )
                             }
                         }

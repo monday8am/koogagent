@@ -52,10 +52,21 @@ fun LogMessage.toDisplayString(): String =
 
         is LogMessage.TestResultMessage -> {
             when (content) {
-                is TestResultFrame.Content -> { "Content: ${(content as TestResultFrame.Content).accumulator}" }
-                is TestResultFrame.Tool -> { "Tool: ${(content as TestResultFrame.Tool).accumulator}" }
-                is TestResultFrame.Validation ->  { "Validation: ${(content as TestResultFrame.Validation).result}" }
-                is TestResultFrame.Thinking -> { "Thinking: ${(content as TestResultFrame.Thinking).accumulator}" }
+                is TestResultFrame.Content -> {
+                    "Content: ${(content as TestResultFrame.Content).accumulator}"
+                }
+
+                is TestResultFrame.Tool -> {
+                    "Tool: ${(content as TestResultFrame.Tool).accumulator}"
+                }
+
+                is TestResultFrame.Validation -> {
+                    "Validation: ${(content as TestResultFrame.Validation).result}"
+                }
+
+                is TestResultFrame.Thinking -> {
+                    "Thinking: ${(content as TestResultFrame.Thinking).accumulator}"
+                }
             }
         }
     }

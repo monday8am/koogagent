@@ -11,7 +11,6 @@ import com.google.ai.edge.litertlm.Session
 import com.google.ai.edge.litertlm.SessionConfig
 import com.monday8am.agent.core.LocalInferenceEngine
 import com.monday8am.agent.core.LocalLLModel
-import java.io.File
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
@@ -24,6 +23,7 @@ import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.withContext
+import java.io.File
 
 /**
  * Session-based implementation of LocalInferenceEngine using LiteRT-LM's low-level Session API.
@@ -79,7 +79,7 @@ class SessionBasedInferenceEngine(
         /**
          * Raw format (no template, prompt as-is)
          */
-        RAW
+        RAW,
     }
 
     override suspend fun initialize(model: LocalLLModel): Result<Unit> =
@@ -106,13 +106,15 @@ class SessionBasedInferenceEngine(
                 newEngine.initialize()
 
                 // Create new session for this inference
-                val sessionConfig = SessionConfig(
-                    samplerConfig = SamplerConfig(
-                        topK = model.topK,
-                        topP = model.topP.toDouble(),
-                        temperature = model.temperature.toDouble(),
+                val sessionConfig =
+                    SessionConfig(
+                        samplerConfig =
+                            SamplerConfig(
+                                topK = model.topK,
+                                topP = model.topP.toDouble(),
+                                temperature = model.temperature.toDouble(),
+                            ),
                     )
-                )
                 val session = newEngine.createSession(sessionConfig)
 
                 currentInstance = LlmModelSession(engine = newEngine, session = session, model = model)
@@ -146,8 +148,8 @@ class SessionBasedInferenceEngine(
 
                 logger.i {
                     "✅ Inference complete: ${duration}ms | " +
-                            "Response: ${response.length} chars (~$tokensApprox tokens) | " +
-                            "Speed: %.2f tokens/sec".format(tokensPerSec)
+                        "Response: ${response.length} chars (~$tokensApprox tokens) | " +
+                        "Speed: %.2f tokens/sec".format(tokensPerSec)
                 }
 
                 response
@@ -167,9 +169,8 @@ class SessionBasedInferenceEngine(
         return instance.session
             .generateContentStreamAsFlow(formattedPrompt)
             .onEach { output ->
-                Logger.i("LocalInferenceEngine") { "Message content size: ${output}" }
-            }
-            .onStart {
+                Logger.i("LocalInferenceEngine") { "Message content size: $output" }
+            }.onStart {
                 startTime = System.currentTimeMillis()
                 Logger.i("LocalInferenceEngine") { "Streaming inference started." }
             }.onCompletion {
@@ -189,13 +190,15 @@ class SessionBasedInferenceEngine(
         val instance = currentInstance ?: return Result.failure(IllegalStateException("Engine not initialized"))
         return runCatching {
             instance.session.close()
-            val sessionConfig = SessionConfig(
-                samplerConfig = SamplerConfig(
-                    topK = instance.model.topK,
-                    topP = instance.model.topP.toDouble(),
-                    temperature = instance.model.temperature.toDouble(),
+            val sessionConfig =
+                SessionConfig(
+                    samplerConfig =
+                        SamplerConfig(
+                            topK = instance.model.topK,
+                            topP = instance.model.topP.toDouble(),
+                            temperature = instance.model.temperature.toDouble(),
+                        ),
                 )
-            )
             instance.session = instance.engine.createSession(sessionConfig)
         }
     }
@@ -212,44 +215,47 @@ class SessionBasedInferenceEngine(
     /**
      * Formats the prompt according to the selected chat template.
      */
-    private fun formatPrompt(prompt: String): String {
-        return when (chatTemplate) {
+    private fun formatPrompt(prompt: String): String =
+        when (chatTemplate) {
             ChatTemplate.GEMMA -> {
                 // Gemma 3 chat template format
                 "<start_of_turn>user\n$prompt<end_of_turn>\n<start_of_turn>model\n"
             }
+
             ChatTemplate.QWEN -> {
                 // Qwen chat template format
-                //"<|im_start|>user\n$prompt<|im_end|>\n<|im_start|>assistant\n"
+                // "<|im_start|>user\n$prompt<|im_end|>\n<|im_start|>assistant\n"
                 prompt
             }
+
             ChatTemplate.RAW -> {
                 // No formatting, pass prompt as-is
                 prompt
             }
         }
-    }
 }
 
 /**
  * Extension function to convert Session.generateContentStream into a Flow.
  * This wraps the callback-based API into a more idiomatic Kotlin Flow.
  */
-private fun Session.generateContentStreamAsFlow(prompt: String): Flow<String> = callbackFlow {
-    val inputData = listOf(InputData.Text(text = prompt))
+private fun Session.generateContentStreamAsFlow(prompt: String): Flow<String> =
+    callbackFlow {
+        val inputData = listOf(InputData.Text(text = prompt))
 
-    val callback = object : ResponseCallback {
-        override fun onNext(response: String) {
-            trySend(response)
-        }
-        override fun onError(throwable: Throwable) {
-            throw throwable
-        }
-        override fun onDone() {
-            close()
-        }
+        val callback =
+            object : ResponseCallback {
+                override fun onNext(response: String) {
+                    trySend(response)
+                }
+
+                override fun onError(throwable: Throwable): Unit = throw throwable
+
+                override fun onDone() {
+                    close()
+                }
+            }
+
+        generateContentStream(inputData, callback)
+        awaitClose { /* No specific action needed on cancellation/close */ }
     }
-
-    generateContentStream(inputData, callback)
-    awaitClose { /* No specific action needed on cancellation/close */ }
-}

@@ -20,7 +20,6 @@ const val MODEL_URL = "https://github.com/monday8am/koogagent/releases/download/
 const val MODEL_NAME1 = "gemma3-1b-it-int4.litertlm"
 const val MODEL_NAME = "qwen3_0.6b_q8_ekv4096.litertlm"
 
-
 data class LocalLLModel(
     val path: String,
     val contextLength: Int = DEFAULT_CONTEXT_LENGTH, // Total tokens (input + output)

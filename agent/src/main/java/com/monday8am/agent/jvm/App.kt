@@ -21,11 +21,12 @@ private val qwen2_5 = "/Users/anton/Downloads/qwen2.5-1.5B-Instruct_q8_ekv4096.l
 suspend fun main() {
     Engine.setNativeMinLogServerity(LogSeverity.INFO) // hide log for TUI app
 
-    val engineConfig = EngineConfig(
-        backend = Backend.CPU,
-        maxNumTokens = DEFAULT_CONTEXT_LENGTH,
-        modelPath = qwen3, //gemma3n
-    )
+    val engineConfig =
+        EngineConfig(
+            backend = Backend.CPU,
+            maxNumTokens = DEFAULT_CONTEXT_LENGTH,
+            modelPath = qwen3, // gemma3n
+        )
     Engine(engineConfig).use { engine ->
         engine.initialize()
 

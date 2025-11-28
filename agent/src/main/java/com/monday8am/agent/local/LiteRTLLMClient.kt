@@ -54,15 +54,18 @@ class LiteRTLLMClient(
         model: LLModel,
         tools: List<ToolDescriptor>,
     ): List<Message.Response> {
-        val lastUserMessage =  if (prompt.messages.first() is Message.System &&
-            prompt.messages.last() is Message.User && prompt.messages.size == 2) {
-            prompt.messages.joinToString { "${it.content}\n" }
-        } else {
-            prompt.messages
-                .filterIsInstance<Message.User>()
-                .lastOrNull()?.content
-                ?: throw IllegalArgumentException("No user message in prompt")
-        }
+        val lastUserMessage =
+            if (prompt.messages.first() is Message.System &&
+                prompt.messages.last() is Message.User && prompt.messages.size == 2
+            ) {
+                prompt.messages.joinToString { "${it.content}\n" }
+            } else {
+                prompt.messages
+                    .filterIsInstance<Message.User>()
+                    .lastOrNull()
+                    ?.content
+                    ?: throw IllegalArgumentException("No user message in prompt")
+            }
 
         logger.d { "Executing streaming prompt with LiteRT-LM:\n$lastUserMessage" }
 
@@ -91,18 +94,21 @@ class LiteRTLLMClient(
             streamPromptExecutor
                 ?: throw UnsupportedOperationException(
                     "LiteRT-LM client streaming is not configured. " +
-                            "Provide streamPromptExecutor in constructor.",
+                        "Provide streamPromptExecutor in constructor.",
                 )
 
-        val lastUserMessage =  if (prompt.messages.first() is Message.System &&
-            prompt.messages.last() is Message.User && prompt.messages.size == 2) {
-            prompt.messages.joinToString { "${it.content}\n" }
-        } else {
-            prompt.messages
-                .filterIsInstance<Message.User>()
-                .lastOrNull()?.content
-                ?: throw IllegalArgumentException("No user message in prompt")
-        }
+        val lastUserMessage =
+            if (prompt.messages.first() is Message.System &&
+                prompt.messages.last() is Message.User && prompt.messages.size == 2
+            ) {
+                prompt.messages.joinToString { "${it.content}\n" }
+            } else {
+                prompt.messages
+                    .filterIsInstance<Message.User>()
+                    .lastOrNull()
+                    ?.content
+                    ?: throw IllegalArgumentException("No user message in prompt")
+            }
 
         logger.d { "Executing streaming prompt with LiteRT-LM:\n$lastUserMessage" }
 
@@ -110,8 +116,7 @@ class LiteRTLLMClient(
             .onEach { logger.d { it } }
             .map<String, StreamFrame> { chunk ->
                 StreamFrame.Append(text = chunk)
-            }
-            .onCompletion { error ->
+            }.onCompletion { error ->
                 logger.d { "Streaming ended: $error" }
                 if (error == null) {
                     emit(StreamFrame.End(finishReason = "stop"))

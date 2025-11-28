@@ -49,9 +49,21 @@ sealed class ValidationResult {
 }
 
 sealed interface TestResultFrame {
-    data class Tool(val content: String, val accumulator: String) : TestResultFrame
-    data class Content(val chunk: String, val accumulator: String) : TestResultFrame
-    data class Thinking(val chunk: String, val accumulator: String) : TestResultFrame
+    data class Tool(
+        val content: String,
+        val accumulator: String,
+    ) : TestResultFrame
+
+    data class Content(
+        val chunk: String,
+        val accumulator: String,
+    ) : TestResultFrame
+
+    data class Thinking(
+        val chunk: String,
+        val accumulator: String,
+    ) : TestResultFrame
+
     data class Validation(
         val result: ValidationResult,
         val duration: Long,
@@ -107,21 +119,25 @@ internal class GemmaToolCallingTest(
     private val testIterations = 5
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    private fun runTest(testCase: TestCase, asStream: Boolean): Flow<TestResultFrame> {
-        val llmClient = LiteRTLLMClient(
-            promptExecutor = promptExecutor,
-            streamPromptExecutor = streamPromptExecutor,
-        )
+    private fun runTest(
+        testCase: TestCase,
+        asStream: Boolean,
+    ): Flow<TestResultFrame> {
+        val llmClient =
+            LiteRTLLMClient(
+                promptExecutor = promptExecutor,
+                streamPromptExecutor = streamPromptExecutor,
+            )
 
-        return testCase.queries.asFlow()
+        return testCase.queries
+            .asFlow()
             .flatMapConcat { query ->
                 if (asStream) {
                     runSingleQueryStream(llmClient = llmClient, testCase = testCase, query = query)
                 } else {
                     runSingleQueryExecute(llmClient = llmClient, testCase = testCase, query = query)
                 }
-            }
-            .onCompletion {
+            }.onCompletion {
                 resetConversation()
             }
     }
@@ -130,40 +146,49 @@ internal class GemmaToolCallingTest(
      * Executes a single query and returns a Flow of its result frames.
      * This function is more declarative and uses a chain of Flow operators.
      */
-    private fun runSingleQueryStream(llmClient: LLMClient, testCase: TestCase, query: TestQuery): Flow<TestResultFrame> {
+    private fun runSingleQueryStream(
+        llmClient: LLMClient,
+        testCase: TestCase,
+        query: TestQuery,
+    ): Flow<TestResultFrame> {
         val accumulatedContent = StringBuilder()
         var isThinking = false
         var isToolCall = false
         var duration = 0L
 
-        val prompt = Prompt(
-            id = "test",
-            messages = listOf(
-                Message.System(content = testCase.systemPrompt, metaInfo = RequestMetaInfo.Empty),
-                Message.User(content = query.text, metaInfo = RequestMetaInfo.Empty),
-            ),
-        )
+        val prompt =
+            Prompt(
+                id = "test",
+                messages =
+                    listOf(
+                        Message.System(content = testCase.systemPrompt, metaInfo = RequestMetaInfo.Empty),
+                        Message.User(content = query.text, metaInfo = RequestMetaInfo.Empty),
+                    ),
+            )
 
         // Start of the declarative stream execution for one query
-        return llmClient.executeStreaming(
-            prompt = prompt,
-            model = getLLMModel(),
-            tools = emptyList(),
-        )
-            .mapNotNull { frame ->
+        return llmClient
+            .executeStreaming(
+                prompt = prompt,
+                model = getLLMModel(),
+                tools = emptyList(),
+            ).mapNotNull { frame ->
                 when (frame) {
                     is StreamFrame.Append -> {
                         when {
                             frame.text.contains("<think>") -> {
                                 isThinking = true
                             }
+
                             frame.text.contains("</think>") && isThinking -> {
                                 isThinking = false
                                 accumulatedContent.clear()
                             }
+
                             frame.text.contains("<tool_call") -> {
                                 isToolCall = true
                             }
+
                             frame.text.contains("</tool_call>") && isToolCall -> {
                                 accumulatedContent.clear()
                                 isToolCall = false
@@ -178,16 +203,18 @@ internal class GemmaToolCallingTest(
                             TestResultFrame.Content(frame.text, accumulatedContent.toString())
                         }
                     }
-                    is StreamFrame.ToolCall -> null
+
+                    is StreamFrame.ToolCall -> {
+                        null
+                    }
+
                     is StreamFrame.End -> {
                         TestResultFrame.Content("", accumulator = accumulatedContent.toString())
                     }
                 }
-            }
-            .onStart {
+            }.onStart {
                 duration = System.currentTimeMillis()
-            }
-            .onCompletion { cause ->
+            }.onCompletion { cause ->
                 if (cause == null) {
                     // Success case: The stream finished without exceptions.
                     val finalDuration = System.currentTimeMillis() - duration
@@ -201,8 +228,7 @@ internal class GemmaToolCallingTest(
                         ),
                     )
                 }
-            }
-            .catch { e ->
+            }.catch { e ->
                 // Error case: An exception occurred in the upstream flow.
                 logger.e(e) { "Test failed: ${query.text}" }
                 val finalDuration = System.currentTimeMillis() - duration
@@ -216,25 +242,32 @@ internal class GemmaToolCallingTest(
             }
     }
 
-    private fun runSingleQueryExecute(llmClient: LLMClient, testCase: TestCase, query: TestQuery): Flow<TestResultFrame> {
-        val prompt = Prompt(
-            id = "test",
-            messages = listOf(
-                Message.System(content = testCase.systemPrompt, metaInfo = RequestMetaInfo.Empty),
-                Message.User(content = query.text, metaInfo = RequestMetaInfo.Empty),
-            ),
-        )
+    private fun runSingleQueryExecute(
+        llmClient: LLMClient,
+        testCase: TestCase,
+        query: TestQuery,
+    ): Flow<TestResultFrame> {
+        val prompt =
+            Prompt(
+                id = "test",
+                messages =
+                    listOf(
+                        Message.System(content = testCase.systemPrompt, metaInfo = RequestMetaInfo.Empty),
+                        Message.User(content = query.text, metaInfo = RequestMetaInfo.Empty),
+                    ),
+            )
 
         return flow {
             val startTime = System.currentTimeMillis()
 
             try {
                 // Execute non-streaming call
-                val result = llmClient.execute(
-                    prompt = prompt,
-                    model = getLLMModel(),
-                    tools = testCase.tools?.map { it.descriptor } ?: listOf(),
-                )
+                val result =
+                    llmClient.execute(
+                        prompt = prompt,
+                        model = getLLMModel(),
+                        tools = testCase.tools?.map { it.descriptor } ?: listOf(),
+                    )
 
                 val duration = System.currentTimeMillis() - startTime
                 val content = result.joinToString { it.content }
@@ -380,33 +413,34 @@ internal class GemmaToolCallingTest(
     fun runAllTest(): Flow<TestResultFrame> {
         Logger.setMinSeverity(Severity.Debug)
 
-        val regressionTestSuite = listOf(
-            TestCase(
-                name = "TEST 0: Basic Content",
-                tools = listOf(),
-                queries = listOf(TestQuery("Tell me my coordinates!")),
-                systemPrompt = "You are a helpful assistant. If the user asks \"where am I?\" or similar location queries, use the get_location function.",
-                validator = { result ->
-                    // The if-expression is more concise.
-                    if (result.isNotBlank() && result.length > 5) {
-                        ValidationResult.Pass("Valid response")
-                    } else {
-                        ValidationResult.Fail("Invalid response")
-                    }
-                },
-            ),
-            // Add more test cases as needed
-        )
+        val regressionTestSuite =
+            listOf(
+                TestCase(
+                    name = "TEST 0: Basic Content",
+                    tools = listOf(),
+                    queries = listOf(TestQuery("Tell me my coordinates!")),
+                    systemPrompt = "You are a helpful assistant. If the user asks \"where am I?\" or similar location queries, use the get_location function.",
+                    validator = { result ->
+                        // The if-expression is more concise.
+                        if (result.isNotBlank() && result.length > 5) {
+                            ValidationResult.Pass("Valid response")
+                        } else {
+                            ValidationResult.Fail("Invalid response")
+                        }
+                    },
+                ),
+                // Add more test cases as needed
+            )
         return runAllTestsStreaming(regressionTestSuite)
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun runAllTestsStreaming(testCases: List<TestCase>): Flow<TestResultFrame> =
-        testCases.asFlow()
+        testCases
+            .asFlow()
             .flatMapConcat { testCase ->
                 runTest(testCase, asStream = true)
-            }
-            .catch { e ->
+            }.catch { e ->
                 // This catches exceptions from the upstream flow (runTest or its processing).
                 logger.e(e) { "A failure occurred during the test suite execution" }
                 emit(
@@ -696,8 +730,8 @@ internal class GemmaToolCallingTest(
             ),
         )
 
-    private fun getLLMModel(): LLModel {
-        return LLModel(
+    private fun getLLMModel(): LLModel =
+        LLModel(
             provider = LLMProvider.Alibaba,
             id = "qwen3-0.6b",
             capabilities =
@@ -709,5 +743,4 @@ internal class GemmaToolCallingTest(
             maxOutputTokens = DEFAULT_MAX_OUTPUT_TOKENS.toLong(),
             contextLength = DEFAULT_CONTEXT_LENGTH.toLong(),
         )
-    }
 }

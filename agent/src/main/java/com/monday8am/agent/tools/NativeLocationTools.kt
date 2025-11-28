@@ -11,7 +11,6 @@ import com.google.ai.edge.litertlm.Tool
  * LiteRT-LM's native tool calling system (Qwen3DataProcessor for Qwen models).
  */
 class NativeLocationTools {
-
     private val logger = Logger.withTag("NativeLocationTools")
 
     /**

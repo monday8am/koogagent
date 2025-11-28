@@ -175,7 +175,6 @@ class NotificationAgent private constructor(
         )
     }
 
-
     private fun createLLMClient(): LLMClient {
         val executor = requireNotNull(promptExecutor) { "promptExecutor required for LOCAL backend" }
         val format = requireNotNull(toolFormat) { "toolFormat required for LOCAL backend" }
