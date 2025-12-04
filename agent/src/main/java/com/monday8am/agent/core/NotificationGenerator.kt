@@ -73,13 +73,26 @@ class NotificationGenerator(
     private fun fallback(context: NotificationContext): NotificationResult {
         val (title, body) =
             when (context.mealType) {
-                MealType.BREAKFAST ->
+                MealType.BREAKFAST -> {
                     "Breakfast reminder" to
                         "Log your breakfast. Quick idea: toast with tomato and olive oil, or yogurt with fruit."
-                MealType.LUNCH -> "Lunch time" to "Have you logged your lunch? Try a chickpea salad or grilled fish."
-                MealType.SNACK -> "Healthy snack" to "A light snack is great now: seasonal fruit or a handful of nuts."
-                MealType.DINNER -> "Balanced dinner" to "Log your dinner. Options: omelette with salad, vegetable soup."
-                MealType.WATER -> "Hydration" to "On a hot day, a glass of water makes a difference. Log it now."
+                }
+
+                MealType.LUNCH -> {
+                    "Lunch time" to "Have you logged your lunch? Try a chickpea salad or grilled fish."
+                }
+
+                MealType.SNACK -> {
+                    "Healthy snack" to "A light snack is great now: seasonal fruit or a handful of nuts."
+                }
+
+                MealType.DINNER -> {
+                    "Balanced dinner" to "Log your dinner. Options: omelette with salad, vegetable soup."
+                }
+
+                MealType.WATER -> {
+                    "Hydration" to "On a hot day, a glass of water makes a difference. Log it now."
+                }
             }
         return NotificationResult(
             title = title,

@@ -9,6 +9,12 @@ import ai.koog.prompt.llm.LLMCapability
 import ai.koog.prompt.llm.LLMProvider
 import ai.koog.prompt.llm.LLModel
 import co.touchlab.kermit.Logger
+import com.monday8am.agent.core.ToolFormat.HERMES
+import com.monday8am.agent.core.ToolFormat.NATIVE
+import com.monday8am.agent.core.ToolFormat.OPENAPI
+import com.monday8am.agent.core.ToolFormat.REACT
+import com.monday8am.agent.core.ToolFormat.SIMPLE
+import com.monday8am.agent.core.ToolFormat.SLIM
 import com.monday8am.agent.local.HermesLLMClient
 import com.monday8am.agent.local.LiteRTLLMClient
 import com.monday8am.agent.local.OpenApiLLMClient
@@ -73,7 +79,7 @@ class NotificationAgent private constructor(
         fun local(
             promptExecutor: suspend (String) -> String?,
             modelId: String,
-            toolFormat: ToolFormat = ToolFormat.NATIVE,
+            toolFormat: ToolFormat = NATIVE,
             modelProvider: LLMProvider = LLMProvider.Google,
         ) = NotificationAgent(
             backend = AgentBackend.LOCAL,
@@ -153,13 +159,16 @@ class NotificationAgent private constructor(
                     requireNotNull(toolFormat) { "toolFormat required for LOCAL backend" }
                     LocalInferenceAIExecutor(llmClient = createLLMClient())
                 }
-                AgentBackend.KOOG -> simpleOllamaAIExecutor()
+
+                AgentBackend.KOOG -> {
+                    simpleOllamaAIExecutor()
+                }
             }
 
         return AIAgent(
             promptExecutor = executor,
             systemPrompt = systemPrompt,
-            temperature = 0.7,
+            temperature = 0.2,
             llmModel = model,
             toolRegistry = registry ?: ToolRegistry.EMPTY,
             installFeatures = installCommonEventHandling,
@@ -170,12 +179,31 @@ class NotificationAgent private constructor(
         val executor = requireNotNull(promptExecutor) { "promptExecutor required for LOCAL backend" }
         val format = requireNotNull(toolFormat) { "toolFormat required for LOCAL backend" }
         return when (format) {
-            ToolFormat.SIMPLE -> SimpleLLMClient(promptExecutor = executor)
-            ToolFormat.OPENAPI -> OpenApiLLMClient(promptExecutor = executor)
-            ToolFormat.SLIM -> SlimLLMClient(promptExecutor = executor)
-            ToolFormat.REACT -> ReActLLMClient(promptExecutor = executor)
-            ToolFormat.HERMES -> HermesLLMClient(promptExecutor = executor)
-            ToolFormat.NATIVE -> LiteRTLLMClient(promptExecutor = executor)
+            SIMPLE -> {
+                SimpleLLMClient(promptExecutor = executor)
+            }
+
+            OPENAPI -> {
+                OpenApiLLMClient(promptExecutor = executor)
+            }
+
+            SLIM -> {
+                SlimLLMClient(promptExecutor = executor)
+            }
+
+            REACT -> {
+                ReActLLMClient(promptExecutor = executor)
+            }
+
+            HERMES -> {
+                HermesLLMClient(promptExecutor = executor)
+            }
+
+            NATIVE -> {
+                LiteRTLLMClient(
+                    promptExecutor = executor,
+                )
+            }
         }
     }
 }

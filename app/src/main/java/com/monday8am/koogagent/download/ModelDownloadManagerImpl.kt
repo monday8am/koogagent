@@ -112,20 +112,29 @@ class ModelDownloadManagerImpl(
 
     private fun WorkInfo.toModelDownloadManagerStatus(file: File): ModelDownloadManager.Status =
         when (state) {
-            WorkInfo.State.ENQUEUED, WorkInfo.State.BLOCKED -> ModelDownloadManager.Status.Pending
+            WorkInfo.State.ENQUEUED, WorkInfo.State.BLOCKED -> {
+                ModelDownloadManager.Status.Pending
+            }
+
             WorkInfo.State.RUNNING -> {
                 val progress = progress.getFloat(DownloadUnzipWorker.KEY_PROGRESS, 0f)
                 ModelDownloadManager.Status.InProgress(progress.takeIf { it in 0f..100f })
             }
 
-            WorkInfo.State.SUCCEEDED -> ModelDownloadManager.Status.Completed(file)
-            WorkInfo.State.FAILED ->
+            WorkInfo.State.SUCCEEDED -> {
+                ModelDownloadManager.Status.Completed(file)
+            }
+
+            WorkInfo.State.FAILED -> {
                 ModelDownloadManager.Status.Failed(
                     outputData.getString(DownloadUnzipWorker.KEY_ERROR_MESSAGE)
                         ?: "Download failed due to an unknown error.", // Slightly more descriptive
                 )
+            }
 
-            WorkInfo.State.CANCELLED -> ModelDownloadManager.Status.Cancelled
+            WorkInfo.State.CANCELLED -> {
+                ModelDownloadManager.Status.Cancelled
+            }
         }
 
     companion object {

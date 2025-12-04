@@ -75,7 +75,7 @@ import java.util.UUID
  *
  * @see <a href="https://qwen.readthedocs.io/en/latest/">Qwen Documentation</a>
  */
-internal class HermesLLMClient(
+class HermesLLMClient(
     private val promptExecutor: suspend (String) -> String?,
 ) : LLMClient {
     private val logger = Logger.withTag("HermesLLMClient")
@@ -170,18 +170,30 @@ internal class HermesLLMClient(
                 .lastOrNull()
 
         return when (latestMessage) {
-            is Message.User -> latestMessage.content
-            is Message.Tool.Result -> buildString {
-                appendLine("<tool_response>")
-                appendLine(latestMessage.content)
-                appendLine("</tool_response>")
+            is Message.User -> {
+                latestMessage.content
             }
-            is Message.Assistant -> latestMessage.content
-            is Message.Tool.Call -> buildString {
-                appendLine("<tool_call>")
-                appendLine("{\"name\": \"${latestMessage.tool}\", \"arguments\": ${latestMessage.content}}")
-                appendLine("</tool_call>")
+
+            is Message.Tool.Result -> {
+                buildString {
+                    appendLine("<tool_response>")
+                    appendLine(latestMessage.content)
+                    appendLine("</tool_response>")
+                }
             }
+
+            is Message.Assistant -> {
+                latestMessage.content
+            }
+
+            is Message.Tool.Call -> {
+                buildString {
+                    appendLine("<tool_call>")
+                    appendLine("{\"name\": \"${latestMessage.tool}\", \"arguments\": ${latestMessage.content}}")
+                    appendLine("</tool_call>")
+                }
+            }
+
             else -> {
                 logger.w { "No valid latest message found, returning empty string" }
                 ""
@@ -238,7 +250,8 @@ internal class HermesLLMClient(
 
         val toolsJson = prettyJson.encodeToString(JsonArray.serializer(), JsonArray(toolsArray))
 
-        return """# Tools
+        return """
+            # Tools
 You may call one or more functions to assist with the user query.
 You are provided with function signatures within <tools></tools> XML tags:
 <tools>
@@ -249,7 +262,7 @@ For each function call, return a json object with function name and arguments wi
 <tool_call>
 {"name": <function-name>, "arguments": <args-json-object>}
 </tool_call>
-        """.trimIndent()
+            """.trimIndent()
     }
 
     /**
@@ -349,18 +362,37 @@ For each function call, return a json object with function name and arguments wi
 
     private fun toJsonElement(value: Any?): JsonElement =
         when (value) {
-            is String -> JsonPrimitive(value)
-            is Number -> JsonPrimitive(value)
-            is Boolean -> JsonPrimitive(value)
-            is Map<*, *> ->
+            is String -> {
+                JsonPrimitive(value)
+            }
+
+            is Number -> {
+                JsonPrimitive(value)
+            }
+
+            is Boolean -> {
+                JsonPrimitive(value)
+            }
+
+            is Map<*, *> -> {
                 JsonObject(
                     value
                         .mapKeys { it.key.toString() }
                         .mapValues { toJsonElement(it.value) },
                 )
-            is List<*> -> JsonArray(value.map { toJsonElement(it) })
-            null -> JsonNull
-            else -> JsonPrimitive(value.toString())
+            }
+
+            is List<*> -> {
+                JsonArray(value.map { toJsonElement(it) })
+            }
+
+            null -> {
+                JsonNull
+            }
+
+            else -> {
+                JsonPrimitive(value.toString())
+            }
         }
 
     /**
@@ -381,7 +413,9 @@ For each function call, return a json object with function name and arguments wi
         conversationHistory: List<Message> = emptyList(),
     ): List<Message.Response> {
         // Look for <tool_call>...</tool_call> patterns
-        val toolCallRegex = """<tool_call>\s*\{[^}]*"name"\s*:\s*"([^"]+)"[^}]*"arguments"\s*:\s*(\{[^}]*\})\s*\}\s*</tool_call>""".toRegex()
+        val toolCallRegex =
+            """<tool_call>\s*\{[^}]*"name"\s*:\s*"([^"]+)"[^}]*"arguments"\s*:\s*(\{[^}]*\})\s*\}\s*</tool_call>"""
+                .toRegex()
         val matches = toolCallRegex.findAll(response).toList()
 
         return if (matches.isNotEmpty()) {

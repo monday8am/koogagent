@@ -3,6 +3,8 @@ package com.monday8am.presentation.notifications
 import ai.koog.agents.core.tools.ToolRegistry
 import com.monday8am.agent.core.LocalInferenceEngine
 import com.monday8am.agent.core.LocalLLModel
+import com.monday8am.agent.core.MODEL_NAME
+import com.monday8am.agent.core.MODEL_URL
 import com.monday8am.agent.core.NotificationAgent
 import com.monday8am.agent.core.NotificationGenerator
 import com.monday8am.agent.core.ToolFormat
@@ -15,7 +17,7 @@ import com.monday8am.koogagent.data.NotificationContext
 import com.monday8am.koogagent.data.NotificationResult
 import com.monday8am.koogagent.data.WeatherProvider
 import com.monday8am.presentation.testing.GemmaToolCallingTest
-import com.monday8am.presentation.testing.TestResult
+import com.monday8am.presentation.testing.TestResultFrame
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -33,10 +35,6 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.scan
 import kotlinx.coroutines.launch
-
-private const val MODEL_URL = "https://github.com/monday8am/koogagent/releases/download/0.0.1/gemma3-1b-it-int4.zip"
-private const val MODEL_NAME1 = "gemma3-1b-it-int4.litertlm"
-private const val MODEL_NAME = "qwen3_0.6b_q8_ekv4096.litertlm"
 
 val defaultNotificationContext =
     NotificationContext(
@@ -117,15 +115,35 @@ class NotificationViewModelImpl(
             .flatMapConcat { action ->
                 val actionFlow =
                     when (action) {
-                        UiAction.Initialize -> flowOf(value = modelManager.modelExists(modelName = MODEL_NAME))
-                        UiAction.DownloadModel -> modelManager.downloadModel(url = MODEL_URL, modelName = MODEL_NAME)
-                        UiAction.ShowNotification -> inferenceEngine.initializeAsFlow(model = getLocalModel())
-                        UiAction.RunModelTests ->
+                        UiAction.Initialize -> {
+                            flowOf(value = modelManager.modelExists(modelName = MODEL_NAME))
+                        }
+
+                        UiAction.DownloadModel -> {
+                            modelManager.downloadModel(url = MODEL_URL, modelName = MODEL_NAME)
+                        }
+
+                        UiAction.ShowNotification -> {
+                            inferenceEngine.initializeAsFlow(model = getLocalModel())
+                        }
+
+                        UiAction.RunModelTests -> {
                             inferenceEngine.initializeAsFlow(model = getLocalModel()).flatMapConcat { engine ->
-                                runModelTests(promptExecutor = engine::prompt, resetConversation = engine::resetConversation)
+                                runModelTests(
+                                    promptExecutor = engine::prompt,
+                                    streamPromptExecutor = engine::promptStreaming,
+                                    resetConversation = engine::resetConversation,
+                                )
                             }
-                        is UiAction.UpdateContext -> flowOf(value = action.context)
-                        is UiAction.NotificationReady -> flowOf(value = action.content)
+                        }
+
+                        is UiAction.UpdateContext -> {
+                            flowOf(value = action.context)
+                        }
+
+                        is UiAction.NotificationReady -> {
+                            flowOf(value = action.content)
+                        }
                     }
 
                 actionFlow
@@ -221,7 +239,7 @@ class NotificationViewModelImpl(
                     }
 
                     UiAction.RunModelTests -> {
-                        state.copy(statusMessage = LogMessage.TestResultMessage(actionState.result as TestResult))
+                        state.copy(statusMessage = LogMessage.TestResultMessage(actionState.result as TestResultFrame))
                     }
                 }
             }
@@ -262,19 +280,20 @@ class NotificationViewModelImpl(
 
     private fun runModelTests(
         promptExecutor: suspend (String) -> Result<String>,
+        streamPromptExecutor: (String) -> Flow<String>,
         resetConversation: () -> Result<Unit>,
     ) = GemmaToolCallingTest(
         promptExecutor = { prompt ->
             promptExecutor(prompt).getOrThrow()
         },
+        streamPromptExecutor = streamPromptExecutor,
         resetConversation = resetConversation,
         weatherProvider = weatherProvider,
         locationProvider = locationProvider,
-    ).runAllTests()
+    ).runAllTest()
 
     private fun getLocalModel() =
         LocalLLModel(
             path = modelManager.getModelPath(MODEL_NAME),
-            temperature = 0.8f,
         )
 }

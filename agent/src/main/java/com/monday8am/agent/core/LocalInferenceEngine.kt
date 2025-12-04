@@ -7,6 +7,8 @@ interface LocalInferenceEngine {
 
     suspend fun prompt(prompt: String): Result<String>
 
+    fun promptStreaming(prompt: String): Flow<String>
+
     fun initializeAsFlow(model: LocalLLModel): Flow<LocalInferenceEngine>
 
     fun resetConversation(): Result<Unit>

@@ -1,4 +1,4 @@
-package com.monday8am.koogagent.litert.tools
+package com.monday8am.agent.tools
 
 import co.touchlab.kermit.Logger
 import com.google.ai.edge.litertlm.Tool

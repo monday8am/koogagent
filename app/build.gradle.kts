@@ -47,8 +47,12 @@ android {
 
 dependencies {
     implementation(project(":data"))
-    implementation(project(":agent"))
-    implementation(project(":presentation"))
+    implementation(project(":agent")) {
+        exclude(group = "com.google.ai.edge.litertlm", module = "litertlm-jvm")
+    }
+    implementation(project(":presentation")) {
+        exclude(group = "com.google.ai.edge.litertlm", module = "litertlm-jvm")
+    }
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

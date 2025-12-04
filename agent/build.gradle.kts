@@ -18,6 +18,8 @@ dependencies {
         // Exclude to avoid duplicate classes with kotlin-sdk-client
         exclude(group = "io.modelcontextprotocol", module = "kotlin-sdk-core-jvm")
     }
+    @Suppress("UnstableApiUsage")
+    implementation(libs.litertlm.jvm)
     api(libs.kermit)
     // Note: LiteRT-LM is only used in :app module (Android implementation)
     // :agent module is pure Kotlin/JVM and uses interfaces only

@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -25,6 +27,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,10 +46,10 @@ import com.monday8am.koogagent.data.NotificationContext
 import com.monday8am.koogagent.data.WeatherProviderImpl
 import com.monday8am.koogagent.download.ModelDownloadManagerImpl
 import com.monday8am.koogagent.litert.LocalInferenceEngineImpl
-import com.monday8am.koogagent.ui.AndroidNotificationViewModel
-import com.monday8am.koogagent.ui.DeviceContextProviderImpl
 import com.monday8am.koogagent.litert.tools.NativeLocationTools
 import com.monday8am.koogagent.litert.tools.NativeWeatherTools
+import com.monday8am.koogagent.ui.AndroidNotificationViewModel
+import com.monday8am.koogagent.ui.DeviceContextProviderImpl
 import com.monday8am.koogagent.ui.NotificationEngineImpl
 import com.monday8am.koogagent.ui.NotificationViewModelFactory
 import com.monday8am.koogagent.ui.theme.KoogAgentTheme
@@ -64,10 +67,11 @@ class MainActivity : ComponentActivity() {
 
         // Native LiteRT-LM tools with @Tool annotations
         // These are passed to ConversationConfig for native tool calling
-        val nativeTools = listOf(
-            NativeLocationTools(),
-            NativeWeatherTools()
-        )
+        val nativeTools =
+            listOf(
+                NativeLocationTools(),
+                NativeWeatherTools(),
+            )
 
         val inferenceEngine = LocalInferenceEngineImpl(tools = nativeTools)
         val notificationEngine = notificationEngine
@@ -169,11 +173,16 @@ private fun LogPanel(
     textLog: String,
     modifier: Modifier = Modifier,
 ) {
+    val scrollState = rememberScrollState()
+    LaunchedEffect(textLog) {
+        scrollState.animateScrollTo(scrollState.maxValue)
+    }
     Box(
         modifier =
             modifier
                 .fillMaxWidth()
-                .height(240.dp)
+                .height(290.dp)
+                .verticalScroll(scrollState)
                 .background(Color(0xFF000080)),
     ) {
         Text(text = textLog, color = Color(0xFF00FF00), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())

@@ -14,8 +14,11 @@ import io.lettuce.core.AclSetuserArgs.Builder.on
 const val DEFAULT_CONTEXT_LENGTH = 4096
 const val DEFAULT_MAX_OUTPUT_TOKENS = (DEFAULT_CONTEXT_LENGTH * 0.25).toInt()
 const val DEFAULT_TOPK = 40
-const val DEFAULT_TOPP = 0.9f
-const val DEFAULT_TEMPERATURE = 0.5f
+const val DEFAULT_TOPP = 0.85f
+const val DEFAULT_TEMPERATURE = 0.2f
+const val MODEL_URL = "https://github.com/monday8am/koogagent/releases/download/0.0.1/gemma3-1b-it-int4.zip"
+const val MODEL_NAME1 = "gemma3-1b-it-int4.litertlm"
+const val MODEL_NAME = "qwen3_0.6b_q8_ekv4096.litertlm"
 
 data class LocalLLModel(
     val path: String,

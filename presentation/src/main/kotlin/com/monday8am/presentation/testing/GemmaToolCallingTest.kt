@@ -2,17 +2,35 @@ package com.monday8am.presentation.testing
 
 import ai.koog.agents.core.tools.Tool
 import ai.koog.agents.core.tools.ToolRegistry
+import ai.koog.prompt.dsl.Prompt
+import ai.koog.prompt.executor.clients.LLMClient
+import ai.koog.prompt.llm.LLMCapability
+import ai.koog.prompt.llm.LLMProvider
+import ai.koog.prompt.llm.LLModel
+import ai.koog.prompt.message.Message
+import ai.koog.prompt.message.RequestMetaInfo
+import ai.koog.prompt.streaming.StreamFrame
 import co.touchlab.kermit.Logger
 import co.touchlab.kermit.Severity
+import com.monday8am.agent.core.DEFAULT_CONTEXT_LENGTH
+import com.monday8am.agent.core.DEFAULT_MAX_OUTPUT_TOKENS
 import com.monday8am.agent.core.NotificationAgent
 import com.monday8am.agent.core.ToolFormat
+import com.monday8am.agent.local.LiteRTLLMClient
 import com.monday8am.agent.tools.GetLocation
 import com.monday8am.agent.tools.GetWeather
 import com.monday8am.agent.tools.GetWeatherFromLocation
 import com.monday8am.koogagent.data.LocationProvider
 import com.monday8am.koogagent.data.WeatherProvider
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.asFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.flatMapConcat
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.coroutines.flow.onCompletion
+import kotlinx.coroutines.flow.onStart
 
 internal data class TestQuery(
     val text: String,
@@ -30,6 +48,29 @@ sealed class ValidationResult {
     ) : ValidationResult()
 }
 
+sealed interface TestResultFrame {
+    data class Tool(
+        val content: String,
+        val accumulator: String,
+    ) : TestResultFrame
+
+    data class Content(
+        val chunk: String,
+        val accumulator: String,
+    ) : TestResultFrame
+
+    data class Thinking(
+        val chunk: String,
+        val accumulator: String,
+    ) : TestResultFrame
+
+    data class Validation(
+        val result: ValidationResult,
+        val duration: Long,
+        val fullContent: String,
+    ) : TestResultFrame
+}
+
 data class TestResult(
     val name: String,
     val result: List<Pair<ValidationResult, Long>> = listOf(),
@@ -44,6 +85,7 @@ data class TestResult(
                 is ValidationResult.Pass -> {
                     output.appendLine("✓ PASS (duration: ${duration}ms): ${validationResult.message}")
                 }
+
                 is ValidationResult.Fail -> {
                     output.appendLine("✗ FAIL (duration: ${duration}ms): ${validationResult.message}")
                     validationResult.details?.let { details ->
@@ -68,6 +110,7 @@ internal data class TestCase(
 
 internal class GemmaToolCallingTest(
     private val promptExecutor: suspend (String) -> String?,
+    private val streamPromptExecutor: (String) -> Flow<String>,
     private val resetConversation: () -> Result<Unit>,
     private val weatherProvider: WeatherProvider,
     private val locationProvider: LocationProvider,
@@ -75,14 +118,186 @@ internal class GemmaToolCallingTest(
     private val logger = Logger.withTag("GemmaToolCallingTest")
     private val testIterations = 5
 
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private fun runTest(
+        testCase: TestCase,
+        asStream: Boolean,
+    ): Flow<TestResultFrame> {
+        val llmClient =
+            LiteRTLLMClient(
+                promptExecutor = promptExecutor,
+                streamPromptExecutor = streamPromptExecutor,
+            )
+
+        return testCase.queries
+            .asFlow()
+            .flatMapConcat { query ->
+                if (asStream) {
+                    runSingleQueryStream(llmClient = llmClient, testCase = testCase, query = query)
+                } else {
+                    runSingleQueryExecute(llmClient = llmClient, testCase = testCase, query = query)
+                }
+            }.onCompletion {
+                resetConversation()
+            }
+    }
+
     /**
-     * Common test runner that executes a test case with the standard pattern:
-     * - Agent creation and tool initialization
-     * - Query execution with timing
-     * - Result validation
-     * - Pass/fail reporting
+     * Executes a single query and returns a Flow of its result frames.
+     * This function is more declarative and uses a chain of Flow operators.
      */
-    private suspend fun runTest(testCase: TestCase): TestResult {
+    private fun runSingleQueryStream(
+        llmClient: LLMClient,
+        testCase: TestCase,
+        query: TestQuery,
+    ): Flow<TestResultFrame> {
+        val accumulatedContent = StringBuilder()
+        var isThinking = false
+        var isToolCall = false
+        var duration = 0L
+
+        val prompt =
+            Prompt(
+                id = "test",
+                messages =
+                    listOf(
+                        Message.System(content = testCase.systemPrompt, metaInfo = RequestMetaInfo.Empty),
+                        Message.User(content = query.text, metaInfo = RequestMetaInfo.Empty),
+                    ),
+            )
+
+        // Start of the declarative stream execution for one query
+        return llmClient
+            .executeStreaming(
+                prompt = prompt,
+                model = getLLMModel(),
+                tools = emptyList(),
+            ).mapNotNull { frame ->
+                when (frame) {
+                    is StreamFrame.Append -> {
+                        when {
+                            frame.text.contains("<think>") -> {
+                                isThinking = true
+                            }
+
+                            frame.text.contains("</think>") && isThinking -> {
+                                isThinking = false
+                                accumulatedContent.clear()
+                            }
+
+                            frame.text.contains("<tool_call") -> {
+                                isToolCall = true
+                            }
+
+                            frame.text.contains("</tool_call>") && isToolCall -> {
+                                accumulatedContent.clear()
+                                isToolCall = false
+                            }
+                        }
+                        accumulatedContent.append(frame.text)
+                        if (isThinking) {
+                            TestResultFrame.Thinking(frame.text, accumulatedContent.toString())
+                        } else if (isToolCall) {
+                            TestResultFrame.Tool(frame.text, accumulatedContent.toString())
+                        } else {
+                            TestResultFrame.Content(frame.text, accumulatedContent.toString())
+                        }
+                    }
+
+                    is StreamFrame.ToolCall -> {
+                        null
+                    }
+
+                    is StreamFrame.End -> {
+                        TestResultFrame.Content("", accumulator = accumulatedContent.toString())
+                    }
+                }
+            }.onStart {
+                duration = System.currentTimeMillis()
+            }.onCompletion { cause ->
+                if (cause == null) {
+                    // Success case: The stream finished without exceptions.
+                    val finalDuration = System.currentTimeMillis() - duration
+                    val finalContent = accumulatedContent.toString()
+                    val validationResult = testCase.validator(finalContent)
+                    emit(
+                        TestResultFrame.Validation(
+                            result = validationResult,
+                            duration = finalDuration,
+                            fullContent = finalContent,
+                        ),
+                    )
+                }
+            }.catch { e ->
+                // Error case: An exception occurred in the upstream flow.
+                logger.e(e) { "Test failed: ${query.text}" }
+                val finalDuration = System.currentTimeMillis() - duration
+                emit(
+                    TestResultFrame.Validation(
+                        result = ValidationResult.Fail("Exception: ${e.message}"),
+                        duration = finalDuration,
+                        fullContent = accumulatedContent.toString(), // Emit partial content on failure
+                    ),
+                )
+            }
+    }
+
+    private fun runSingleQueryExecute(
+        llmClient: LLMClient,
+        testCase: TestCase,
+        query: TestQuery,
+    ): Flow<TestResultFrame> {
+        val prompt =
+            Prompt(
+                id = "test",
+                messages =
+                    listOf(
+                        Message.System(content = testCase.systemPrompt, metaInfo = RequestMetaInfo.Empty),
+                        Message.User(content = query.text, metaInfo = RequestMetaInfo.Empty),
+                    ),
+            )
+
+        return flow {
+            val startTime = System.currentTimeMillis()
+
+            try {
+                // Execute non-streaming call
+                val result =
+                    llmClient.execute(
+                        prompt = prompt,
+                        model = getLLMModel(),
+                        tools = testCase.tools?.map { it.descriptor } ?: listOf(),
+                    )
+
+                val duration = System.currentTimeMillis() - startTime
+                val content = result.joinToString { it.content }
+
+                emit(TestResultFrame.Content(chunk = content, accumulator = content))
+                emit(TestResultFrame.Content("\n", accumulator = content))
+
+                val validationResult = testCase.validator(content)
+                emit(
+                    TestResultFrame.Validation(
+                        result = validationResult,
+                        duration = duration,
+                        fullContent = content,
+                    ),
+                )
+            } catch (e: Exception) {
+                logger.e(e) { "Test failed: ${query.text}" }
+                val duration = System.currentTimeMillis() - startTime
+                emit(
+                    TestResultFrame.Validation(
+                        result = ValidationResult.Fail("Exception: ${e.message}"),
+                        duration = duration,
+                        fullContent = "",
+                    ),
+                )
+            }
+        }
+    }
+
+    private suspend fun runTestUsingKoogAgent(testCase: TestCase): TestResult {
         val output = StringBuilder()
         output.appendLine(testCase.name)
         output.appendLine("─".repeat(testIterations))
@@ -141,6 +356,7 @@ internal class GemmaToolCallingTest(
                         output.appendLine("✓ PASS: ${validationResult.message}")
                         passCount++
                     }
+
                     is ValidationResult.Fail -> {
                         output.appendLine("✗ FAIL: ${validationResult.message}")
                         validationResult.details?.let { details ->
@@ -166,13 +382,18 @@ internal class GemmaToolCallingTest(
         return testResult.copy(fullLog = output.toString())
     }
 
-    fun runAllTests(): Flow<TestResult> =
+    /**
+     * Runs all tests using the legacy non-streaming approach.
+     * Returns Flow<TestResult> for backward compatibility.
+     */
+    fun runAllTestsOld(): Flow<TestResult> =
         flow {
             Logger.setMinSeverity(Severity.Debug)
             try {
                 val tests =
                     listOf(
-                        ::testBasicToolCall,
+                        ::testMinimalInteraction,
+                        // ::testBasicToolCall,
                         // ::testNoToolNeeded,
                         // ::testToolHallucination,
                         // ::testWeatherTool,
@@ -189,8 +410,68 @@ internal class GemmaToolCallingTest(
             }
         }
 
+    fun runAllTest(): Flow<TestResultFrame> {
+        Logger.setMinSeverity(Severity.Debug)
+
+        val regressionTestSuite =
+            listOf(
+                TestCase(
+                    name = "TEST 0: Basic Content",
+                    tools = listOf(),
+                    queries = listOf(TestQuery("Tell me my coordinates!")),
+                    systemPrompt = "You are a helpful assistant. If the user asks \"where am I?\" or similar location queries, use the get_location function.",
+                    validator = { result ->
+                        // The if-expression is more concise.
+                        if (result.isNotBlank() && result.length > 5) {
+                            ValidationResult.Pass("Valid response")
+                        } else {
+                            ValidationResult.Fail("Invalid response")
+                        }
+                    },
+                ),
+                // Add more test cases as needed
+            )
+        return runAllTestsStreaming(regressionTestSuite)
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private fun runAllTestsStreaming(testCases: List<TestCase>): Flow<TestResultFrame> =
+        testCases
+            .asFlow()
+            .flatMapConcat { testCase ->
+                runTest(testCase, asStream = true)
+            }.catch { e ->
+                // This catches exceptions from the upstream flow (runTest or its processing).
+                logger.e(e) { "A failure occurred during the test suite execution" }
+                emit(
+                    TestResultFrame.Validation(
+                        result = ValidationResult.Fail("Test suite failed: ${e.message}"),
+                        duration = 0,
+                        fullContent = "",
+                    ),
+                )
+            }
+
+    private suspend fun testMinimalInteraction(): TestResult =
+        runTestUsingKoogAgent(
+            TestCase(
+                name = "TEST 0: Basic Content",
+                tools = listOf(),
+                queries = listOf(TestQuery("where am I located?")),
+                systemPrompt = "If I asks \"where am I?\" or similar location queries, call the get_location function to retrieve their current coordinates.",
+                validator = { result ->
+                    val hasValidResponse = result.isNotBlank() && result.length > 5
+                    if (hasValidResponse) {
+                        ValidationResult.Pass("Valid response")
+                    } else {
+                        ValidationResult.Fail("Invalid response")
+                    }
+                },
+            ),
+        )
+
     private suspend fun testBasicToolCall(): TestResult =
-        runTest(
+        runTestUsingKoogAgent(
             TestCase(
                 name = "TEST 1: Basic Location Tool Call",
                 tools = listOf(GetLocation(locationProvider)),
@@ -200,10 +481,11 @@ internal class GemmaToolCallingTest(
                         TestQuery("What is my current location?", "explicit query"),
                         TestQuery("Can you tell me my coordinates?", "coordinate query"),
                     ),
-                systemPrompt = """
+                systemPrompt =
+                    """
                     When to use tools
                     If the user asks "where am I?" or similar location queries, call the GetLocation function to retrieve their current coordinates.
-                """.trimIndent(),
+                    """.trimIndent(),
                 validator = { result ->
                     // Check for Madrid coordinates from MockLocationProvider
                     val hasMadridLat = result.contains("40.4") || result.contains("40°")
@@ -230,7 +512,7 @@ internal class GemmaToolCallingTest(
         )
 
     private suspend fun testNoToolNeeded(): TestResult =
-        runTest(
+        runTestUsingKoogAgent(
             TestCase(
                 name = "TEST 2: No Tool Needed (Normal Conversation)",
                 tools = listOf(GetLocation(locationProvider)),
@@ -260,7 +542,7 @@ internal class GemmaToolCallingTest(
         )
 
     private suspend fun testToolHallucination(): TestResult =
-        runTest(
+        runTestUsingKoogAgent(
             TestCase(
                 name = "TEST 3: Tool Hallucination Prevention",
                 description =
@@ -293,7 +575,7 @@ internal class GemmaToolCallingTest(
         )
 
     private suspend fun testWeatherTool(): TestResult =
-        runTest(
+        runTestUsingKoogAgent(
             TestCase(
                 name = "TEST 4: Weather Tool Execution",
                 description = listOf("Note: GetWeather should use default coordinates (no parameters)"),
@@ -318,7 +600,7 @@ internal class GemmaToolCallingTest(
         )
 
     private suspend fun testMultiTurnSequence(): TestResult =
-        runTest(
+        runTestUsingKoogAgent(
             TestCase(
                 name = "TEST 5: Multi-Turn Tool Sequence",
                 description =
@@ -357,12 +639,14 @@ internal class GemmaToolCallingTest(
                                     "    This suggests agent made multiple tool calls somehow",
                             )
                         }
+
                         hasWeather -> {
                             ValidationResult.Pass(
                                 "Weather information retrieved\n" +
                                     "    (But we don't know how it got coordinates)",
                             )
                         }
+
                         hasLocation -> {
                             ValidationResult.Fail(
                                 message = "⚠️  PARTIAL: Got location, but not weather",
@@ -371,6 +655,7 @@ internal class GemmaToolCallingTest(
                                         "    Would need another turn to get weather",
                             )
                         }
+
                         else -> {
                             ValidationResult.Fail("No location or weather information")
                         }
@@ -380,7 +665,7 @@ internal class GemmaToolCallingTest(
         )
 
     private suspend fun testHermesFormat(): TestResult =
-        runTest(
+        runTestUsingKoogAgent(
             TestCase(
                 name = "TEST 6: Hermes/Qwen XML Format",
                 description =
@@ -432,6 +717,7 @@ internal class GemmaToolCallingTest(
                                     (if (hasLocation) "location" else "weather") + " information",
                             )
                         }
+
                         else -> {
                             ValidationResult.Fail(
                                 message = "No location or weather data in response",
@@ -442,5 +728,19 @@ internal class GemmaToolCallingTest(
                 },
                 toolFormat = ToolFormat.HERMES,
             ),
+        )
+
+    private fun getLLMModel(): LLModel =
+        LLModel(
+            provider = LLMProvider.Alibaba,
+            id = "qwen3-0.6b",
+            capabilities =
+                listOf(
+                    LLMCapability.Temperature,
+                    LLMCapability.Tools,
+                    LLMCapability.Schema.JSON.Standard,
+                ),
+            maxOutputTokens = DEFAULT_MAX_OUTPUT_TOKENS.toLong(),
+            contextLength = DEFAULT_CONTEXT_LENGTH.toLong(),
         )
 }

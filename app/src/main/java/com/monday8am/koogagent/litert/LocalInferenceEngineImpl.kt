@@ -10,13 +10,22 @@ import com.google.ai.edge.litertlm.EngineConfig
 import com.google.ai.edge.litertlm.Message
 import com.google.ai.edge.litertlm.MessageCallback
 import com.google.ai.edge.litertlm.SamplerConfig
+import com.google.ai.edge.litertlm.SessionConfig
+import com.google.ai.edge.litertlm.ToolManager
 import com.monday8am.agent.core.LocalInferenceEngine
 import com.monday8am.agent.core.LocalLLModel
+import io.opentelemetry.sdk.trace.samplers.Sampler
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.InternalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onCompletion
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -73,7 +82,8 @@ class LocalInferenceEngineImpl(
                 // Configure conversation with tools for native tool calling
                 val conversationConfig =
                     ConversationConfig(
-                        tools = tools,  // Native LiteRT-LM tools with @Tool annotations
+                        systemMessage = Message.of("You are Qwen, created by Alibaba Cloud. You are a helpful assistant."),
+                        tools = tools, // Native LiteRT-LM tools with @Tool annotations
                         samplerConfig =
                             SamplerConfig(
                                 topK = model.topK,
@@ -98,10 +108,48 @@ class LocalInferenceEngineImpl(
                     throw IllegalArgumentException("Prompt cannot be blank")
                 }
 
+                Logger.i("LocalInferenceEngine") { "▶️ Starting inference (prompt: ${prompt.length} chars)" }
+                val startTime = System.currentTimeMillis()
+
                 val userMessage = Message.of(prompt)
-                instance.conversation.sendMessageWithCallback(userMessage)
+                val response = instance.conversation.sendMessageWithCallback(userMessage)
+
+                val duration = System.currentTimeMillis() - startTime
+                val tokensApprox = response.length / 4 // Rough estimate: 1 token ≈ 4 chars
+                val tokensPerSec = if (duration > 0) (tokensApprox * 1000.0 / duration) else 0.0
+
+                Logger.i("LocalInferenceEngine") {
+                    "✅ Inference complete: ${duration}ms | " +
+                        "Response: ${response.length} chars (~$tokensApprox tokens) | " +
+                        "Speed: %.2f tokens/sec".format(tokensPerSec)
+                }
+
+                response
             }
         }
+    }
+
+    override fun promptStreaming(prompt: String): Flow<String> {
+        val instance =
+            currentInstance ?: run {
+                Logger.e("LocalInferenceEngine") { "Inference instance is not available." }
+                return emptyFlow() // Return an empty flow if there's no instance.
+            }
+        val userMessage = Message.of(prompt)
+        var startTime = 0L
+
+        return instance.conversation
+            .sendMessageAsync(userMessage)
+            .map { message ->
+                message.contents.filterIsInstance<Content.Text>().joinToString("") { it.text }
+            }.filter { it.isNotEmpty() }
+            .onStart {
+                startTime = System.currentTimeMillis()
+                Logger.i("LocalInferenceEngine") { "Streaming inference started." }
+            }.onCompletion {
+                val duration = System.currentTimeMillis() - startTime
+                Logger.i("LocalInferenceEngine") { "✅ Streaming inference complete: ${duration}ms" }
+            }.flowOn(dispatcher)
     }
 
     override fun initializeAsFlow(model: LocalLLModel): Flow<LocalInferenceEngine> =
@@ -120,7 +168,7 @@ class LocalInferenceEngineImpl(
             instance.conversation.close()
             val conversationConfig =
                 ConversationConfig(
-                    tools = tools,  // Maintain tools across conversation resets
+                    tools = tools, // Maintain tools across conversation resets
                     samplerConfig =
                         SamplerConfig(
                             topK = instance.model.topK,
@@ -128,6 +176,7 @@ class LocalInferenceEngineImpl(
                             temperature = instance.model.temperature.toDouble(),
                         ),
                 )
+            Logger.i("LocalInferenceEngine") { "\uD83D\uDCAC Reset conversation!" }
             instance.conversation = instance.engine.createConversation(conversationConfig)
         }
     }

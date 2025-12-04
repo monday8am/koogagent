@@ -181,9 +181,18 @@ internal class SlimLLMClient(
                 .lastOrNull()
 
         return when (latestMessage) {
-            is Message.User -> latestMessage.content
-            is Message.Tool.Result -> "Tool result: ${latestMessage.content}"
-            is Message.Assistant -> latestMessage.content
+            is Message.User -> {
+                latestMessage.content
+            }
+
+            is Message.Tool.Result -> {
+                "Tool result: ${latestMessage.content}"
+            }
+
+            is Message.Assistant -> {
+                latestMessage.content
+            }
+
             is Message.Tool.Call -> {
                 // Reconstruct SLIM format for conversation history
                 if (latestMessage.content.isEmpty() || latestMessage.content == "{}") {
@@ -192,6 +201,7 @@ internal class SlimLLMClient(
                     "<function>${latestMessage.tool}</function>\n<parameters>${latestMessage.content}</parameters>"
                 }
             }
+
             else -> {
                 logger.w { "No valid latest message found, returning empty string" }
                 ""

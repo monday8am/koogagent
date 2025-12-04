@@ -8,7 +8,12 @@ import ai.koog.prompt.llm.LLMProvider
 import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.message.ResponseMetaInfo
+import ai.koog.prompt.streaming.StreamFrame
 import co.touchlab.kermit.Logger
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onCompletion
+import kotlinx.coroutines.flow.onEach
 
 /**
  * Bridge LLMClient between Koog's agent framework and LiteRT-LM native inference.
@@ -35,9 +40,12 @@ import co.touchlab.kermit.Logger
  *
  * @param promptExecutor Function that sends a prompt string to LiteRT-LM and returns the response.
  *                       This should wrap LocalInferenceEngine.prompt()
+ * @param streamPromptExecutor Function that sends a prompt string to LiteRT-LM and streams the response.
+ *                             This should wrap LocalInferenceEngine.promptStreaming()
  */
-internal class LiteRTLLMClient(
+class LiteRTLLMClient(
     private val promptExecutor: suspend (String) -> String?,
+    private val streamPromptExecutor: ((String) -> Flow<String>)? = null,
 ) : LLMClient {
     private val logger = Logger.withTag("LiteRTLLMClient")
 
@@ -46,65 +54,84 @@ internal class LiteRTLLMClient(
         model: LLModel,
         tools: List<ToolDescriptor>,
     ): List<Message.Response> {
-        // Convert Koog's message list to a single concatenated string
-        // LiteRT-LM maintains conversation state internally via Conversation API
-        val promptText = buildPromptString(prompt.messages)
+        val lastUserMessage =
+            if (prompt.messages.first() is Message.System &&
+                prompt.messages.last() is Message.User && prompt.messages.size == 2
+            ) {
+                prompt.messages.joinToString { "${it.content}\n" }
+            } else {
+                prompt.messages
+                    .filterIsInstance<Message.User>()
+                    .lastOrNull()
+                    ?.content
+                    ?: throw IllegalArgumentException("No user message in prompt")
+            }
 
-        logger.d { "Executing prompt with LiteRT-LM (${promptText.length} chars)" }
+        logger.d { "Executing streaming prompt with LiteRT-LM:\n$lastUserMessage" }
 
         // Execute via LiteRT-LM
-        val response = promptExecutor(promptText)
-            ?: throw IllegalStateException("LiteRT-LM returned null response")
+        val response =
+            promptExecutor(lastUserMessage)
+                ?: throw IllegalStateException("LiteRT-LM returned null response")
 
-        logger.d { "LiteRT-LM response: ${response.take(100)}..." }
+        logger.d { "LiteRT-LM response: $response" }
 
         // Return as Koog message
         return listOf(
             Message.Assistant(
                 content = response,
-                metaInfo = ResponseMetaInfo.Empty
-            )
+                metaInfo = ResponseMetaInfo.Empty,
+            ),
         )
-    }
-
-    /**
-     * Converts Koog's message list to a simple string.
-     * Format: "Role:Content\nRole:Content\n..."
-     *
-     * Since LiteRT-LM's Conversation maintains history internally,
-     * we typically only send the latest user message here.
-     */
-    private fun buildPromptString(messages: List<Message>): String {
-        return messages.joinToString("\n") { message ->
-            when (message) {
-                is Message.System -> "System:${message.content}"
-                is Message.User -> "User:${message.content}"
-                is Message.Assistant -> "Assistant:${message.content}"
-                is Message.Tool.Call -> "ToolCall:${message.tool}(${message.content})"
-                is Message.Tool.Result -> "ToolResult:${message.tool}=${message.content}"
-                is Message.Reasoning -> "Reasoning:${message.content}"
-            }
-        }
     }
 
     override fun executeStreaming(
         prompt: Prompt,
         model: LLModel,
         tools: List<ToolDescriptor>,
-    ) = throw UnsupportedOperationException(
-        "LiteRT-LM client does not support streaming. " +
-            "Use execute() instead - LiteRT-LM's Conversation API handles async internally."
-    )
+    ): Flow<StreamFrame> {
+        val executor =
+            streamPromptExecutor
+                ?: throw UnsupportedOperationException(
+                    "LiteRT-LM client streaming is not configured. " +
+                        "Provide streamPromptExecutor in constructor.",
+                )
+
+        val lastUserMessage =
+            if (prompt.messages.first() is Message.System &&
+                prompt.messages.last() is Message.User && prompt.messages.size == 2
+            ) {
+                prompt.messages.joinToString { "${it.content}\n" }
+            } else {
+                prompt.messages
+                    .filterIsInstance<Message.User>()
+                    .lastOrNull()
+                    ?.content
+                    ?: throw IllegalArgumentException("No user message in prompt")
+            }
+
+        logger.d { "Executing streaming prompt with LiteRT-LM:\n$lastUserMessage" }
+
+        return executor(lastUserMessage)
+            .onEach { logger.d { it } }
+            .map<String, StreamFrame> { chunk ->
+                StreamFrame.Append(text = chunk)
+            }.onCompletion { error ->
+                logger.d { "Streaming ended: $error" }
+                if (error == null) {
+                    emit(StreamFrame.End(finishReason = "stop"))
+                }
+            }
+    }
 
     override suspend fun moderate(
         prompt: Prompt,
         model: LLModel,
-    ): ModerationResult {
+    ): ModerationResult =
         throw UnsupportedOperationException(
             "LiteRT-LM client does not support moderation. " +
-                "Implement content filtering in your application layer if needed."
+                "Implement content filtering in your application layer if needed.",
         )
-    }
 
     override fun llmProvider(): LLMProvider = object : LLMProvider("litert-lm", "LiteRT-LM") {}
 
