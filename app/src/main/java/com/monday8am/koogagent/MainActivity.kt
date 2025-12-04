@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -41,11 +42,12 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.monday8am.koogagent.data.MealType
 import com.monday8am.koogagent.data.MockLocationProvider
+import com.monday8am.koogagent.data.ModelCatalog
+import com.monday8am.koogagent.data.ModelConfiguration
 import com.monday8am.koogagent.data.MotivationLevel
 import com.monday8am.koogagent.data.NotificationContext
 import com.monday8am.koogagent.data.WeatherProviderImpl
 import com.monday8am.koogagent.download.ModelDownloadManagerImpl
-import com.monday8am.koogagent.litert.LocalInferenceEngineImpl
 import com.monday8am.koogagent.litert.tools.NativeLocationTools
 import com.monday8am.koogagent.litert.tools.NativeWeatherTools
 import com.monday8am.koogagent.ui.AndroidNotificationViewModel
@@ -73,7 +75,9 @@ class MainActivity : ComponentActivity() {
                 NativeWeatherTools(),
             )
 
-        val inferenceEngine = LocalInferenceEngineImpl(tools = nativeTools)
+        // Select model at startup (could be configurable in future)
+        val selectedModel = ModelCatalog.DEFAULT
+
         val notificationEngine = notificationEngine
         val weatherProvider = WeatherProviderImpl()
         val locationProvider = MockLocationProvider() // <-- using Mock for now.
@@ -81,12 +85,13 @@ class MainActivity : ComponentActivity() {
         val modelManager = ModelDownloadManagerImpl(applicationContext)
 
         NotificationViewModelFactory(
-            inferenceEngine = inferenceEngine,
+            selectedModel = selectedModel,
             notificationEngine = notificationEngine,
             weatherProvider = weatherProvider,
             locationProvider = locationProvider,
             deviceContextProvider = deviceContextProvider,
             modelManager = modelManager,
+            liteRtTools = nativeTools,
         )
     }
 
@@ -105,6 +110,7 @@ class MainActivity : ComponentActivity() {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     MainScreen(
                         log = state.statusMessage.toDisplayString(),
+                        selectedModel = state.selectedModel,
                         notificationContext = state.context,
                         isModelReady = state.isModelReady,
                         onNotificationContextChange = { viewModel.onUiAction(UiAction.UpdateContext(context = it)) },
@@ -120,6 +126,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainScreen(
     log: String,
+    selectedModel: ModelConfiguration,
     notificationContext: NotificationContext,
     isModelReady: Boolean,
     onNotificationContextChange: (NotificationContext) -> Unit,
@@ -134,7 +141,9 @@ fun MainScreen(
                 .fillMaxSize()
                 .padding(16.dp),
     ) {
-        LogPanel(textLog = log, modifier = Modifier.padding(top = 32.dp))
+        ModelInfoCard(model = selectedModel, modifier = Modifier.padding(top = 32.dp))
+
+        LogPanel(textLog = log)
 
         if (isModelReady) {
             Button(
@@ -165,6 +174,29 @@ fun MainScreen(
             notificationContext = notificationContext,
             onContextChange = onNotificationContextChange,
         )
+    }
+}
+
+@Composable
+private fun ModelInfoCard(
+    model: ModelConfiguration,
+    modifier: Modifier = Modifier,
+) {
+    Card(modifier = modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(
+                text = "Model: ${model.displayName}",
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Text(
+                text = "${model.parameterCount}B params • ${model.contextLength} tokens",
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Text(
+                text = "Library: ${model.inferenceLibrary.name}",
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
     }
 }
 

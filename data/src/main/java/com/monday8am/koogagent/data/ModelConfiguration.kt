@@ -1,0 +1,55 @@
+package com.monday8am.koogagent.data
+
+enum class InferenceLibrary {
+    LITERT,
+    MEDIAPIPE,
+}
+
+enum class HardwareBackend {
+    CPU_ONLY,
+    GPU_SUPPORTED,
+    NPU_SUPPORTED,
+}
+
+/**
+ * Complete configuration for an on-device language model.
+ * This is platform-agnostic metadata that describes what the model is and how to obtain it.
+ *
+ * @property id Unique identifier (e.g., "qwen3-0.6b-litert-q8-4k")
+ * @property displayName Human-readable name (e.g., "Qwen3 0.6B (LiteRT, 4K context)")
+ * @property modelFamily Base model family (e.g., "qwen3", "gemma3", "hammer2")
+ * @property parameterCount Model parameters in billions (e.g., 0.6, 1.0, 0.5)
+ * @property quantization Quantization format (e.g., "int8", "int4", "fp16")
+ * @property contextLength Maximum context window in tokens (e.g., 4096, 1024)
+ * @property downloadUrl Remote URL for model download
+ * @property bundleFilename Expected filename after download (e.g., "model.litertlm" or "model.task")
+ * @property inferenceLibrary Which inference library to use
+ * @property hardwareAcceleration Supported hardware acceleration
+ * @property defaultTopK Default top-K sampling parameter
+ * @property defaultTopP Default top-P sampling parameter
+ * @property defaultTemperature Default temperature for generation
+ * @property defaultMaxOutputTokens Default max tokens to generate
+ */
+data class ModelConfiguration(
+    val id: String,
+    val displayName: String,
+    val modelFamily: String,
+    val parameterCount: Float,
+    val quantization: String,
+    val contextLength: Int,
+    val downloadUrl: String,
+    val bundleFilename: String,
+    val inferenceLibrary: InferenceLibrary,
+    val hardwareAcceleration: HardwareBackend,
+    val defaultTopK: Int = 40,
+    val defaultTopP: Float = 0.85f,
+    val defaultTemperature: Float = 0.2f,
+    val defaultMaxOutputTokens: Int = (contextLength * 0.25).toInt(),
+) {
+    /**
+     * Model identifier without file extension (used by NotificationAgent).
+     * Examples: "qwen3_0.6b_q8_ekv4096" or "gemma3-1b-it-int4"
+     */
+    val modelId: String
+        get() = bundleFilename.substringBeforeLast(".")
+}

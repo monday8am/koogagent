@@ -69,7 +69,7 @@ class LocalInferenceEngineImpl(
                 val engineConfig =
                     EngineConfig(
                         modelPath = model.path,
-                        backend = Backend.CPU,
+                        backend = if (model.isGPUAccelerated) Backend.GPU else Backend.CPU,
                         visionBackend = null, // Text-only inference
                         audioBackend = null, // Text-only inference
                         maxNumTokens = model.contextLength,

@@ -1,5 +1,6 @@
 package com.monday8am.presentation.notifications
 
+import com.monday8am.koogagent.data.ModelConfiguration
 import kotlinx.coroutines.flow.Flow
 import java.io.File
 
@@ -22,14 +23,11 @@ interface ModelDownloadManager {
         data object Cancelled : Status
     }
 
-    fun getModelPath(modelName: String): String
+    fun getModelPath(model: ModelConfiguration): String
 
-    suspend fun modelExists(modelName: String): Boolean
+    suspend fun modelExists(model: ModelConfiguration): Boolean
 
-    fun downloadModel(
-        url: String,
-        modelName: String,
-    ): Flow<Status>
+    fun downloadModel(model: ModelConfiguration): Flow<Status>
 
     fun cancelDownload()
 }

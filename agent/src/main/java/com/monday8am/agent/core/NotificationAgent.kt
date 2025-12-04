@@ -94,8 +94,8 @@ class NotificationAgent private constructor(
                             LLMCapability.Tools,
                             LLMCapability.Schema.JSON.Standard,
                         ),
-                    maxOutputTokens = DEFAULT_MAX_OUTPUT_TOKENS.toLong(),
-                    contextLength = DEFAULT_CONTEXT_LENGTH.toLong(),
+                    maxOutputTokens = 1024L, // Metadata only, actual value from ModelConfiguration
+                    contextLength = 4096L, // Metadata only, actual value from ModelConfiguration
                 ),
             toolFormat = toolFormat,
         )

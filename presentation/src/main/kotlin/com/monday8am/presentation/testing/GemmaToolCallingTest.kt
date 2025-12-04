@@ -12,8 +12,6 @@ import ai.koog.prompt.message.RequestMetaInfo
 import ai.koog.prompt.streaming.StreamFrame
 import co.touchlab.kermit.Logger
 import co.touchlab.kermit.Severity
-import com.monday8am.agent.core.DEFAULT_CONTEXT_LENGTH
-import com.monday8am.agent.core.DEFAULT_MAX_OUTPUT_TOKENS
 import com.monday8am.agent.core.NotificationAgent
 import com.monday8am.agent.core.ToolFormat
 import com.monday8am.agent.local.LiteRTLLMClient
@@ -740,7 +738,7 @@ internal class GemmaToolCallingTest(
                     LLMCapability.Tools,
                     LLMCapability.Schema.JSON.Standard,
                 ),
-            maxOutputTokens = DEFAULT_MAX_OUTPUT_TOKENS.toLong(),
-            contextLength = DEFAULT_CONTEXT_LENGTH.toLong(),
+            maxOutputTokens = 1024L,
+            contextLength = 4096L,
         )
 }
