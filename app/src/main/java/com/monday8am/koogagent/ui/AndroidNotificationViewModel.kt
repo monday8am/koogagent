@@ -50,7 +50,7 @@ class NotificationViewModelFactory(
             // Create inference engine once for the selected model
             val inferenceEngine =
                 InferenceEngineFactory.create(
-                    model = selectedModel,
+                    inferenceLibrary = selectedModel.inferenceLibrary,
                     liteRtTools = liteRtTools,
                 )
 

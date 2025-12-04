@@ -6,7 +6,6 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.workDataOf
-import com.monday8am.koogagent.data.ModelConfiguration
 import com.monday8am.presentation.notifications.ModelDownloadManager
 import java.io.File
 import kotlinx.coroutines.CoroutineDispatcher
@@ -26,16 +25,20 @@ class ModelDownloadManagerImpl(
 ) : ModelDownloadManager {
     val modelDestinationPath = "${context.applicationContext.filesDir}/data/local/tmp/slm/"
 
-    override fun getModelPath(model: ModelConfiguration) = "$modelDestinationPath${model.bundleFilename}"
+    override fun getModelPath(bundleFilename: String) = "$modelDestinationPath$bundleFilename"
 
-    override suspend fun modelExists(model: ModelConfiguration) =
+    override suspend fun modelExists(bundleFilename: String) =
         withContext(dispatcher) {
-            File(getModelPath(model)).exists()
+            File(getModelPath(bundleFilename)).exists()
         }
 
-    override fun downloadModel(model: ModelConfiguration): Flow<ModelDownloadManager.Status> =
+    override fun downloadModel(
+        modelId: String,
+        downloadUrl: String,
+        bundleFilename: String,
+    ): Flow<ModelDownloadManager.Status> =
         channelFlow {
-            val destinationPath = getModelPath(model)
+            val destinationPath = getModelPath(bundleFilename)
             val destinationFile = File(destinationPath)
 
             if (destinationFile.exists()) {
@@ -44,7 +47,7 @@ class ModelDownloadManagerImpl(
                 return@channelFlow
             }
 
-            val workName = "model-download-${model.id}"
+            val workName = "model-download-$modelId"
             val existingWork = workManager.getWorkInfosForUniqueWork(workName).get()
             if (existingWork.any { it.state == WorkInfo.State.RUNNING || it.state == WorkInfo.State.ENQUEUED }) {
                 // Observe the existing work instead of creating new work
@@ -72,7 +75,7 @@ class ModelDownloadManagerImpl(
                 OneTimeWorkRequestBuilder<DownloadUnzipWorker>()
                     .setInputData(
                         workDataOf(
-                            DownloadUnzipWorker.KEY_URL to model.downloadUrl,
+                            DownloadUnzipWorker.KEY_URL to downloadUrl,
                             DownloadUnzipWorker.KEY_DESTINATION_PATH to destinationFile.absolutePath,
                         ),
                     ).addTag(WORK_TAG)

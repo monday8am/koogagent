@@ -1,4 +1,4 @@
-package com.monday8am.koogagent.litert
+package com.monday8am.koogagent.inference.litert
 
 import co.touchlab.kermit.Logger
 import com.google.ai.edge.litertlm.Backend
@@ -10,11 +10,8 @@ import com.google.ai.edge.litertlm.EngineConfig
 import com.google.ai.edge.litertlm.Message
 import com.google.ai.edge.litertlm.MessageCallback
 import com.google.ai.edge.litertlm.SamplerConfig
-import com.google.ai.edge.litertlm.SessionConfig
-import com.google.ai.edge.litertlm.ToolManager
 import com.monday8am.agent.core.LocalInferenceEngine
 import com.monday8am.agent.core.LocalLLModel
-import io.opentelemetry.sdk.trace.samplers.Sampler
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.InternalCoroutinesApi

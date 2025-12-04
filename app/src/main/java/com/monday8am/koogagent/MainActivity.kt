@@ -48,8 +48,8 @@ import com.monday8am.koogagent.data.MotivationLevel
 import com.monday8am.koogagent.data.NotificationContext
 import com.monday8am.koogagent.data.WeatherProviderImpl
 import com.monday8am.koogagent.download.ModelDownloadManagerImpl
-import com.monday8am.koogagent.litert.tools.NativeLocationTools
-import com.monday8am.koogagent.litert.tools.NativeWeatherTools
+import com.monday8am.koogagent.inference.litert.tools.NativeLocationTools
+import com.monday8am.koogagent.inference.litert.tools.NativeWeatherTools
 import com.monday8am.koogagent.ui.AndroidNotificationViewModel
 import com.monday8am.koogagent.ui.DeviceContextProviderImpl
 import com.monday8am.koogagent.ui.NotificationEngineImpl

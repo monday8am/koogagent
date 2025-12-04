@@ -127,11 +127,15 @@ class NotificationViewModelImpl(
                 val actionFlow =
                     when (action) {
                         UiAction.Initialize -> {
-                            flowOf(value = modelManager.modelExists(model = selectedModel))
+                            flowOf(value = modelManager.modelExists(bundleFilename = selectedModel.bundleFilename))
                         }
 
                         UiAction.DownloadModel -> {
-                            modelManager.downloadModel(model = selectedModel)
+                            modelManager.downloadModel(
+                                modelId = selectedModel.id,
+                                downloadUrl = selectedModel.downloadUrl,
+                                bundleFilename = selectedModel.bundleFilename,
+                            )
                         }
 
                         UiAction.ShowNotification -> {
@@ -302,7 +306,7 @@ class NotificationViewModelImpl(
 
     private fun getLocalModel() =
         LocalLLModel(
-            path = modelManager.getModelPath(selectedModel),
+            path = modelManager.getModelPath(bundleFilename = selectedModel.bundleFilename),
             contextLength = selectedModel.contextLength,
             maxOutputTokens = selectedModel.defaultMaxOutputTokens,
             topK = selectedModel.defaultTopK,

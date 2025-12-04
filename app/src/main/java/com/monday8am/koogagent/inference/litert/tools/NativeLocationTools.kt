@@ -1,4 +1,4 @@
-package com.monday8am.koogagent.litert.tools
+package com.monday8am.koogagent.inference.litert.tools
 
 import android.util.Log
 import com.google.ai.edge.litertlm.Tool
