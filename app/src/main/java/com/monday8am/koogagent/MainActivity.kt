@@ -50,6 +50,7 @@ import com.monday8am.koogagent.data.WeatherProviderImpl
 import com.monday8am.koogagent.download.ModelDownloadManagerImpl
 import com.monday8am.koogagent.inference.litert.tools.NativeLocationTools
 import com.monday8am.koogagent.inference.litert.tools.NativeWeatherTools
+import com.monday8am.koogagent.inference.mediapipe.MediaPipeTools
 import com.monday8am.koogagent.ui.AndroidNotificationViewModel
 import com.monday8am.koogagent.ui.DeviceContextProviderImpl
 import com.monday8am.koogagent.ui.NotificationEngineImpl
@@ -75,6 +76,10 @@ class MainActivity : ComponentActivity() {
                 NativeWeatherTools(),
             )
 
+        // MediaPipe tools using AI Edge On-Device APIs
+        // These use FunctionDeclaration format for MediaPipe inference
+        val mediaPipeTools = listOf(MediaPipeTools.createAllTools())
+
         // Select model at startup (could be configurable in future)
         val selectedModel = ModelCatalog.DEFAULT
 
@@ -85,6 +90,7 @@ class MainActivity : ComponentActivity() {
         val modelManager = ModelDownloadManagerImpl(applicationContext)
 
         NotificationViewModelFactory(
+            context = applicationContext,
             selectedModel = selectedModel,
             notificationEngine = notificationEngine,
             weatherProvider = weatherProvider,
@@ -92,6 +98,7 @@ class MainActivity : ComponentActivity() {
             deviceContextProvider = deviceContextProvider,
             modelManager = modelManager,
             liteRtTools = nativeTools,
+            mediaPipeTools = mediaPipeTools,
         )
     }
 

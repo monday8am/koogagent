@@ -1,8 +1,10 @@
 package com.monday8am.koogagent.ui
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.google.ai.edge.localagents.core.proto.Tool
 import com.monday8am.koogagent.data.LocationProvider
 import com.monday8am.koogagent.data.ModelConfiguration
 import com.monday8am.koogagent.data.WeatherProvider
@@ -36,6 +38,7 @@ class AndroidNotificationViewModel(
 }
 
 class NotificationViewModelFactory(
+    private val context: Context,
     private val selectedModel: ModelConfiguration,
     private val notificationEngine: NotificationEngine,
     private val weatherProvider: WeatherProvider,
@@ -43,6 +46,7 @@ class NotificationViewModelFactory(
     private val deviceContextProvider: DeviceContextProvider,
     private val modelManager: ModelDownloadManager,
     private val liteRtTools: List<Any>,
+    private val mediaPipeTools: List<Tool>,
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -50,8 +54,10 @@ class NotificationViewModelFactory(
             // Create inference engine once for the selected model
             val inferenceEngine =
                 InferenceEngineFactory.create(
+                    context = context,
                     inferenceLibrary = selectedModel.inferenceLibrary,
                     liteRtTools = liteRtTools,
+                    mediaPipeTools = mediaPipeTools,
                 )
 
             val impl =

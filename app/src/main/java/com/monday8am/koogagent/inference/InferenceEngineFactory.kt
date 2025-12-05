@@ -1,8 +1,11 @@
 package com.monday8am.koogagent.inference
 
+import android.content.Context
+import com.google.ai.edge.localagents.core.proto.Tool
 import com.monday8am.agent.core.LocalInferenceEngine
 import com.monday8am.koogagent.data.InferenceLibrary
 import com.monday8am.koogagent.inference.litert.LocalInferenceEngineImpl
+import com.monday8am.koogagent.inference.mediapipe.MediaPipeInferenceEngineImpl
 
 /**
  * Factory helper for creating appropriate inference engine based on inference library type.
@@ -10,15 +13,20 @@ import com.monday8am.koogagent.inference.litert.LocalInferenceEngineImpl
  */
 object InferenceEngineFactory {
     fun create(
+        context: Context,
         inferenceLibrary: InferenceLibrary,
         liteRtTools: List<Any> = emptyList(),
+        mediaPipeTools: List<Tool> = emptyList(),
     ): LocalInferenceEngine =
         when (inferenceLibrary) {
             InferenceLibrary.LITERT -> {
                 LocalInferenceEngineImpl(tools = liteRtTools)
             }
             InferenceLibrary.MEDIAPIPE -> {
-                throw UnsupportedOperationException("MediaPipe not yet implemented")
+                MediaPipeInferenceEngineImpl(
+                    context = context,
+                    tools = mediaPipeTools,
+                )
             }
         }
 }
