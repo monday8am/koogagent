@@ -5,7 +5,6 @@ package com.monday8am.koogagent.data
  * This serves as the "source of truth" for available models in the app.
  */
 object ModelCatalog {
-
     /**
      * Qwen3 0.6B model with LiteRT-LM (4K context, int8 quantization).
      * Supports native tool calling via Qwen3DataProcessor.

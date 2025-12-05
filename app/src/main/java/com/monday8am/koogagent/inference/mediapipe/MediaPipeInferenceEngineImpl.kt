@@ -169,9 +169,7 @@ class MediaPipeInferenceEngineImpl(
     }
 }
 
-private suspend fun ChatSession.sendMessageBlocking(
-    message: String,
-): String =
+private suspend fun ChatSession.sendMessageBlocking(message: String): String =
     suspendCancellableCoroutine { continuation ->
         try {
             // Send the user message
@@ -199,6 +197,7 @@ private suspend fun ChatSession.sendMessageBlocking(
                         part.hasText() -> {
                             continuation.resume(part.text)
                         }
+
                         part.hasFunctionCall() -> {
                             // For now, just return a message indicating function call was detected
                             // In a full implementation, this would execute the tool and send back results
@@ -207,6 +206,7 @@ private suspend fun ChatSession.sendMessageBlocking(
                                 "Function call detected: ${functionCall.name} with args: ${functionCall.args}",
                             )
                         }
+
                         else -> {
                             continuation.resume("")
                         }

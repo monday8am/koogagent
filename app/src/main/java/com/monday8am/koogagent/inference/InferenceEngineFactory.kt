@@ -22,6 +22,7 @@ object InferenceEngineFactory {
             InferenceLibrary.LITERT -> {
                 LocalInferenceEngineImpl(tools = liteRtTools)
             }
+
             InferenceLibrary.MEDIAPIPE -> {
                 MediaPipeInferenceEngineImpl(
                     context = context,

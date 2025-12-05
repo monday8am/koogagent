@@ -104,12 +104,13 @@ class NotificationViewModelImpl(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     // Tool format determined once at construction based on model family
-    private val toolFormat = when (selectedModel.modelFamily) {
-        "qwen3" -> ToolFormat.NATIVE
-        "gemma3" -> ToolFormat.REACT
-        "hammer2" -> ToolFormat.REACT
-        else -> ToolFormat.REACT
-    }
+    private val toolFormat =
+        when (selectedModel.modelFamily) {
+            "qwen3" -> ToolFormat.NATIVE
+            "gemma3" -> ToolFormat.REACT
+            "hammer2" -> ToolFormat.REACT
+            else -> ToolFormat.REACT
+        }
 
     private val toolRegistry =
         ToolRegistry {
@@ -145,16 +146,17 @@ class NotificationViewModelImpl(
                         }
 
                         UiAction.RunModelTests -> {
-                            inferenceEngine.initializeAsFlow(
-                                modelConfig = selectedModel,
-                                modelPath = modelManager.getModelPath(bundleFilename = selectedModel.bundleFilename),
-                            ).flatMapConcat { engine ->
-                                runModelTests(
-                                    promptExecutor = engine::prompt,
-                                    streamPromptExecutor = engine::promptStreaming,
-                                    resetConversation = engine::resetConversation,
-                                )
-                            }
+                            inferenceEngine
+                                .initializeAsFlow(
+                                    modelConfig = selectedModel,
+                                    modelPath = modelManager.getModelPath(bundleFilename = selectedModel.bundleFilename),
+                                ).flatMapConcat { engine ->
+                                    runModelTests(
+                                        promptExecutor = engine::prompt,
+                                        streamPromptExecutor = engine::promptStreaming,
+                                        resetConversation = engine::resetConversation,
+                                    )
+                                }
                         }
 
                         is UiAction.UpdateContext -> {
@@ -308,5 +310,4 @@ class NotificationViewModelImpl(
         weatherProvider = weatherProvider,
         locationProvider = locationProvider,
     ).runAllTest()
-
 }

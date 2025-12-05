@@ -2,9 +2,9 @@ package com.monday8am.presentation.notifications
 
 import com.monday8am.agent.core.LocalInferenceEngine
 import com.monday8am.koogagent.data.DeviceContext
-import com.monday8am.koogagent.data.ModelConfiguration
 import com.monday8am.koogagent.data.Location
 import com.monday8am.koogagent.data.LocationProvider
+import com.monday8am.koogagent.data.ModelConfiguration
 import com.monday8am.koogagent.data.NotificationResult
 import com.monday8am.koogagent.data.WeatherCondition
 import com.monday8am.koogagent.data.WeatherProvider

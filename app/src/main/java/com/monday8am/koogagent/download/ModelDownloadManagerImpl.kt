@@ -7,7 +7,6 @@ import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.workDataOf
 import com.monday8am.presentation.notifications.ModelDownloadManager
-import java.io.File
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
@@ -17,6 +16,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 
 class ModelDownloadManagerImpl(
     context: Context,
