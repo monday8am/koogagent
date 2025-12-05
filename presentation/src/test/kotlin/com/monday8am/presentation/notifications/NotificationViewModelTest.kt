@@ -1,6 +1,7 @@
 package com.monday8am.presentation.notifications
 
 import com.monday8am.koogagent.data.MealType
+import com.monday8am.koogagent.data.ModelCatalog
 import com.monday8am.koogagent.data.MotivationLevel
 import com.monday8am.koogagent.data.NotificationContext
 import com.monday8am.koogagent.data.NotificationResult
@@ -22,7 +23,8 @@ import kotlin.test.assertTrue
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class NotificationViewModelTest {
-    private val initialState = UiState()
+    private val testModel = ModelCatalog.DEFAULT
+    private val initialState = UiState(selectedModel = testModel)
     private val testDispatcher = StandardTestDispatcher()
 
     @BeforeTest
@@ -63,6 +65,7 @@ class NotificationViewModelTest {
         modelManager: FakeModelDownloadManager = FakeModelDownloadManager(),
     ): NotificationViewModelImpl =
         NotificationViewModelImpl(
+            selectedModel = testModel,
             inferenceEngine = inferenceEngine,
             notificationEngine = notificationEngine,
             weatherProvider = weatherProvider,
@@ -212,7 +215,7 @@ class NotificationViewModelTest {
 
         assertTrue(newState.statusMessage is LogMessage.WelcomeModelReady)
         assertTrue(newState.isModelReady)
-        assertTrue(newState.statusMessage.modelName.contains("gemma"))
+        assertTrue(newState.statusMessage.modelName.contains("Qwen"))
     }
 
     @Test

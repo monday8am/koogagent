@@ -2,7 +2,6 @@ package com.monday8am.presentation.notifications
 
 import ai.koog.agents.core.tools.ToolRegistry
 import com.monday8am.agent.core.LocalInferenceEngine
-import com.monday8am.agent.core.LocalLLModel
 import com.monday8am.agent.core.NotificationAgent
 import com.monday8am.agent.core.NotificationGenerator
 import com.monday8am.agent.core.ToolFormat
@@ -139,11 +138,17 @@ class NotificationViewModelImpl(
                         }
 
                         UiAction.ShowNotification -> {
-                            inferenceEngine.initializeAsFlow(model = getLocalModel())
+                            inferenceEngine.initializeAsFlow(
+                                modelConfig = selectedModel,
+                                modelPath = modelManager.getModelPath(bundleFilename = selectedModel.bundleFilename),
+                            )
                         }
 
                         UiAction.RunModelTests -> {
-                            inferenceEngine.initializeAsFlow(model = getLocalModel()).flatMapConcat { engine ->
+                            inferenceEngine.initializeAsFlow(
+                                modelConfig = selectedModel,
+                                modelPath = modelManager.getModelPath(bundleFilename = selectedModel.bundleFilename),
+                            ).flatMapConcat { engine ->
                                 runModelTests(
                                     promptExecutor = engine::prompt,
                                     streamPromptExecutor = engine::promptStreaming,
@@ -304,16 +309,4 @@ class NotificationViewModelImpl(
         locationProvider = locationProvider,
     ).runAllTest()
 
-    private fun getLocalModel() =
-        LocalLLModel(
-            path = modelManager.getModelPath(bundleFilename = selectedModel.bundleFilename),
-            contextLength = selectedModel.contextLength,
-            maxOutputTokens = selectedModel.defaultMaxOutputTokens,
-            topK = selectedModel.defaultTopK,
-            topP = selectedModel.defaultTopP,
-            temperature = selectedModel.defaultTemperature,
-            shouldEnableImage = false,
-            shouldEnableAudio = false,
-            isGPUAccelerated = selectedModel.hardwareAcceleration == HardwareBackend.GPU_SUPPORTED,
-        )
 }

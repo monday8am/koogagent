@@ -333,6 +333,7 @@ fun MainScreenPreview() {
             isModelReady = true,
             onNotificationContextChange = { },
             onPressButton = { },
+            selectedModel = ModelCatalog.DEFAULT,
         )
     }
 }

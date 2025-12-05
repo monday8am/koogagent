@@ -6,22 +6,6 @@ import co.touchlab.kermit.Logger
 import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
 
-/**
- * Runtime model configuration for inference engines.
- * Contains path and sampling parameters determined from ModelConfiguration.
- */
-data class LocalLLModel(
-    val path: String,
-    val contextLength: Int, // Total tokens (input + output)
-    val maxOutputTokens: Int, // Max tokens to generate
-    val topK: Int,
-    val topP: Float,
-    val temperature: Float,
-    val shouldEnableImage: Boolean = false,
-    val shouldEnableAudio: Boolean = false,
-    val isGPUAccelerated: Boolean = true,
-)
-
 private val traceLogger: KLogger = KotlinLogging.logger("ai.koog.agents.tracing")
 private val kermitLogger = Logger.withTag("ModelEventHandling")
 

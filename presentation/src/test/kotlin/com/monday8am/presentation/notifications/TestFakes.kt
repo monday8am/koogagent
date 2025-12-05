@@ -1,8 +1,8 @@
 package com.monday8am.presentation.notifications
 
 import com.monday8am.agent.core.LocalInferenceEngine
-import com.monday8am.agent.core.LocalLLModel
 import com.monday8am.koogagent.data.DeviceContext
+import com.monday8am.koogagent.data.ModelConfiguration
 import com.monday8am.koogagent.data.Location
 import com.monday8am.koogagent.data.LocationProvider
 import com.monday8am.koogagent.data.NotificationResult
@@ -16,12 +16,18 @@ import java.io.File
 internal class FakeLocalInferenceEngine : LocalInferenceEngine {
     var initializeCalled = false
 
-    override suspend fun initialize(model: LocalLLModel): Result<Unit> {
+    override suspend fun initialize(
+        modelConfig: ModelConfiguration,
+        modelPath: String,
+    ): Result<Unit> {
         initializeCalled = true
         return Result.success(Unit)
     }
 
-    override fun initializeAsFlow(model: LocalLLModel): Flow<LocalInferenceEngine> {
+    override fun initializeAsFlow(
+        modelConfig: ModelConfiguration,
+        modelPath: String,
+    ): Flow<LocalInferenceEngine> {
         initializeCalled = true
         return flowOf(this)
     }
@@ -66,8 +72,9 @@ internal class FakeModelDownloadManager(
     private val shouldFail: Boolean = false,
 ) : ModelDownloadManager {
     override fun downloadModel(
-        url: String,
-        modelName: String,
+        modelId: String,
+        downloadUrl: String,
+        bundleFilename: String,
     ): Flow<ModelDownloadManager.Status> =
         flow {
             if (shouldFail) {
@@ -77,13 +84,13 @@ internal class FakeModelDownloadManager(
             progressSteps.forEach { progress ->
                 emit(ModelDownloadManager.Status.InProgress(progress))
             }
-            emit(ModelDownloadManager.Status.Completed(File("/fake/path/$modelName")))
+            emit(ModelDownloadManager.Status.Completed(File("/fake/path/$bundleFilename")))
         }
 
     override fun cancelDownload() {
     }
 
-    override suspend fun modelExists(modelName: String): Boolean = modelExists
+    override suspend fun modelExists(bundleFilename: String): Boolean = modelExists
 
-    override fun getModelPath(modelName: String): String = "/fake/path/$modelName"
+    override fun getModelPath(bundleFilename: String): String = "/fake/path/$bundleFilename"
 }

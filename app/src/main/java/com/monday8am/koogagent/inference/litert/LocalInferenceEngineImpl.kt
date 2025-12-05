@@ -11,7 +11,8 @@ import com.google.ai.edge.litertlm.Message
 import com.google.ai.edge.litertlm.MessageCallback
 import com.google.ai.edge.litertlm.SamplerConfig
 import com.monday8am.agent.core.LocalInferenceEngine
-import com.monday8am.agent.core.LocalLLModel
+import com.monday8am.koogagent.data.HardwareBackend
+import com.monday8am.koogagent.data.ModelConfiguration
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.InternalCoroutinesApi
@@ -36,7 +37,7 @@ import kotlin.coroutines.resumeWithException
 private data class LlmModelInstance(
     val engine: Engine,
     var conversation: Conversation,
-    val model: LocalLLModel,
+    val modelConfig: ModelConfiguration,
 )
 
 /**
@@ -52,24 +53,27 @@ class LocalInferenceEngineImpl(
 ) : LocalInferenceEngine {
     private var currentInstance: LlmModelInstance? = null
 
-    override suspend fun initialize(model: LocalLLModel): Result<Unit> =
+    override suspend fun initialize(
+        modelConfig: ModelConfiguration,
+        modelPath: String,
+    ): Result<Unit> =
         withContext(dispatcher) {
             if (currentInstance != null) {
                 return@withContext Result.success(Unit)
             }
 
             runCatching {
-                if (!File(model.path).exists()) {
-                    throw IllegalStateException("Model file not found at path: ${model.path}")
+                if (!File(modelPath).exists()) {
+                    throw IllegalStateException("Model file not found at path: $modelPath")
                 }
 
                 val engineConfig =
                     EngineConfig(
-                        modelPath = model.path,
-                        backend = if (model.isGPUAccelerated) Backend.GPU else Backend.CPU,
+                        modelPath = modelPath,
+                        backend = if (modelConfig.hardwareAcceleration == HardwareBackend.GPU_SUPPORTED) Backend.GPU else Backend.CPU,
                         visionBackend = null, // Text-only inference
                         audioBackend = null, // Text-only inference
-                        maxNumTokens = model.contextLength,
+                        maxNumTokens = modelConfig.contextLength,
                     )
 
                 // Create and initialize engine
@@ -83,14 +87,14 @@ class LocalInferenceEngineImpl(
                         tools = tools, // Native LiteRT-LM tools with @Tool annotations
                         samplerConfig =
                             SamplerConfig(
-                                topK = model.topK,
-                                topP = model.topP.toDouble(),
-                                temperature = model.temperature.toDouble(),
+                                topK = modelConfig.defaultTopK,
+                                topP = modelConfig.defaultTopP.toDouble(),
+                                temperature = modelConfig.defaultTemperature.toDouble(),
                             ),
                     )
                 val conversation = engine.createConversation(conversationConfig)
 
-                currentInstance = LlmModelInstance(engine = engine, conversation = conversation, model = model)
+                currentInstance = LlmModelInstance(engine = engine, conversation = conversation, modelConfig = modelConfig)
             }
         }
 
@@ -149,9 +153,12 @@ class LocalInferenceEngineImpl(
             }.flowOn(dispatcher)
     }
 
-    override fun initializeAsFlow(model: LocalLLModel): Flow<LocalInferenceEngine> =
+    override fun initializeAsFlow(
+        modelConfig: ModelConfiguration,
+        modelPath: String,
+    ): Flow<LocalInferenceEngine> =
         flow {
-            initialize(model = model)
+            initialize(modelConfig = modelConfig, modelPath = modelPath)
                 .onSuccess {
                     emit(this@LocalInferenceEngineImpl)
                 }.onFailure {
@@ -168,9 +175,9 @@ class LocalInferenceEngineImpl(
                     tools = tools, // Maintain tools across conversation resets
                     samplerConfig =
                         SamplerConfig(
-                            topK = instance.model.topK,
-                            topP = instance.model.topP.toDouble(),
-                            temperature = instance.model.temperature.toDouble(),
+                            topK = instance.modelConfig.defaultTopK,
+                            topP = instance.modelConfig.defaultTopP.toDouble(),
+                            temperature = instance.modelConfig.defaultTemperature.toDouble(),
                         ),
                 )
             Logger.i("LocalInferenceEngine") { "\uD83D\uDCAC Reset conversation!" }

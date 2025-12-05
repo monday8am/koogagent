@@ -4,6 +4,7 @@ import app.cash.turbine.test
 import com.monday8am.agent.core.LocalInferenceEngine
 import com.monday8am.koogagent.data.LocationProvider
 import com.monday8am.koogagent.data.MealType
+import com.monday8am.koogagent.data.ModelCatalog
 import com.monday8am.koogagent.data.MotivationLevel
 import com.monday8am.koogagent.data.NotificationContext
 import com.monday8am.koogagent.data.NotificationResult
@@ -245,6 +246,7 @@ class NotificationViewModelIntegrationTest {
         modelManager: ModelDownloadManager = FakeModelDownloadManager(),
     ): NotificationViewModelImpl =
         NotificationViewModelImpl(
+            selectedModel = ModelCatalog.DEFAULT,
             inferenceEngine = inferenceEngine,
             notificationEngine = notificationEngine,
             weatherProvider = weatherProvider,
