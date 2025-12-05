@@ -7,7 +7,6 @@ import com.monday8am.agent.core.NotificationGenerator
 import com.monday8am.agent.core.ToolFormat
 import com.monday8am.agent.tools.GetLocation
 import com.monday8am.agent.tools.GetWeatherFromLocation
-import com.monday8am.koogagent.data.HardwareBackend
 import com.monday8am.koogagent.data.LocationProvider
 import com.monday8am.koogagent.data.MealType
 import com.monday8am.koogagent.data.ModelConfiguration

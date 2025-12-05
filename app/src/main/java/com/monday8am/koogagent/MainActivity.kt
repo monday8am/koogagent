@@ -48,8 +48,8 @@ import com.monday8am.koogagent.data.MotivationLevel
 import com.monday8am.koogagent.data.NotificationContext
 import com.monday8am.koogagent.data.WeatherProviderImpl
 import com.monday8am.koogagent.download.ModelDownloadManagerImpl
-import com.monday8am.koogagent.inference.litert.tools.NativeLocationTools
-import com.monday8am.koogagent.inference.litert.tools.NativeWeatherTools
+import com.monday8am.koogagent.inference.litertlm.NativeLocationTools
+import com.monday8am.koogagent.inference.litertlm.LiteRTLmTools
 import com.monday8am.koogagent.inference.mediapipe.MediaPipeTools
 import com.monday8am.koogagent.ui.AndroidNotificationViewModel
 import com.monday8am.koogagent.ui.DeviceContextProviderImpl
@@ -73,7 +73,7 @@ class MainActivity : ComponentActivity() {
         val nativeTools =
             listOf(
                 NativeLocationTools(),
-                NativeWeatherTools(),
+                LiteRTLmTools(),
             )
 
         // MediaPipe tools using AI Edge On-Device APIs

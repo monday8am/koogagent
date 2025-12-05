@@ -14,7 +14,7 @@ import co.touchlab.kermit.Logger
 import co.touchlab.kermit.Severity
 import com.monday8am.agent.core.NotificationAgent
 import com.monday8am.agent.core.ToolFormat
-import com.monday8am.agent.local.LiteRTLLMClient
+import com.monday8am.agent.local.LocalInferenceLLMClient
 import com.monday8am.agent.tools.GetLocation
 import com.monday8am.agent.tools.GetWeather
 import com.monday8am.agent.tools.GetWeatherFromLocation
@@ -122,7 +122,7 @@ internal class GemmaToolCallingTest(
         asStream: Boolean,
     ): Flow<TestResultFrame> {
         val llmClient =
-            LiteRTLLMClient(
+            LocalInferenceLLMClient(
                 promptExecutor = promptExecutor,
                 streamPromptExecutor = streamPromptExecutor,
             )

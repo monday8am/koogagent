@@ -4,7 +4,7 @@ import android.content.Context
 import com.google.ai.edge.localagents.core.proto.Tool
 import com.monday8am.agent.core.LocalInferenceEngine
 import com.monday8am.koogagent.data.InferenceLibrary
-import com.monday8am.koogagent.inference.litert.LocalInferenceEngineImpl
+import com.monday8am.koogagent.inference.litertlm.LiteRTLmInferenceEngineImpl
 import com.monday8am.koogagent.inference.mediapipe.MediaPipeInferenceEngineImpl
 
 /**
@@ -20,7 +20,7 @@ object InferenceEngineFactory {
     ): LocalInferenceEngine =
         when (inferenceLibrary) {
             InferenceLibrary.LITERT -> {
-                LocalInferenceEngineImpl(tools = liteRtTools)
+                LiteRTLmInferenceEngineImpl(tools = liteRtTools)
             }
 
             InferenceLibrary.MEDIAPIPE -> {

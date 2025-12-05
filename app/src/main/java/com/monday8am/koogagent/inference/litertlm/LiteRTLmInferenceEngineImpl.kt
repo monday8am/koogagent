@@ -1,4 +1,4 @@
-package com.monday8am.koogagent.inference.litert
+package com.monday8am.koogagent.inference.litertlm
 
 import co.touchlab.kermit.Logger
 import com.google.ai.edge.litertlm.Backend
@@ -13,6 +13,9 @@ import com.google.ai.edge.litertlm.SamplerConfig
 import com.monday8am.agent.core.LocalInferenceEngine
 import com.monday8am.koogagent.data.HardwareBackend
 import com.monday8am.koogagent.data.ModelConfiguration
+import java.io.File
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.InternalCoroutinesApi
@@ -26,14 +29,7 @@ import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
-import java.io.File
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 
-/**
- * LiteRT-LM based implementation of LocalInferenceEngine.
- * Uses Engine/Conversation API with MessageCallback for async inference.
- */
 private data class LlmModelInstance(
     val engine: Engine,
     var conversation: Conversation,
@@ -42,12 +38,8 @@ private data class LlmModelInstance(
 
 /**
  * LiteRT-LM implementation with native tool calling support.
- *
- * @param tools List of tool objects annotated with @Tool. These are passed to
- *              ConversationConfig for native tool calling via Qwen3DataProcessor.
- * @param dispatcher Coroutine dispatcher for blocking operations
  */
-class LocalInferenceEngineImpl(
+class LiteRTLmInferenceEngineImpl(
     private val tools: List<Any> = emptyList(),
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : LocalInferenceEngine {
@@ -76,7 +68,6 @@ class LocalInferenceEngineImpl(
                         maxNumTokens = modelConfig.contextLength,
                     )
 
-                // Create and initialize engine
                 val engine = Engine(engineConfig)
                 engine.initialize()
 
@@ -160,7 +151,7 @@ class LocalInferenceEngineImpl(
         flow {
             initialize(modelConfig = modelConfig, modelPath = modelPath)
                 .onSuccess {
-                    emit(this@LocalInferenceEngineImpl)
+                    emit(this@LiteRTLmInferenceEngineImpl)
                 }.onFailure {
                     throw it
                 }
@@ -195,13 +186,6 @@ class LocalInferenceEngineImpl(
     }
 }
 
-/**
- * Extension function to convert LiteRT-LM's MessageCallback to coroutine-based suspend function.
- * Collects streaming message responses and returns the complete generated text.
- *
- * Note: Named sendMessageWithCallback to avoid collision with alpha06's new
- * sendMessageAsync(Message): Flow<Message> overload.
- */
 @OptIn(InternalCoroutinesApi::class)
 private suspend fun Conversation.sendMessageWithCallback(message: Message): String =
     suspendCancellableCoroutine { continuation ->

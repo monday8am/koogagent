@@ -11,7 +11,6 @@ import com.google.ai.edge.localagents.fc.HammerFormatter
 import com.google.ai.edge.localagents.fc.LlmInferenceBackend
 import com.google.mediapipe.tasks.genai.llminference.LlmInference
 import com.monday8am.agent.core.LocalInferenceEngine
-import com.monday8am.koogagent.data.HardwareBackend
 import com.monday8am.koogagent.data.ModelConfiguration
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -25,14 +24,16 @@ import java.io.File
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
+
+private const val SYSTEM_PROMPT = "You are Hammer, a helpful AI assistant. You can use tools to help answer questions."
+private const val SYSTEM_ROLE = "system"
+private const val USER_ROLE = "user"
+
 /**
  * MediaPipe-based implementation of LocalInferenceEngine using AI Edge On-Device APIs.
  * Uses GenerativeModel/ChatSession API with function calling support for Hammer2.1 model.
- *
- * @param context Android context for initializing MediaPipe
- * @param tools List of MediaPipe Tool objects for function calling
- * @param dispatcher Coroutine dispatcher for blocking operations
  */
+
 class MediaPipeInferenceEngineImpl(
     private val context: Context,
     private val tools: List<Tool> = emptyList(),
@@ -52,38 +53,12 @@ class MediaPipeInferenceEngineImpl(
             }
 
             runCatching {
-                if (!File(modelPath).exists()) {
-                    throw IllegalStateException("Model file not found at path: $modelPath")
-                }
-                val llmInferenceOptions =
-                    LlmInference.LlmInferenceOptions
-                        .builder()
-                        .setModelPath(modelPath)
-                        .setMaxTokens(modelConfig.defaultMaxOutputTokens)
-                        .build()
-
-                val llmInference = LlmInference.createFromOptions(context, llmInferenceOptions)
+                val llmInference = createLlmInference(context, modelPath, modelConfig)
                 val backend = LlmInferenceBackend(llmInference, HammerFormatter())
-                val systemInstruction =
-                    Content
-                        .newBuilder()
-                        .setRole("system")
-                        .addParts(
-                            Part
-                                .newBuilder()
-                                .setText("You are Hammer, a helpful AI assistant. You can use tools to help answer questions."),
-                        ).build()
+                val systemInstruction = createSystemInstruction()
 
-                // Create generative model with tools
-                generativeModel =
-                    GenerativeModel(
-                        backend,
-                        systemInstruction,
-                        tools,
-                    )
-
-                // Start chat session
-                chatSession = generativeModel?.startChat()
+                generativeModel = GenerativeModel(backend, systemInstruction, tools)
+                chatSession = generativeModel!!.startChat()
                 this@MediaPipeInferenceEngineImpl.modelConfig = modelConfig
             }
         }
@@ -170,54 +145,52 @@ class MediaPipeInferenceEngineImpl(
 }
 
 private suspend fun ChatSession.sendMessageBlocking(message: String): String =
-    suspendCancellableCoroutine { continuation ->
+    suspendCancellableCoroutine { cont ->
         try {
-            // Send the user message
             val userContent =
                 Content
                     .newBuilder()
-                    .setRole("user")
-                    .addParts(
-                        Part
-                            .newBuilder()
-                            .setText(message),
-                    ).build()
+                    .setRole(USER_ROLE)
+                    .addParts(Part.newBuilder().setText(message))
+                    .build()
 
             val response = this.sendMessage(userContent)
-
-            // Check if response contains function call or text
-            if (response.candidatesCount > 0) {
-                val candidate = response.getCandidates(0)
-                val content = candidate.content
-
-                if (content.partsCount > 0) {
-                    val part = content.getParts(0)
-
-                    when {
-                        part.hasText() -> {
-                            continuation.resume(part.text)
-                        }
-
-                        part.hasFunctionCall() -> {
-                            // For now, just return a message indicating function call was detected
-                            // In a full implementation, this would execute the tool and send back results
-                            val functionCall = part.functionCall
-                            continuation.resume(
-                                "Function call detected: ${functionCall.name} with args: ${functionCall.args}",
-                            )
-                        }
-
-                        else -> {
-                            continuation.resume("")
-                        }
-                    }
-                } else {
-                    continuation.resume("")
+            val part = response.candidatesList.firstOrNull()?.content?.partsList?.firstOrNull()
+            val resultText = when {
+                part?.hasText() == true -> part.text
+                part?.hasFunctionCall() == true -> {
+                    // In a full implementation, this would execute the tool and send back results
+                    val functionCall = part.functionCall
+                    "Function call detected: ${functionCall.name} with args: ${functionCall.args}"
                 }
-            } else {
-                continuation.resume("")
+                else -> ""
             }
+            cont.resume(resultText)
         } catch (e: Exception) {
-            continuation.resumeWithException(e)
+            cont.resumeWithException(e)
         }
     }
+
+private fun MediaPipeInferenceEngineImpl.createLlmInference(
+    context: Context,
+    modelPath: String,
+    modelConfig: ModelConfiguration
+): LlmInference {
+    if (!File(modelPath).exists()) {
+        throw IllegalStateException("Model file not found at path: $modelPath")
+    }
+    val llmInferenceOptions =
+        LlmInference.LlmInferenceOptions.builder()
+            .setModelPath(modelPath)
+            .setMaxTokens(modelConfig.defaultMaxOutputTokens)
+            .build()
+    return LlmInference.createFromOptions(context, llmInferenceOptions)
+}
+
+private fun createSystemInstruction(): Content =
+    Content.newBuilder()
+        .setRole(SYSTEM_ROLE)
+        .addParts(
+            Part.newBuilder()
+                .setText(SYSTEM_PROMPT)
+        ).build()

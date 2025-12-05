@@ -16,34 +16,10 @@ import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onEach
 
 /**
- * Bridge LLMClient between Koog's agent framework and LiteRT-LM native inference.
- *
- * This client is a thin wrapper that:
- * - Converts Koog's Prompt (list of messages) to a single string
- * - Passes it to LiteRT-LM via the promptExecutor
- * - Returns the response as Message.Assistant
- *
- * **Tool Calling:**
- * Tools are managed entirely by LiteRT-LM's native tool calling system:
- * - Tools are passed via ConversationConfig (not this client)
- * - Qwen3DataProcessor handles tool detection, parsing, and execution
- * - This client just receives the final response after all tool calls complete
- *
- * **No Custom Protocols:**
- * Unlike HermesLLMClient, ReActLLMClient, etc., this client doesn't need to:
- * - Format tool schemas in prompts
- * - Parse tool calls from responses
- * - Execute tools manually
- * - Handle multi-turn tool calling loops
- *
- * LiteRT-LM's Conversation API handles all of that automatically!
- *
- * @param promptExecutor Function that sends a prompt string to LiteRT-LM and returns the response.
- *                       This should wrap LocalInferenceEngine.prompt()
- * @param streamPromptExecutor Function that sends a prompt string to LiteRT-LM and streams the response.
- *                             This should wrap LocalInferenceEngine.promptStreaming()
+ * Bridge LLMClient between Koog's agent framework and local native inference.
+ * LiteRT-LM or Mediapipe
  */
-class LiteRTLLMClient(
+class LocalInferenceLLMClient(
     private val promptExecutor: suspend (String) -> String?,
     private val streamPromptExecutor: ((String) -> Flow<String>)? = null,
 ) : LLMClient {
@@ -67,14 +43,9 @@ class LiteRTLLMClient(
                     ?: throw IllegalArgumentException("No user message in prompt")
             }
 
-        logger.d { "Executing streaming prompt with LiteRT-LM:\n$lastUserMessage" }
-
-        // Execute via LiteRT-LM
         val response =
             promptExecutor(lastUserMessage)
-                ?: throw IllegalStateException("LiteRT-LM returned null response")
-
-        logger.d { "LiteRT-LM response: $response" }
+                ?: throw IllegalStateException("Local Inference returned null response")
 
         // Return as Koog message
         return listOf(
@@ -93,7 +64,7 @@ class LiteRTLLMClient(
         val executor =
             streamPromptExecutor
                 ?: throw UnsupportedOperationException(
-                    "LiteRT-LM client streaming is not configured. " +
+                    "Local Inference client streaming is not configured. " +
                         "Provide streamPromptExecutor in constructor.",
                 )
 
@@ -110,7 +81,7 @@ class LiteRTLLMClient(
                     ?: throw IllegalArgumentException("No user message in prompt")
             }
 
-        logger.d { "Executing streaming prompt with LiteRT-LM:\n$lastUserMessage" }
+        logger.d { "Executing streaming prompt with Local Inference:\n$lastUserMessage" }
 
         return executor(lastUserMessage)
             .onEach { logger.d { it } }
@@ -129,11 +100,11 @@ class LiteRTLLMClient(
         model: LLModel,
     ): ModerationResult =
         throw UnsupportedOperationException(
-            "LiteRT-LM client does not support moderation. " +
+            "Local Inference client does not support moderation. " +
                 "Implement content filtering in your application layer if needed.",
         )
 
-    override fun llmProvider(): LLMProvider = object : LLMProvider("litert-lm", "LiteRT-LM") {}
+    override fun llmProvider(): LLMProvider = object : LLMProvider("local-inference", "Local Inference") {}
 
     override fun close() {
         // No resources to clean up - client is stateless

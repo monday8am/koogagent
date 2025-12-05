@@ -1,5 +1,6 @@
-package com.monday8am.koogagent.inference.litert.tools
+package com.monday8am.koogagent.inference.litertlm
 
+import android.util.Log
 import co.touchlab.kermit.Logger
 import com.google.ai.edge.litertlm.Tool
 import com.google.ai.edge.litertlm.ToolParam
@@ -7,22 +8,12 @@ import com.monday8am.koogagent.data.WeatherProviderImpl
 import kotlinx.coroutines.runBlocking
 
 /**
- * Native LiteRT-LM tool set for weather operations.
- * Uses @Tool annotations for automatic schema generation.
- *
- * Fetches real weather data from Open-Meteo API.
+ * Native LiteRT-LM tool set
  */
-class NativeWeatherTools {
+class LiteRTLmTools {
     private val logger = Logger.withTag("NativeWeatherTools")
     private val weatherProvider = WeatherProviderImpl()
 
-    /**
-     * Gets current weather for a given location.
-     *
-     * @param latitude Latitude coordinate (-90 to 90)
-     * @param longitude Longitude coordinate (-180 to 180)
-     * @return String describing the weather condition
-     */
     @Tool(description = "Get current weather conditions for a specific location")
     fun getWeather(
         @ToolParam(description = "Latitude coordinate (between -90 and 90)")
@@ -46,4 +37,13 @@ class NativeWeatherTools {
                 "Failed to fetch weather: ${e.message}"
             }
         }
+}
+
+class NativeLocationTools {
+    @Tool(description = "No arguments required. Get the user's current location in latitude and longitude format")
+    fun get_location(): String {
+        val result = """{"latitude": 40.4168, "longitude": -3.7038}"""
+        Log.e("NativeLocationTools", "🔧 Returning: $result")
+        return result
+    }
 }
