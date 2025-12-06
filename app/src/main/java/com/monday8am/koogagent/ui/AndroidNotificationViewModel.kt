@@ -10,7 +10,6 @@ import com.monday8am.koogagent.data.ModelConfiguration
 import com.monday8am.koogagent.data.WeatherProvider
 import com.monday8am.koogagent.inference.InferenceEngineFactory
 import com.monday8am.presentation.notifications.DeviceContextProvider
-import com.monday8am.presentation.notifications.ModelDownloadManager
 import com.monday8am.presentation.notifications.NotificationEngine
 import com.monday8am.presentation.notifications.NotificationViewModel
 import com.monday8am.presentation.notifications.NotificationViewModelImpl
@@ -44,7 +43,6 @@ class NotificationViewModelFactory(
     private val weatherProvider: WeatherProvider,
     private val locationProvider: LocationProvider,
     private val deviceContextProvider: DeviceContextProvider,
-    private val modelManager: ModelDownloadManager,
     private val liteRtTools: List<Any>,
     private val mediaPipeTools: List<Tool>,
 ) : ViewModelProvider.Factory {
@@ -60,15 +58,19 @@ class NotificationViewModelFactory(
                     mediaPipeTools = mediaPipeTools,
                 )
 
+            // Construct model path using same logic as ModelDownloadManagerImpl
+            val modelDestinationPath = "${context.applicationContext.filesDir}/data/local/tmp/slm/"
+            val modelPath = "$modelDestinationPath${selectedModel.bundleFilename}"
+
             val impl =
                 NotificationViewModelImpl(
                     selectedModel = selectedModel,
+                    modelPath = modelPath,
                     inferenceEngine = inferenceEngine,
                     notificationEngine = notificationEngine,
                     weatherProvider = weatherProvider,
                     locationProvider = locationProvider,
                     deviceContextProvider = deviceContextProvider,
-                    modelManager = modelManager,
                 )
             return AndroidNotificationViewModel(impl, selectedModel) as T
         }

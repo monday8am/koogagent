@@ -29,7 +29,7 @@ fun ModelSelectorScreen(
     onNavigateToNotification: () -> Unit,
     viewModelFactory: ModelSelectorViewModelFactory,
     modifier: Modifier = Modifier,
-    viewModel: ModelSelectorViewModel = viewModel(factory = viewModelFactory),
+    viewModel: AndroidModelSelectorViewModel = viewModel(factory = viewModelFactory),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 

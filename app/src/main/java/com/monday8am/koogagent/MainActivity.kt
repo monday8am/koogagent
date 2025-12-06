@@ -49,7 +49,6 @@ class MainActivity : ComponentActivity() {
         val weatherProvider = WeatherProviderImpl()
         val locationProvider = MockLocationProvider() // <-- using Mock for now.
         val deviceContextProvider = DeviceContextProviderImpl(applicationContext)
-        val modelManager = ModelDownloadManagerImpl(applicationContext)
 
         NotificationViewModelFactory(
             context = applicationContext,
@@ -58,15 +57,16 @@ class MainActivity : ComponentActivity() {
             weatherProvider = weatherProvider,
             locationProvider = locationProvider,
             deviceContextProvider = deviceContextProvider,
-            modelManager = modelManager,
             liteRtTools = nativeTools,
             mediaPipeTools = mediaPipeTools,
         )
     }
 
     private val modelSelectorFactory: ModelSelectorViewModelFactory by lazy {
+        val modelDownloadManager = ModelDownloadManagerImpl(this.applicationContext)
         ModelSelectorViewModelFactory(
             availableModels = listOf(ModelCatalog.DEFAULT),
+            modelDownloadManager = modelDownloadManager,
         )
     }
 

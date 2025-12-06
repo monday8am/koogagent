@@ -101,29 +101,19 @@ private fun NotificationContent(
 
         LogPanel(textLog = log)
 
-        if (isModelReady) {
-            Button(
-                onClick = { onPressButton(UiAction.ShowNotification) },
-            ) {
-                Text(
-                    text = "Trigger Notification",
-                )
-            }
-            Button(
-                onClick = { onPressButton(UiAction.RunModelTests) },
-            ) {
-                Text(
-                    text = "Run tests",
-                )
-            }
-        } else {
-            Button(
-                onClick = { onPressButton(UiAction.DownloadModel) },
-            ) {
-                Text(
-                    text = "Download model",
-                )
-            }
+        Button(
+            onClick = { onPressButton(UiAction.ShowNotification) },
+        ) {
+            Text(
+                text = "Trigger Notification",
+            )
+        }
+        Button(
+            onClick = { onPressButton(UiAction.RunModelTests) },
+        ) {
+            Text(
+                text = "Run tests",
+            )
         }
 
         NotificationContextEditor(
