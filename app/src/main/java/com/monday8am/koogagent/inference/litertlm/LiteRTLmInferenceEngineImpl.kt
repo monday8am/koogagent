@@ -13,9 +13,6 @@ import com.google.ai.edge.litertlm.SamplerConfig
 import com.monday8am.agent.core.LocalInferenceEngine
 import com.monday8am.koogagent.data.HardwareBackend
 import com.monday8am.koogagent.data.ModelConfiguration
-import java.io.File
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.InternalCoroutinesApi
@@ -29,6 +26,9 @@ import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import java.io.File
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 private data class LlmModelInstance(
     val engine: Engine,

@@ -160,7 +160,7 @@ class ModelSelectorViewModelImpl(
     private fun processAction(action: UiAction): Flow<Pair<UiAction, ActionState>> {
         val actionFlow: Flow<Any> =
             when (action) {
-                is UiAction.Initialize ->
+                is UiAction.Initialize -> {
                     flow {
                         val modelsWithStatus =
                             availableModels.map { config ->
@@ -173,25 +173,41 @@ class ModelSelectorViewModelImpl(
                             }
                         emit(modelsWithStatus)
                     }
-                is UiAction.DownloadModel -> flowOf(action.modelId)
-                is UiAction.SelectModel -> flowOf(action.modelId)
+                }
+
+                is UiAction.DownloadModel -> {
+                    flowOf(action.modelId)
+                }
+
+                is UiAction.SelectModel -> {
+                    flowOf(action.modelId)
+                }
+
                 is UiAction.ProcessNextDownload -> {
                     val model = availableModels.first { it.modelId == action.modelId }
-                    modelDownloadManager.downloadModel(model.modelId, model.downloadUrl, model.bundleFilename)
+                    modelDownloadManager
+                        .downloadModel(model.modelId, model.downloadUrl, model.bundleFilename)
                         .map { status -> UiAction.DownloadProgress(action.modelId, status) }
                 }
-                is UiAction.CancelCurrentDownload -> flow { emit(modelDownloadManager.cancelDownload()) }
-                is UiAction.DownloadProgress -> flowOf(action)
+
+                is UiAction.CancelCurrentDownload -> {
+                    flow { emit(modelDownloadManager.cancelDownload()) }
+                }
+
+                is UiAction.DownloadProgress -> {
+                    flowOf(action)
+                }
             }
 
         return actionFlow
             .map<Any, ActionState> { result -> ActionState.Success(result) }
             .onStart {
-                if (action is UiAction.DownloadModel || action is UiAction.ProcessNextDownload || action is UiAction.CancelCurrentDownload) {
+                if (action is UiAction.DownloadModel || action is UiAction.ProcessNextDownload ||
+                    action is UiAction.CancelCurrentDownload
+                ) {
                     emit(ActionState.Loading)
                 }
-            }
-            .catch { throwable -> emit(ActionState.Error(throwable)) }
+            }.catch { throwable -> emit(ActionState.Error(throwable)) }
             .map { actionState -> action to actionState }
     }
 
@@ -217,14 +233,21 @@ class ModelSelectorViewModelImpl(
             is ActionState.Error -> state.copy(statusMessage = "Error: ${actionState.throwable.message ?: "Unknown error"}")
         }
 
-    private fun reduceLoading(state: UiState, action: UiAction): UiState =
+    private fun reduceLoading(
+        state: UiState,
+        action: UiAction,
+    ): UiState =
         when (action) {
             is UiAction.ProcessNextDownload -> state.copy(statusMessage = "Starting download...")
             is UiAction.CancelCurrentDownload -> state.copy(statusMessage = "Cancelling downloads...")
             else -> state
         }
 
-    private fun reduceSuccess(state: UiState, action: UiAction, actionState: ActionState.Success): UiState =
+    private fun reduceSuccess(
+        state: UiState,
+        action: UiAction,
+        actionState: ActionState.Success,
+    ): UiState =
         when (action) {
             is UiAction.Initialize -> {
                 @Suppress("UNCHECKED_CAST")
@@ -234,6 +257,7 @@ class ModelSelectorViewModelImpl(
                     statusMessage = "Found ${models.count { it.isDownloaded }} of ${models.size} models downloaded",
                 )
             }
+
             is UiAction.DownloadModel -> {
                 val modelId = actionState.result as String
                 if (state.currentDownload != null) {
@@ -252,7 +276,11 @@ class ModelSelectorViewModelImpl(
                     )
                 }
             }
-            is UiAction.DownloadProgress -> reduceDownloadProgress(state, action)
+
+            is UiAction.DownloadProgress -> {
+                reduceDownloadProgress(state, action)
+            }
+
             is UiAction.SelectModel -> {
                 val modelId = actionState.result as String
                 val selectedModelName = availableModels.find { it.modelId == modelId }?.displayName
@@ -261,6 +289,7 @@ class ModelSelectorViewModelImpl(
                     statusMessage = "Selected $selectedModelName",
                 )
             }
+
             is UiAction.CancelCurrentDownload -> {
                 state.copy(
                     currentDownload = null,
@@ -268,10 +297,16 @@ class ModelSelectorViewModelImpl(
                     statusMessage = "Downloads cancelled",
                 )
             }
-            else -> state
+
+            else -> {
+                state
+            }
         }
 
-    private fun reduceDownloadProgress(state: UiState, action: UiAction.DownloadProgress): UiState =
+    private fun reduceDownloadProgress(
+        state: UiState,
+        action: UiAction.DownloadProgress,
+    ): UiState =
         when (val status = action.status) {
             is ModelDownloadManager.Status.InProgress -> {
                 val progress = status.progress ?: 0f
@@ -281,20 +316,24 @@ class ModelSelectorViewModelImpl(
                     statusMessage = "Downloading ${progress.toInt()}%",
                 )
             }
+
             is ModelDownloadManager.Status.Completed -> {
-                val updatedModels = state.models.map {
-                    if (it.config.modelId == action.modelId) {
-                        it.copy(isDownloaded = true, downloadStatus = DownloadStatus.Completed)
-                    } else {
-                        it
+                val updatedModels =
+                    state.models.map {
+                        if (it.config.modelId == action.modelId) {
+                            it.copy(isDownloaded = true, downloadStatus = DownloadStatus.Completed)
+                        } else {
+                            it
+                        }
                     }
-                }
                 processNextInQueue(state.copy(models = updatedModels), "Download complete")
             }
+
             is ModelDownloadManager.Status.Failed -> {
                 val updatedModels = state.updateModelStatus(action.modelId, DownloadStatus.Failed(status.message))
                 processNextInQueue(state.copy(models = updatedModels), "Download failed: ${status.message}")
             }
+
             is ModelDownloadManager.Status.Cancelled -> {
                 state.copy(
                     models = state.updateModelStatus(action.modelId, DownloadStatus.NotStarted),
@@ -303,10 +342,16 @@ class ModelSelectorViewModelImpl(
                     statusMessage = "Download cancelled",
                 )
             }
-            else -> state
+
+            else -> {
+                state
+            }
         }
 
-    private fun processNextInQueue(state: UiState, baseStatusMessage: String): UiState {
+    private fun processNextInQueue(
+        state: UiState,
+        baseStatusMessage: String,
+    ): UiState {
         val nextInQueue = state.queuedDownloads.firstOrNull()
         if (nextInQueue != null) {
             onUiAction(UiAction.ProcessNextDownload(nextInQueue))
@@ -318,13 +363,15 @@ class ModelSelectorViewModelImpl(
         )
     }
 
-    private fun UiState.updateModelStatus(modelId: String, downloadStatus: DownloadStatus): List<ModelInfo> {
-        return this.models.map { modelInfo ->
+    private fun UiState.updateModelStatus(
+        modelId: String,
+        downloadStatus: DownloadStatus,
+    ): List<ModelInfo> =
+        this.models.map { modelInfo ->
             if (modelInfo.config.modelId == modelId) {
                 modelInfo.copy(downloadStatus = downloadStatus)
             } else {
                 modelInfo
             }
         }
-    }
 }

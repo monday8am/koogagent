@@ -14,9 +14,6 @@ import com.google.mediapipe.tasks.genai.llminference.LlmInference.Backend
 import com.monday8am.agent.core.LocalInferenceEngine
 import com.monday8am.koogagent.data.HardwareBackend
 import com.monday8am.koogagent.data.ModelConfiguration
-import java.io.File
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -25,7 +22,9 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
-
+import java.io.File
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 private const val SYSTEM_PROMPT = "You are Hammer, a helpful AI assistant."
 private const val SYSTEM_ROLE = "system"
@@ -157,16 +156,28 @@ private suspend fun ChatSession.sendMessageBlocking(message: String): String =
                     .build()
 
             val response = this.sendMessage(userContent)
-            val part = response.candidatesList.firstOrNull()?.content?.partsList?.firstOrNull()
-            val resultText = when {
-                part?.hasText() == true -> part.text
-                part?.hasFunctionCall() == true -> {
-                    // In a full implementation, this would execute the tool and send back results
-                    val functionCall = part.functionCall
-                    "Function call detected: ${functionCall.name} with args: ${functionCall.args}"
+            val part =
+                response.candidatesList
+                    .firstOrNull()
+                    ?.content
+                    ?.partsList
+                    ?.firstOrNull()
+            val resultText =
+                when {
+                    part?.hasText() == true -> {
+                        part.text
+                    }
+
+                    part?.hasFunctionCall() == true -> {
+                        // In a full implementation, this would execute the tool and send back results
+                        val functionCall = part.functionCall
+                        "Function call detected: ${functionCall.name} with args: ${functionCall.args}"
+                    }
+
+                    else -> {
+                        ""
+                    }
                 }
-                else -> ""
-            }
             cont.resume(resultText)
         } catch (e: Exception) {
             cont.resumeWithException(e)
@@ -176,18 +187,20 @@ private suspend fun ChatSession.sendMessageBlocking(message: String): String =
 private fun createLlmInference(
     context: Context,
     modelPath: String,
-    modelConfig: ModelConfiguration
+    modelConfig: ModelConfiguration,
 ): LlmInference {
     if (!File(modelPath).exists()) {
         throw IllegalStateException("Model file not found at path: $modelPath")
     }
-    val backend = if (modelConfig.hardwareAcceleration == HardwareBackend.GPU_SUPPORTED){
-        Backend.GPU
-    } else {
-        Backend.CPU
-    }
+    val backend =
+        if (modelConfig.hardwareAcceleration == HardwareBackend.GPU_SUPPORTED) {
+            Backend.GPU
+        } else {
+            Backend.CPU
+        }
     val llmInferenceOptions =
-        LlmInference.LlmInferenceOptions.builder()
+        LlmInference.LlmInferenceOptions
+            .builder()
             .setModelPath(modelPath)
             .setMaxTokens(modelConfig.defaultMaxOutputTokens)
             .setPreferredBackend(backend)
@@ -196,9 +209,11 @@ private fun createLlmInference(
 }
 
 private fun createSystemInstruction(): Content =
-    Content.newBuilder()
+    Content
+        .newBuilder()
         .setRole(SYSTEM_ROLE)
         .addParts(
-            Part.newBuilder()
-                .setText(SYSTEM_PROMPT)
+            Part
+                .newBuilder()
+                .setText(SYSTEM_PROMPT),
         ).build()

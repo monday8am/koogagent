@@ -5,7 +5,6 @@ package com.monday8am.koogagent.data
  * This serves as the "source of truth" for available models in the app.
  */
 object ModelCatalog {
-
     val QWEN3_0_6B =
         ModelConfiguration(
             displayName = "Qwen3 0.6B (LiteRT, 4K)",

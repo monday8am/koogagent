@@ -149,7 +149,9 @@ private fun ModelCard(
 ) {
     val backgroundColor =
         when {
-            modelInfo.isDownloaded -> Color(0xFF2D5016) // Dark green
+            modelInfo.isDownloaded -> Color(0xFF2D5016)
+
+            // Dark green
             else -> Color(0xFF424242) // Dark grey
         }
 
