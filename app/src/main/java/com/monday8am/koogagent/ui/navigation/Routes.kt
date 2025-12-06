@@ -7,5 +7,7 @@ sealed interface Route {
     data object ModelSelector : Route
 
     @Serializable
-    data object Notification : Route
+    data class Notification(
+        val modelId: String,
+    ) : Route
 }

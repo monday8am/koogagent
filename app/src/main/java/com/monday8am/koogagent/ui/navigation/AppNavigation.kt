@@ -6,6 +6,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
 import com.monday8am.koogagent.ui.NotificationViewModelFactory
 import com.monday8am.koogagent.ui.screens.modelselector.ModelSelectorScreen
 import com.monday8am.koogagent.ui.screens.modelselector.ModelSelectorViewModelFactory
@@ -14,7 +15,7 @@ import com.monday8am.koogagent.ui.screens.notification.NotificationScreen
 @Composable
 fun AppNavigation(
     modelSelectorFactory: ModelSelectorViewModelFactory,
-    notificationFactory: NotificationViewModelFactory,
+    notificationFactoryProvider: (String) -> NotificationViewModelFactory,
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
 ) {
@@ -25,16 +26,19 @@ fun AppNavigation(
     ) {
         composable<Route.ModelSelector> {
             ModelSelectorScreen(
-                onNavigateToNotification = {
-                    navController.navigate(Route.Notification)
+                onNavigateToNotification = { modelId ->
+                    navController.navigate(Route.Notification(modelId))
                 },
                 viewModelFactory = modelSelectorFactory,
             )
         }
 
-        composable<Route.Notification> {
+        composable<Route.Notification> { backStackEntry ->
+            val args = backStackEntry.toRoute<Route.Notification>()
+            val factory = notificationFactoryProvider(args.modelId)
+
             NotificationScreen(
-                viewModelFactory = notificationFactory,
+                viewModelFactory = factory,
             )
         }
     }

@@ -151,74 +151,49 @@ class ModelSelectorViewModelImpl(
     override val uiState: Flow<UiState> =
         userActions
             .onStart { emit(UiAction.Initialize) }
-            .flatMapConcat { action ->
-                val actionFlow =
-                    when (action) {
-                        UiAction.Initialize -> {
-                            flow {
-                                val modelsWithStatus =
-                                    availableModels.map { config ->
-                                        val isDownloaded = modelDownloadManager.modelExists(config.bundleFilename)
-                                        ModelInfo(
-                                            config = config,
-                                            isDownloaded = isDownloaded,
-                                            downloadStatus =
-                                                if (isDownloaded) {
-                                                    DownloadStatus.Completed
-                                                } else {
-                                                    DownloadStatus.NotStarted
-                                                },
-                                        )
-                                    }
-                                emit(modelsWithStatus)
-                            }
-                        }
-
-                        is UiAction.DownloadModel -> {
-                            flowOf(value = action.modelId)
-                        }
-
-                        is UiAction.ProcessNextDownload -> {
-                            val model = availableModels.find { it.id == action.modelId }!!
-
-                            modelDownloadManager
-                                .downloadModel(
-                                    modelId = model.id,
-                                    downloadUrl = model.downloadUrl,
-                                    bundleFilename = model.bundleFilename,
-                                ).map { status ->
-                                    UiAction.DownloadProgress(action.modelId, status)
-                                }
-                        }
-
-                        is UiAction.SelectModel -> {
-                            flowOf(value = action.modelId)
-                        }
-
-                        is UiAction.CancelCurrentDownload -> {
-                            flow {
-                                modelDownloadManager.cancelDownload()
-                                emit(Unit)
-                            }
-                        }
-
-                        is UiAction.DownloadProgress -> {
-                            flowOf(value = action)
-                        }
-                    }
-
-                actionFlow
-                    .map<Any, ActionState> { result -> ActionState.Success(result) }
-                    .onStart {
-                        if (action is UiAction.DownloadModel || action is UiAction.ProcessNextDownload || action is UiAction.CancelCurrentDownload) {
-                            emit(ActionState.Loading)
-                        }
-                    }.catch { throwable -> emit(ActionState.Error(throwable)) }
-                    .map { actionState -> action to actionState }
-            }.flowOn(Dispatchers.IO)
+            .flatMapConcat { action -> processAction(action) }
+            .flowOn(Dispatchers.IO)
             .scan(UiState()) { state, (action, actionState) ->
                 reduce(state, action, actionState)
             }.distinctUntilChanged()
+
+    private fun processAction(action: UiAction): Flow<Pair<UiAction, ActionState>> {
+        val actionFlow: Flow<Any> =
+            when (action) {
+                is UiAction.Initialize ->
+                    flow {
+                        val modelsWithStatus =
+                            availableModels.map { config ->
+                                val isDownloaded = modelDownloadManager.modelExists(config.bundleFilename)
+                                ModelInfo(
+                                    config = config,
+                                    isDownloaded = isDownloaded,
+                                    downloadStatus = if (isDownloaded) DownloadStatus.Completed else DownloadStatus.NotStarted,
+                                )
+                            }
+                        emit(modelsWithStatus)
+                    }
+                is UiAction.DownloadModel -> flowOf(action.modelId)
+                is UiAction.SelectModel -> flowOf(action.modelId)
+                is UiAction.ProcessNextDownload -> {
+                    val model = availableModels.first { it.modelId == action.modelId }
+                    modelDownloadManager.downloadModel(model.modelId, model.downloadUrl, model.bundleFilename)
+                        .map { status -> UiAction.DownloadProgress(action.modelId, status) }
+                }
+                is UiAction.CancelCurrentDownload -> flow { emit(modelDownloadManager.cancelDownload()) }
+                is UiAction.DownloadProgress -> flowOf(action)
+            }
+
+        return actionFlow
+            .map<Any, ActionState> { result -> ActionState.Success(result) }
+            .onStart {
+                if (action is UiAction.DownloadModel || action is UiAction.ProcessNextDownload || action is UiAction.CancelCurrentDownload) {
+                    emit(ActionState.Loading)
+                }
+            }
+            .catch { throwable -> emit(ActionState.Error(throwable)) }
+            .map { actionState -> action to actionState }
+    }
 
     override fun onUiAction(uiAction: UiAction) {
         scope.launch {
@@ -231,189 +206,125 @@ class ModelSelectorViewModelImpl(
         scope.cancel()
     }
 
-    @Suppress("CyclomaticComplexMethod")
     internal fun reduce(
         state: UiState,
         action: UiAction,
         actionState: ActionState,
     ): UiState =
         when (actionState) {
-            is ActionState.Loading -> {
-                when (action) {
-                    is UiAction.ProcessNextDownload -> state.copy(statusMessage = "Starting download...")
-                    is UiAction.CancelCurrentDownload -> state.copy(statusMessage = "Cancelling downloads...")
-                    else -> state
+            is ActionState.Loading -> reduceLoading(state, action)
+            is ActionState.Success -> reduceSuccess(state, action, actionState)
+            is ActionState.Error -> state.copy(statusMessage = "Error: ${actionState.throwable.message ?: "Unknown error"}")
+        }
+
+    private fun reduceLoading(state: UiState, action: UiAction): UiState =
+        when (action) {
+            is UiAction.ProcessNextDownload -> state.copy(statusMessage = "Starting download...")
+            is UiAction.CancelCurrentDownload -> state.copy(statusMessage = "Cancelling downloads...")
+            else -> state
+        }
+
+    private fun reduceSuccess(state: UiState, action: UiAction, actionState: ActionState.Success): UiState =
+        when (action) {
+            is UiAction.Initialize -> {
+                @Suppress("UNCHECKED_CAST")
+                val models = actionState.result as List<ModelInfo>
+                state.copy(
+                    models = models,
+                    statusMessage = "Found ${models.count { it.isDownloaded }} of ${models.size} models downloaded",
+                )
+            }
+            is UiAction.DownloadModel -> {
+                val modelId = actionState.result as String
+                if (state.currentDownload != null) {
+                    // Queue download
+                    state.copy(
+                        queuedDownloads = state.queuedDownloads + modelId,
+                        models = state.updateModelStatus(modelId, DownloadStatus.Queued),
+                        statusMessage = "Download queued",
+                    )
+                } else {
+                    // Start download immediately
+                    onUiAction(UiAction.ProcessNextDownload(modelId))
+                    state.copy(
+                        currentDownload = DownloadInfo(modelId = modelId, progress = 0f),
+                        statusMessage = "Starting download...",
+                    )
                 }
             }
-
-            is ActionState.Success -> {
-                when (action) {
-                    is UiAction.Initialize -> {
-                        @Suppress("UNCHECKED_CAST")
-                        val models = actionState.result as List<ModelInfo>
-                        state.copy(
-                            models = models,
-                            statusMessage = "Found ${models.count { it.isDownloaded }} of ${models.size} models downloaded",
-                        )
-                    }
-
-                    is UiAction.DownloadModel -> {
-                        val modelId = actionState.result as String
-
-                        // If currently downloading, add to queue
-                        if (state.currentDownload != null) {
-                            state.copy(
-                                queuedDownloads = state.queuedDownloads + modelId,
-                                models =
-                                    state.models.map { modelInfo ->
-                                        if (modelInfo.config.id == modelId) {
-                                            modelInfo.copy(downloadStatus = DownloadStatus.Queued)
-                                        } else {
-                                            modelInfo
-                                        }
-                                    },
-                                statusMessage = "Download queued",
-                            )
-                        } else {
-                            // Start download immediately
-                            onUiAction(UiAction.ProcessNextDownload(modelId))
-                            state.copy(
-                                currentDownload = DownloadInfo(modelId = modelId, progress = 0f),
-                                statusMessage = "Starting download...",
-                            )
-                        }
-                    }
-
-                    is UiAction.DownloadProgress -> {
-                        when (val status = action.status) {
-                            is ModelDownloadManager.Status.InProgress -> {
-                                state.copy(
-                                    currentDownload = DownloadInfo(action.modelId, status.progress ?: 0f),
-                                    models =
-                                        state.models.map { modelInfo ->
-                                            if (modelInfo.config.id == action.modelId) {
-                                                modelInfo.copy(
-                                                    downloadStatus = DownloadStatus.Downloading(status.progress ?: 0f),
-                                                )
-                                            } else {
-                                                modelInfo
-                                            }
-                                        },
-                                    statusMessage = "Downloading ${status.progress?.toInt() ?: 0}%",
-                                )
-                            }
-
-                            is ModelDownloadManager.Status.Completed -> {
-                                // Download complete! Mark as downloaded and process queue
-                                val nextInQueue = state.queuedDownloads.firstOrNull()
-
-                                if (nextInQueue != null) {
-                                    // Start next download
-                                    onUiAction(UiAction.ProcessNextDownload(nextInQueue))
-                                }
-
-                                state.copy(
-                                    models =
-                                        state.models.map { modelInfo ->
-                                            if (modelInfo.config.id == action.modelId) {
-                                                modelInfo.copy(
-                                                    isDownloaded = true,
-                                                    downloadStatus = DownloadStatus.Completed,
-                                                )
-                                            } else {
-                                                modelInfo
-                                            }
-                                        },
-                                    currentDownload =
-                                        if (nextInQueue != null) {
-                                            DownloadInfo(nextInQueue, 0f)
-                                        } else {
-                                            null
-                                        },
-                                    queuedDownloads = state.queuedDownloads.drop(1),
-                                    statusMessage =
-                                        if (nextInQueue != null) {
-                                            "Download complete! Starting next..."
-                                        } else {
-                                            "Download complete!"
-                                        },
-                                )
-                            }
-
-                            is ModelDownloadManager.Status.Failed -> {
-                                val nextInQueue = state.queuedDownloads.firstOrNull()
-
-                                if (nextInQueue != null) {
-                                    onUiAction(UiAction.ProcessNextDownload(nextInQueue))
-                                }
-
-                                state.copy(
-                                    models =
-                                        state.models.map { modelInfo ->
-                                            if (modelInfo.config.id == action.modelId) {
-                                                modelInfo.copy(
-                                                    downloadStatus = DownloadStatus.Failed(status.message),
-                                                )
-                                            } else {
-                                                modelInfo
-                                            }
-                                        },
-                                    currentDownload =
-                                        if (nextInQueue != null) {
-                                            DownloadInfo(nextInQueue, 0f)
-                                        } else {
-                                            null
-                                        },
-                                    queuedDownloads = state.queuedDownloads.drop(1),
-                                    statusMessage = "Download failed: ${status.message}",
-                                )
-                            }
-
-                            is ModelDownloadManager.Status.Cancelled -> {
-                                state.copy(
-                                    models =
-                                        state.models.map { modelInfo ->
-                                            if (modelInfo.config.id == action.modelId) {
-                                                modelInfo.copy(
-                                                    downloadStatus = DownloadStatus.NotStarted,
-                                                )
-                                            } else {
-                                                modelInfo
-                                            }
-                                        },
-                                    currentDownload = null,
-                                    queuedDownloads = emptyList(), // Clear queue on cancel
-                                    statusMessage = "Download cancelled",
-                                )
-                            }
-
-                            else -> state
-                        }
-                    }
-
-                    is UiAction.SelectModel -> {
-                        val modelId = actionState.result as String
-                        val selectedModelName = availableModels.find { it.id == modelId }?.displayName
-                        state.copy(
-                            selectedModelId = modelId,
-                            statusMessage = "Selected $selectedModelName",
-                        )
-                    }
-
-                    is UiAction.CancelCurrentDownload -> {
-                        state.copy(
-                            currentDownload = null,
-                            queuedDownloads = emptyList(),
-                            statusMessage = "Downloads cancelled",
-                        )
-                    }
-
-                    else -> state
-                }
+            is UiAction.DownloadProgress -> reduceDownloadProgress(state, action)
+            is UiAction.SelectModel -> {
+                val modelId = actionState.result as String
+                val selectedModelName = availableModels.find { it.modelId == modelId }?.displayName
+                state.copy(
+                    selectedModelId = modelId,
+                    statusMessage = "Selected $selectedModelName",
+                )
             }
+            is UiAction.CancelCurrentDownload -> {
+                state.copy(
+                    currentDownload = null,
+                    queuedDownloads = emptyList(),
+                    statusMessage = "Downloads cancelled",
+                )
+            }
+            else -> state
+        }
 
-            is ActionState.Error -> {
-                state.copy(statusMessage = "Error: ${actionState.throwable.message ?: "Unknown error"}")
+    private fun reduceDownloadProgress(state: UiState, action: UiAction.DownloadProgress): UiState =
+        when (val status = action.status) {
+            is ModelDownloadManager.Status.InProgress -> {
+                val progress = status.progress ?: 0f
+                state.copy(
+                    currentDownload = DownloadInfo(action.modelId, progress),
+                    models = state.updateModelStatus(action.modelId, DownloadStatus.Downloading(progress)),
+                    statusMessage = "Downloading ${progress.toInt()}%",
+                )
+            }
+            is ModelDownloadManager.Status.Completed -> {
+                val updatedModels = state.models.map {
+                    if (it.config.modelId == action.modelId) {
+                        it.copy(isDownloaded = true, downloadStatus = DownloadStatus.Completed)
+                    } else {
+                        it
+                    }
+                }
+                processNextInQueue(state.copy(models = updatedModels), "Download complete")
+            }
+            is ModelDownloadManager.Status.Failed -> {
+                val updatedModels = state.updateModelStatus(action.modelId, DownloadStatus.Failed(status.message))
+                processNextInQueue(state.copy(models = updatedModels), "Download failed: ${status.message}")
+            }
+            is ModelDownloadManager.Status.Cancelled -> {
+                state.copy(
+                    models = state.updateModelStatus(action.modelId, DownloadStatus.NotStarted),
+                    currentDownload = null,
+                    queuedDownloads = emptyList(), // Clear queue on cancel
+                    statusMessage = "Download cancelled",
+                )
+            }
+            else -> state
+        }
+
+    private fun processNextInQueue(state: UiState, baseStatusMessage: String): UiState {
+        val nextInQueue = state.queuedDownloads.firstOrNull()
+        if (nextInQueue != null) {
+            onUiAction(UiAction.ProcessNextDownload(nextInQueue))
+        }
+        return state.copy(
+            currentDownload = nextInQueue?.let { DownloadInfo(it, 0f) },
+            queuedDownloads = state.queuedDownloads.drop(1),
+            statusMessage = if (nextInQueue != null) "$baseStatusMessage! Starting next..." else "$baseStatusMessage!",
+        )
+    }
+
+    private fun UiState.updateModelStatus(modelId: String, downloadStatus: DownloadStatus): List<ModelInfo> {
+        return this.models.map { modelInfo ->
+            if (modelInfo.config.modelId == modelId) {
+                modelInfo.copy(downloadStatus = downloadStatus)
+            } else {
+                modelInfo
             }
         }
+    }
 }

@@ -15,7 +15,7 @@ enum class HardwareBackend {
  * Complete configuration for an on-device language model.
  * This is platform-agnostic metadata that describes what the model is and how to obtain it.
  *
- * @property id Unique identifier (e.g., "qwen3-0.6b-litert-q8-4k")
+ * @property modelId Unique identifier (e.g., "qwen3-0.6b-litert-q8-4k")
  * @property displayName Human-readable name (e.g., "Qwen3 0.6B (LiteRT, 4K context)")
  * @property modelFamily Base model family (e.g., "qwen3", "gemma3", "hammer2")
  * @property parameterCount Model parameters in billions (e.g., 0.6, 1.0, 0.5)
@@ -31,7 +31,6 @@ enum class HardwareBackend {
  * @property defaultMaxOutputTokens Default max tokens to generate
  */
 data class ModelConfiguration(
-    val id: String,
     val displayName: String,
     val modelFamily: String,
     val parameterCount: Float,

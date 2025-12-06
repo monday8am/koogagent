@@ -8,7 +8,6 @@ object ModelCatalog {
 
     val QWEN3_0_6B =
         ModelConfiguration(
-            id = "qwen3-0.6b-litert-q8-4k",
             displayName = "Qwen3 0.6B (LiteRT, 4K)",
             modelFamily = "qwen3",
             parameterCount = 0.6f,
@@ -25,7 +24,6 @@ object ModelCatalog {
 
     val GEMMA3_1B =
         ModelConfiguration(
-            id = "gemma3-1b",
             displayName = "Gemma 3 1B (LiteRT, 4K)",
             modelFamily = "gemma3",
             parameterCount = 1.0f,
@@ -42,7 +40,6 @@ object ModelCatalog {
 
     val HAMMER2_1_0_5B =
         ModelConfiguration(
-            id = "hammer",
             displayName = "Hammer 2.1 0.5B (Mediapipe, 2K)",
             modelFamily = "hammer2",
             parameterCount = 0.5f,
@@ -61,7 +58,6 @@ object ModelCatalog {
 
     val HAMMER2_1_1_5B =
         ModelConfiguration(
-            id = "hammer",
             displayName = "Hammer 2.1 1.5B (Mediapipe, 2K)",
             modelFamily = "hammer2",
             parameterCount = 0.5f,
@@ -88,5 +84,5 @@ object ModelCatalog {
 
     val DEFAULT = HAMMER2_1_0_5B
 
-    fun findById(id: String): ModelConfiguration? = ALL_MODELS.find { it.id == id }
+    fun findById(id: String): ModelConfiguration? = ALL_MODELS.find { it.modelId == id }
 }

@@ -27,8 +27,10 @@ class MainActivity : ComponentActivity() {
         NotificationEngineImpl(this.applicationContext)
     }
 
-    private val viewModelFactory: NotificationViewModelFactory by lazy {
+    // Factory provider that creates NotificationViewModelFactory for a specific modelId
+    private fun createNotificationFactory(modelId: String): NotificationViewModelFactory {
         val applicationContext = this.applicationContext
+        val selectedModel = ModelCatalog.findById(modelId) ?: ModelCatalog.DEFAULT
 
         // Native LiteRT-LM tools with @Tool annotations
         // These are passed to ConversationConfig for native tool calling
@@ -42,15 +44,12 @@ class MainActivity : ComponentActivity() {
         // These use FunctionDeclaration format for MediaPipe inference
         val mediaPipeTools = listOf(MediaPipeTools.createAllTools())
 
-        // Select model at startup (could be configurable in future)
-        val selectedModel = ModelCatalog.DEFAULT
-
         val notificationEngine = notificationEngine
         val weatherProvider = WeatherProviderImpl()
         val locationProvider = MockLocationProvider() // <-- using Mock for now.
         val deviceContextProvider = DeviceContextProviderImpl(applicationContext)
 
-        NotificationViewModelFactory(
+        return NotificationViewModelFactory(
             context = applicationContext,
             selectedModel = selectedModel,
             notificationEngine = notificationEngine,
@@ -65,7 +64,7 @@ class MainActivity : ComponentActivity() {
     private val modelSelectorFactory: ModelSelectorViewModelFactory by lazy {
         val modelDownloadManager = ModelDownloadManagerImpl(this.applicationContext)
         ModelSelectorViewModelFactory(
-            availableModels = listOf(ModelCatalog.DEFAULT),
+            availableModels = ModelCatalog.ALL_MODELS,
             modelDownloadManager = modelDownloadManager,
         )
     }
@@ -82,7 +81,7 @@ class MainActivity : ComponentActivity() {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     AppNavigation(
                         modelSelectorFactory = modelSelectorFactory,
-                        notificationFactory = viewModelFactory,
+                        notificationFactoryProvider = ::createNotificationFactory,
                         modifier = Modifier.padding(innerPadding),
                     )
                 }
