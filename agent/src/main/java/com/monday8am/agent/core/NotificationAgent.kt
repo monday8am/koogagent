@@ -16,7 +16,7 @@ import com.monday8am.agent.core.ToolFormat.REACT
 import com.monday8am.agent.core.ToolFormat.SIMPLE
 import com.monday8am.agent.core.ToolFormat.SLIM
 import com.monday8am.agent.local.HermesLLMClient
-import com.monday8am.agent.local.LiteRTLLMClient
+import com.monday8am.agent.local.LocalInferenceLLMClient
 import com.monday8am.agent.local.OpenApiLLMClient
 import com.monday8am.agent.local.ReActLLMClient
 import com.monday8am.agent.local.SimpleLLMClient
@@ -94,8 +94,8 @@ class NotificationAgent private constructor(
                             LLMCapability.Tools,
                             LLMCapability.Schema.JSON.Standard,
                         ),
-                    maxOutputTokens = DEFAULT_MAX_OUTPUT_TOKENS.toLong(),
-                    contextLength = DEFAULT_CONTEXT_LENGTH.toLong(),
+                    maxOutputTokens = 1024L, // Metadata only, actual value from ModelConfiguration
+                    contextLength = 4096L, // Metadata only, actual value from ModelConfiguration
                 ),
             toolFormat = toolFormat,
         )
@@ -200,7 +200,7 @@ class NotificationAgent private constructor(
             }
 
             NATIVE -> {
-                LiteRTLLMClient(
+                LocalInferenceLLMClient(
                     promptExecutor = executor,
                 )
             }

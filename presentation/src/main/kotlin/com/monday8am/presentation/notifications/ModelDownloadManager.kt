@@ -22,13 +22,14 @@ interface ModelDownloadManager {
         data object Cancelled : Status
     }
 
-    fun getModelPath(modelName: String): String
+    fun getModelPath(bundleFilename: String): String
 
-    suspend fun modelExists(modelName: String): Boolean
+    suspend fun modelExists(bundleFilename: String): Boolean
 
     fun downloadModel(
-        url: String,
-        modelName: String,
+        modelId: String,
+        downloadUrl: String,
+        bundleFilename: String,
     ): Flow<Status>
 
     fun cancelDownload()

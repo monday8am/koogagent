@@ -6,7 +6,6 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.workDataOf
-import co.touchlab.kermit.Logger
 import com.monday8am.presentation.notifications.ModelDownloadManager
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -26,19 +25,20 @@ class ModelDownloadManagerImpl(
 ) : ModelDownloadManager {
     val modelDestinationPath = "${context.applicationContext.filesDir}/data/local/tmp/slm/"
 
-    override fun getModelPath(modelName: String) = "$modelDestinationPath$modelName"
+    override fun getModelPath(bundleFilename: String) = "$modelDestinationPath$bundleFilename"
 
-    override suspend fun modelExists(modelName: String) =
+    override suspend fun modelExists(bundleFilename: String) =
         withContext(dispatcher) {
-            File(getModelPath(modelName)).exists()
+            File(getModelPath(bundleFilename)).exists()
         }
 
     override fun downloadModel(
-        url: String,
-        modelName: String,
+        modelId: String,
+        downloadUrl: String,
+        bundleFilename: String,
     ): Flow<ModelDownloadManager.Status> =
         channelFlow {
-            val destinationPath = "$modelDestinationPath$modelName"
+            val destinationPath = getModelPath(bundleFilename)
             val destinationFile = File(destinationPath)
 
             if (destinationFile.exists()) {
@@ -47,7 +47,8 @@ class ModelDownloadManagerImpl(
                 return@channelFlow
             }
 
-            val existingWork = workManager.getWorkInfosForUniqueWork(WORK_NAME).get()
+            val workName = "model-download-$modelId"
+            val existingWork = workManager.getWorkInfosForUniqueWork(workName).get()
             if (existingWork.any { it.state == WorkInfo.State.RUNNING || it.state == WorkInfo.State.ENQUEUED }) {
                 // Observe the existing work instead of creating new work
                 val existingWorkId = existingWork.first { it.state.isFinished.not() }.id
@@ -74,13 +75,13 @@ class ModelDownloadManagerImpl(
                 OneTimeWorkRequestBuilder<DownloadUnzipWorker>()
                     .setInputData(
                         workDataOf(
-                            DownloadUnzipWorker.KEY_URL to url,
+                            DownloadUnzipWorker.KEY_URL to downloadUrl,
                             DownloadUnzipWorker.KEY_DESTINATION_PATH to destinationFile.absolutePath,
                         ),
                     ).addTag(WORK_TAG)
                     .build()
 
-            workManager.enqueueUniqueWork(WORK_NAME, ExistingWorkPolicy.KEEP, workRequest)
+            workManager.enqueueUniqueWork(workName, ExistingWorkPolicy.KEEP, workRequest)
             send(ModelDownloadManager.Status.Pending) // Send pending after enqueueing
 
             val job =
@@ -107,7 +108,8 @@ class ModelDownloadManagerImpl(
         }
 
     override fun cancelDownload() {
-        workManager.cancelUniqueWork(WORK_NAME)
+        // Cancel all model downloads
+        workManager.cancelAllWorkByTag(WORK_TAG)
     }
 
     private fun WorkInfo.toModelDownloadManagerStatus(file: File): ModelDownloadManager.Status =
@@ -138,7 +140,6 @@ class ModelDownloadManagerImpl(
         }
 
     companion object {
-        private const val WORK_NAME = "gemma-model-download"
-        private const val WORK_TAG = "gemma-model-download-tag"
+        private const val WORK_TAG = "model-download"
     }
 }

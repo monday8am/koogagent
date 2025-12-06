@@ -16,6 +16,8 @@ litertlm = "0.0.0-alpha06"
 okhttp = "5.3.2"
 workRuntime = "2.11.0"
 turbine = "1.2.1"
+mediapipe = "0.10.24"
+localagents = "0.1.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -42,6 +44,8 @@ kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-cor
 androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "workRuntime" }
 okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }
+mediapipe-tasks-genai = { group = "com.google.mediapipe", name = "tasks-genai", version.ref = "mediapipe" }
+localagents-fc = { group = "com.google.ai.edge.localagents", name = "localagents-fc", version.ref = "localagents" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

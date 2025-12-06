@@ -1,4 +1,4 @@
-package com.monday8am.koogagent.litert
+package com.monday8am.koogagent.inference.litertlm
 
 import co.touchlab.kermit.Logger
 import com.google.ai.edge.litertlm.Backend
@@ -10,11 +10,12 @@ import com.google.ai.edge.litertlm.EngineConfig
 import com.google.ai.edge.litertlm.Message
 import com.google.ai.edge.litertlm.MessageCallback
 import com.google.ai.edge.litertlm.SamplerConfig
-import com.google.ai.edge.litertlm.SessionConfig
-import com.google.ai.edge.litertlm.ToolManager
 import com.monday8am.agent.core.LocalInferenceEngine
-import com.monday8am.agent.core.LocalLLModel
-import io.opentelemetry.sdk.trace.samplers.Sampler
+import com.monday8am.koogagent.data.HardwareBackend
+import com.monday8am.koogagent.data.ModelConfiguration
+import java.io.File
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.InternalCoroutinesApi
@@ -28,54 +29,45 @@ import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
-import java.io.File
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 
-/**
- * LiteRT-LM based implementation of LocalInferenceEngine.
- * Uses Engine/Conversation API with MessageCallback for async inference.
- */
 private data class LlmModelInstance(
     val engine: Engine,
     var conversation: Conversation,
-    val model: LocalLLModel,
+    val modelConfig: ModelConfiguration,
 )
 
 /**
  * LiteRT-LM implementation with native tool calling support.
- *
- * @param tools List of tool objects annotated with @Tool. These are passed to
- *              ConversationConfig for native tool calling via Qwen3DataProcessor.
- * @param dispatcher Coroutine dispatcher for blocking operations
  */
-class LocalInferenceEngineImpl(
+class LiteRTLmInferenceEngineImpl(
     private val tools: List<Any> = emptyList(),
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : LocalInferenceEngine {
     private var currentInstance: LlmModelInstance? = null
 
-    override suspend fun initialize(model: LocalLLModel): Result<Unit> =
+    override suspend fun initialize(
+        modelConfig: ModelConfiguration,
+        modelPath: String,
+    ): Result<Unit> =
         withContext(dispatcher) {
             if (currentInstance != null) {
                 return@withContext Result.success(Unit)
             }
 
             runCatching {
-                if (!File(model.path).exists()) {
-                    throw IllegalStateException("Model file not found at path: ${model.path}")
+                if (!File(modelPath).exists()) {
+                    throw IllegalStateException("Model file not found at path: $modelPath")
                 }
 
                 val engineConfig =
                     EngineConfig(
-                        modelPath = model.path,
-                        backend = Backend.CPU,
+                        modelPath = modelPath,
+                        backend = if (modelConfig.hardwareAcceleration == HardwareBackend.GPU_SUPPORTED) Backend.GPU else Backend.CPU,
                         visionBackend = null, // Text-only inference
                         audioBackend = null, // Text-only inference
-                        maxNumTokens = model.contextLength,
+                        maxNumTokens = modelConfig.contextLength,
                     )
 
-                // Create and initialize engine
                 val engine = Engine(engineConfig)
                 engine.initialize()
 
@@ -86,14 +78,14 @@ class LocalInferenceEngineImpl(
                         tools = tools, // Native LiteRT-LM tools with @Tool annotations
                         samplerConfig =
                             SamplerConfig(
-                                topK = model.topK,
-                                topP = model.topP.toDouble(),
-                                temperature = model.temperature.toDouble(),
+                                topK = modelConfig.defaultTopK,
+                                topP = modelConfig.defaultTopP.toDouble(),
+                                temperature = modelConfig.defaultTemperature.toDouble(),
                             ),
                     )
                 val conversation = engine.createConversation(conversationConfig)
 
-                currentInstance = LlmModelInstance(engine = engine, conversation = conversation, model = model)
+                currentInstance = LlmModelInstance(engine = engine, conversation = conversation, modelConfig = modelConfig)
             }
         }
 
@@ -152,11 +144,14 @@ class LocalInferenceEngineImpl(
             }.flowOn(dispatcher)
     }
 
-    override fun initializeAsFlow(model: LocalLLModel): Flow<LocalInferenceEngine> =
+    override fun initializeAsFlow(
+        modelConfig: ModelConfiguration,
+        modelPath: String,
+    ): Flow<LocalInferenceEngine> =
         flow {
-            initialize(model = model)
+            initialize(modelConfig = modelConfig, modelPath = modelPath)
                 .onSuccess {
-                    emit(this@LocalInferenceEngineImpl)
+                    emit(this@LiteRTLmInferenceEngineImpl)
                 }.onFailure {
                     throw it
                 }
@@ -171,9 +166,9 @@ class LocalInferenceEngineImpl(
                     tools = tools, // Maintain tools across conversation resets
                     samplerConfig =
                         SamplerConfig(
-                            topK = instance.model.topK,
-                            topP = instance.model.topP.toDouble(),
-                            temperature = instance.model.temperature.toDouble(),
+                            topK = instance.modelConfig.defaultTopK,
+                            topP = instance.modelConfig.defaultTopP.toDouble(),
+                            temperature = instance.modelConfig.defaultTemperature.toDouble(),
                         ),
                 )
             Logger.i("LocalInferenceEngine") { "\uD83D\uDCAC Reset conversation!" }
@@ -191,13 +186,6 @@ class LocalInferenceEngineImpl(
     }
 }
 
-/**
- * Extension function to convert LiteRT-LM's MessageCallback to coroutine-based suspend function.
- * Collects streaming message responses and returns the complete generated text.
- *
- * Note: Named sendMessageWithCallback to avoid collision with alpha06's new
- * sendMessageAsync(Message): Flow<Message> overload.
- */
 @OptIn(InternalCoroutinesApi::class)
 private suspend fun Conversation.sendMessageWithCallback(message: Message): String =
     suspendCancellableCoroutine { continuation ->

@@ -31,7 +31,8 @@
       "WebFetch(domain:docs.koog.ai)",
       "WebFetch(domain:maven.google.com)",
       "Bash(curl:*)",
-      "mcp__ide__getDiagnostics"
+      "mcp__ide__getDiagnostics",
+      "Bash(export JAVA_HOME=/opt/homebrew/Cellar/openjdk@17/17.0.17/libexec/openjdk.jdk/Contents/Home)"
     ],
     "deny": [],
     "ask": []

@@ -2,9 +2,6 @@ package com.monday8am.presentation.notifications
 
 import ai.koog.agents.core.tools.ToolRegistry
 import com.monday8am.agent.core.LocalInferenceEngine
-import com.monday8am.agent.core.LocalLLModel
-import com.monday8am.agent.core.MODEL_NAME
-import com.monday8am.agent.core.MODEL_URL
 import com.monday8am.agent.core.NotificationAgent
 import com.monday8am.agent.core.NotificationGenerator
 import com.monday8am.agent.core.ToolFormat
@@ -12,6 +9,7 @@ import com.monday8am.agent.tools.GetLocation
 import com.monday8am.agent.tools.GetWeatherFromLocation
 import com.monday8am.koogagent.data.LocationProvider
 import com.monday8am.koogagent.data.MealType
+import com.monday8am.koogagent.data.ModelConfiguration
 import com.monday8am.koogagent.data.MotivationLevel
 import com.monday8am.koogagent.data.NotificationContext
 import com.monday8am.koogagent.data.NotificationResult
@@ -48,6 +46,7 @@ val defaultNotificationContext =
 data class UiState(
     val statusMessage: LogMessage = LogMessage.Initializing,
     val context: NotificationContext = defaultNotificationContext,
+    val selectedModel: ModelConfiguration,
     val isModelReady: Boolean = false,
     val notification: NotificationResult? = null,
     val downloadStatus: ModelDownloadManager.Status = ModelDownloadManager.Status.Pending,
@@ -93,6 +92,7 @@ interface NotificationViewModel {
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class NotificationViewModelImpl(
+    private val selectedModel: ModelConfiguration,
     private val inferenceEngine: LocalInferenceEngine,
     private val notificationEngine: NotificationEngine,
     private val weatherProvider: WeatherProvider,
@@ -101,6 +101,16 @@ class NotificationViewModelImpl(
     private val modelManager: ModelDownloadManager,
 ) : NotificationViewModel {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
+    // Tool format determined once at construction based on model family
+    private val toolFormat =
+        when (selectedModel.modelFamily) {
+            "qwen3" -> ToolFormat.NATIVE
+            "gemma3" -> ToolFormat.REACT
+            "hammer2" -> ToolFormat.REACT
+            else -> ToolFormat.REACT
+        }
+
     private val toolRegistry =
         ToolRegistry {
             tool(tool = GetWeatherFromLocation(weatherProvider))
@@ -116,25 +126,36 @@ class NotificationViewModelImpl(
                 val actionFlow =
                     when (action) {
                         UiAction.Initialize -> {
-                            flowOf(value = modelManager.modelExists(modelName = MODEL_NAME))
+                            flowOf(value = modelManager.modelExists(bundleFilename = selectedModel.bundleFilename))
                         }
 
                         UiAction.DownloadModel -> {
-                            modelManager.downloadModel(url = MODEL_URL, modelName = MODEL_NAME)
+                            modelManager.downloadModel(
+                                modelId = selectedModel.id,
+                                downloadUrl = selectedModel.downloadUrl,
+                                bundleFilename = selectedModel.bundleFilename,
+                            )
                         }
 
                         UiAction.ShowNotification -> {
-                            inferenceEngine.initializeAsFlow(model = getLocalModel())
+                            inferenceEngine.initializeAsFlow(
+                                modelConfig = selectedModel,
+                                modelPath = modelManager.getModelPath(bundleFilename = selectedModel.bundleFilename),
+                            )
                         }
 
                         UiAction.RunModelTests -> {
-                            inferenceEngine.initializeAsFlow(model = getLocalModel()).flatMapConcat { engine ->
-                                runModelTests(
-                                    promptExecutor = engine::prompt,
-                                    streamPromptExecutor = engine::promptStreaming,
-                                    resetConversation = engine::resetConversation,
-                                )
-                            }
+                            inferenceEngine
+                                .initializeAsFlow(
+                                    modelConfig = selectedModel,
+                                    modelPath = modelManager.getModelPath(bundleFilename = selectedModel.bundleFilename),
+                                ).flatMapConcat { engine ->
+                                    runModelTests(
+                                        promptExecutor = engine::prompt,
+                                        streamPromptExecutor = engine::promptStreaming,
+                                        resetConversation = engine::resetConversation,
+                                    )
+                                }
                         }
 
                         is UiAction.UpdateContext -> {
@@ -155,7 +176,7 @@ class NotificationViewModelImpl(
                     }.catch { throwable -> emit(ActionState.Error(throwable)) }
                     .map { actionState -> action to actionState }
             }.flowOn(Dispatchers.IO)
-            .scan(UiState()) { previousState, (action, actionState) ->
+            .scan(UiState(selectedModel = selectedModel)) { previousState, (action, actionState) ->
                 reduce(state = previousState, action = action, actionState = actionState)
             }.distinctUntilChanged()
             .onEach { state ->
@@ -230,7 +251,7 @@ class NotificationViewModelImpl(
                         state.copy(
                             statusMessage =
                                 if (isModelReady) {
-                                    LogMessage.WelcomeModelReady(MODEL_NAME)
+                                    LogMessage.WelcomeModelReady(selectedModel.displayName)
                                 } else {
                                     LogMessage.WelcomeDownloadRequired
                                 },
@@ -261,16 +282,13 @@ class NotificationViewModelImpl(
                     country = deviceContext.country,
                 )
 
-            // Using NATIVE format for LiteRT-LM's native tool calling
-            // Tools are passed via ConversationConfig (in LocalInferenceEngineImpl)
-            // and handled by Qwen3DataProcessor automatically
             val agent =
                 NotificationAgent.local(
                     promptExecutor = { prompt ->
                         promptExecutor(prompt).getOrThrow()
                     },
-                    modelId = MODEL_NAME.removeSuffix(".litertlm"),
-                    toolFormat = ToolFormat.NATIVE, // Native LiteRT-LM tool calling
+                    modelId = selectedModel.modelId,
+                    toolFormat = toolFormat,
                 )
             agent.initializeWithTools(toolRegistry = toolRegistry)
             val content = NotificationGenerator(agent = agent).generate(notificationContext)
@@ -291,9 +309,4 @@ class NotificationViewModelImpl(
         weatherProvider = weatherProvider,
         locationProvider = locationProvider,
     ).runAllTest()
-
-    private fun getLocalModel() =
-        LocalLLModel(
-            path = modelManager.getModelPath(MODEL_NAME),
-        )
 }

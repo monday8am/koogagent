@@ -66,6 +66,8 @@ dependencies {
     implementation(libs.androidx.work.runtime.ktx)
 
     implementation(libs.litertlm.android)
+    implementation(libs.mediapipe.tasks.genai)
+    implementation(libs.localagents.fc)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
