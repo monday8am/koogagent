@@ -32,7 +32,9 @@
       "WebFetch(domain:maven.google.com)",
       "Bash(curl:*)",
       "mcp__ide__getDiagnostics",
-      "Bash(export JAVA_HOME=/opt/homebrew/Cellar/openjdk@17/17.0.17/libexec/openjdk.jdk/Contents/Home)"
+      "Bash(export JAVA_HOME=/opt/homebrew/Cellar/openjdk@17/17.0.17/libexec/openjdk.jdk/Contents/Home)",
+      "Bash(JAVA_HOME=/opt/homebrew/Cellar/openjdk@17/17.0.17/libexec/openjdk.jdk/Contents/Home ./gradlew build:*)",
+      "Bash(JAVA_HOME=/opt/homebrew/Cellar/openjdk@17/17.0.17/libexec/openjdk.jdk/Contents/Home ./gradlew:*)"
     ],
     "deny": [],
     "ask": []
