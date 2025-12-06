@@ -416,8 +416,8 @@ internal class GemmaToolCallingTest(
                 TestCase(
                     name = "TEST 0: Basic Content",
                     tools = listOf(),
-                    queries = listOf(TestQuery("Tell me my coordinates!")),
-                    systemPrompt = "You are a helpful assistant. If the user asks \"where am I?\" or similar location queries, use the get_location function.",
+                    queries = listOf(TestQuery("Hi!")),
+                    systemPrompt = "You are a helpful assistant!",
                     validator = { result ->
                         // The if-expression is more concise.
                         if (result.isNotBlank() && result.length > 5) {
@@ -437,7 +437,7 @@ internal class GemmaToolCallingTest(
         testCases
             .asFlow()
             .flatMapConcat { testCase ->
-                runTest(testCase, asStream = true)
+                runTest(testCase, asStream = false)
             }.catch { e ->
                 // This catches exceptions from the upstream flow (runTest or its processing).
                 logger.e(e) { "A failure occurred during the test suite execution" }

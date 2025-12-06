@@ -25,7 +25,7 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 
-private const val SYSTEM_PROMPT = "You are Hammer, a helpful AI assistant. You can use tools to help answer questions."
+private const val SYSTEM_PROMPT = "You are Hammer, a helpful AI assistant."
 private const val SYSTEM_ROLE = "system"
 private const val USER_ROLE = "user"
 
@@ -57,7 +57,7 @@ class MediaPipeInferenceEngineImpl(
                 val backend = LlmInferenceBackend(llmInference, HammerFormatter())
                 val systemInstruction = createSystemInstruction()
 
-                generativeModel = GenerativeModel(backend, systemInstruction, tools)
+                generativeModel = GenerativeModel(backend, systemInstruction, listOf())
                 chatSession = generativeModel!!.startChat()
                 this@MediaPipeInferenceEngineImpl.modelConfig = modelConfig
             }

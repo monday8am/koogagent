@@ -25,7 +25,7 @@ object ModelCatalog {
 
     val GEMMA3_1B =
         ModelConfiguration(
-            id = "gemma3-1b-litert-int4-4k",
+            id = "gemma3-1b",
             displayName = "Gemma 3 1B (LiteRT, 4K)",
             modelFamily = "gemma3",
             parameterCount = 1.0f,
@@ -42,20 +42,20 @@ object ModelCatalog {
 
     val HAMMER2_1_5B =
         ModelConfiguration(
-            id = "hammer2-0.5b-litert-q8-2k",
-            displayName = "Hammer 2.1 0.5B (LiteRT, 2K)",
+            id = "hammer",
+            displayName = "Hammer 2.1 0.5B (Mediapipe, 2K)",
             modelFamily = "hammer2",
             parameterCount = 0.5f,
             quantization = "int8",
-            contextLength = 2048,
+            contextLength = 4096,
             // TODO: Update with actual download URL when available
             downloadUrl = "https://github.com/monday8am/koogagent/releases/download/TODO/hammer2_0.5b_q8_ekv2048.zip",
-            bundleFilename = "hammer2_0.5b_q8_ekv2048.litertlm",
-            inferenceLibrary = InferenceLibrary.LITERT,
+            bundleFilename = "hammer2.1_0.5b_q8_ekv4096.task",
+            inferenceLibrary = InferenceLibrary.MEDIAPIPE,
             hardwareAcceleration = HardwareBackend.CPU_ONLY,
             defaultTopK = 40,
             defaultTopP = 0.9f,
-            defaultTemperature = 0.3f,
+            defaultTemperature = 0.7f,
         )
 
     val ALL_MODELS =
@@ -65,7 +65,7 @@ object ModelCatalog {
             HAMMER2_1_5B, // Low-end
         )
 
-    val DEFAULT = QWEN3_0_6B
+    val DEFAULT = HAMMER2_1_5B
 
     fun findById(id: String): ModelConfiguration? = ALL_MODELS.find { it.id == id }
 }
