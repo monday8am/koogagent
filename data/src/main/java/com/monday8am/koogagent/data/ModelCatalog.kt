@@ -40,7 +40,7 @@ object ModelCatalog {
             defaultTemperature = 0.7f, // Gemma benefits from higher temp
         )
 
-    val HAMMER2_1_5B =
+    val HAMMER2_1_0_5B =
         ModelConfiguration(
             id = "hammer",
             displayName = "Hammer 2.1 0.5B (Mediapipe, 2K)",
@@ -56,16 +56,37 @@ object ModelCatalog {
             defaultTopK = 40,
             defaultTopP = 0.9f,
             defaultTemperature = 0.7f,
+            defaultMaxOutputTokens = 4096,
+        )
+
+    val HAMMER2_1_1_5B =
+        ModelConfiguration(
+            id = "hammer",
+            displayName = "Hammer 2.1 1.5B (Mediapipe, 2K)",
+            modelFamily = "hammer2",
+            parameterCount = 0.5f,
+            quantization = "int8",
+            contextLength = 4096,
+            // TODO: Update with actual download URL when available
+            downloadUrl = "https://github.com/monday8am/koogagent/releases/download/TODO/hammer2_0.5b_q8_ekv2048.zip",
+            bundleFilename = "hammer2.1_1.5b_q8_ekv4096.task",
+            inferenceLibrary = InferenceLibrary.MEDIAPIPE,
+            hardwareAcceleration = HardwareBackend.CPU_ONLY,
+            defaultTopK = 40,
+            defaultTopP = 0.9f,
+            defaultTemperature = 0.7f,
+            defaultMaxOutputTokens = 2048,
         )
 
     val ALL_MODELS =
         listOf(
-            QWEN3_0_6B, // Default (best balance)
-            GEMMA3_1B, // High-end
-            HAMMER2_1_5B, // Low-end
+            QWEN3_0_6B,
+            GEMMA3_1B,
+            HAMMER2_1_0_5B,
+            HAMMER2_1_1_5B,
         )
 
-    val DEFAULT = HAMMER2_1_5B
+    val DEFAULT = HAMMER2_1_0_5B
 
     fun findById(id: String): ModelConfiguration? = ALL_MODELS.find { it.id == id }
 }
