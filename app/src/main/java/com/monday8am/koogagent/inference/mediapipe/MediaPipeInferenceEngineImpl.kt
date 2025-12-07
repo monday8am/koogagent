@@ -10,7 +10,9 @@ import com.google.ai.edge.localagents.fc.GenerativeModel
 import com.google.ai.edge.localagents.fc.HammerFormatter
 import com.google.ai.edge.localagents.fc.LlmInferenceBackend
 import com.google.mediapipe.tasks.genai.llminference.LlmInference
+import com.google.mediapipe.tasks.genai.llminference.LlmInference.Backend
 import com.monday8am.agent.core.LocalInferenceEngine
+import com.monday8am.koogagent.data.HardwareBackend
 import com.monday8am.koogagent.data.ModelConfiguration
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -24,8 +26,7 @@ import java.io.File
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
-
-private const val SYSTEM_PROMPT = "You are Hammer, a helpful AI assistant. You can use tools to help answer questions."
+private const val SYSTEM_PROMPT = "You are Hammer, a helpful AI assistant."
 private const val SYSTEM_ROLE = "system"
 private const val USER_ROLE = "user"
 
@@ -155,42 +156,64 @@ private suspend fun ChatSession.sendMessageBlocking(message: String): String =
                     .build()
 
             val response = this.sendMessage(userContent)
-            val part = response.candidatesList.firstOrNull()?.content?.partsList?.firstOrNull()
-            val resultText = when {
-                part?.hasText() == true -> part.text
-                part?.hasFunctionCall() == true -> {
-                    // In a full implementation, this would execute the tool and send back results
-                    val functionCall = part.functionCall
-                    "Function call detected: ${functionCall.name} with args: ${functionCall.args}"
+            val part =
+                response.candidatesList
+                    .firstOrNull()
+                    ?.content
+                    ?.partsList
+                    ?.firstOrNull()
+            val resultText =
+                when {
+                    part?.hasText() == true -> {
+                        part.text
+                    }
+
+                    part?.hasFunctionCall() == true -> {
+                        // In a full implementation, this would execute the tool and send back results
+                        val functionCall = part.functionCall
+                        "Function call detected: ${functionCall.name} with args: ${functionCall.args}"
+                    }
+
+                    else -> {
+                        ""
+                    }
                 }
-                else -> ""
-            }
             cont.resume(resultText)
         } catch (e: Exception) {
             cont.resumeWithException(e)
         }
     }
 
-private fun MediaPipeInferenceEngineImpl.createLlmInference(
+private fun createLlmInference(
     context: Context,
     modelPath: String,
-    modelConfig: ModelConfiguration
+    modelConfig: ModelConfiguration,
 ): LlmInference {
     if (!File(modelPath).exists()) {
         throw IllegalStateException("Model file not found at path: $modelPath")
     }
+    val backend =
+        if (modelConfig.hardwareAcceleration == HardwareBackend.GPU_SUPPORTED) {
+            Backend.GPU
+        } else {
+            Backend.CPU
+        }
     val llmInferenceOptions =
-        LlmInference.LlmInferenceOptions.builder()
+        LlmInference.LlmInferenceOptions
+            .builder()
             .setModelPath(modelPath)
             .setMaxTokens(modelConfig.defaultMaxOutputTokens)
+            .setPreferredBackend(backend)
             .build()
     return LlmInference.createFromOptions(context, llmInferenceOptions)
 }
 
 private fun createSystemInstruction(): Content =
-    Content.newBuilder()
+    Content
+        .newBuilder()
         .setRole(SYSTEM_ROLE)
         .addParts(
-            Part.newBuilder()
-                .setText(SYSTEM_PROMPT)
+            Part
+                .newBuilder()
+                .setText(SYSTEM_PROMPT),
         ).build()

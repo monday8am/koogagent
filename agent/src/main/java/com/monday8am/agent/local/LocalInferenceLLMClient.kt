@@ -43,6 +43,8 @@ class LocalInferenceLLMClient(
                     ?: throw IllegalArgumentException("No user message in prompt")
             }
 
+        logger.d { "Executing prompt with Local Inference:\n$lastUserMessage" }
+
         val response =
             promptExecutor(lastUserMessage)
                 ?: throw IllegalStateException("Local Inference returned null response")

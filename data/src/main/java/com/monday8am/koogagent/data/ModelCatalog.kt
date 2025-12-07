@@ -5,10 +5,8 @@ package com.monday8am.koogagent.data
  * This serves as the "source of truth" for available models in the app.
  */
 object ModelCatalog {
-
     val QWEN3_0_6B =
         ModelConfiguration(
-            id = "qwen3-0.6b-litert-q8-4k",
             displayName = "Qwen3 0.6B (LiteRT, 4K)",
             modelFamily = "qwen3",
             parameterCount = 0.6f,
@@ -25,7 +23,6 @@ object ModelCatalog {
 
     val GEMMA3_1B =
         ModelConfiguration(
-            id = "gemma3-1b-litert-int4-4k",
             displayName = "Gemma 3 1B (LiteRT, 4K)",
             modelFamily = "gemma3",
             parameterCount = 1.0f,
@@ -40,32 +37,51 @@ object ModelCatalog {
             defaultTemperature = 0.7f, // Gemma benefits from higher temp
         )
 
-    val HAMMER2_1_5B =
+    val HAMMER2_1_0_5B =
         ModelConfiguration(
-            id = "hammer2-0.5b-litert-q8-2k",
-            displayName = "Hammer 2.1 0.5B (LiteRT, 2K)",
+            displayName = "Hammer 2.1 0.5B (Mediapipe, 2K)",
             modelFamily = "hammer2",
             parameterCount = 0.5f,
             quantization = "int8",
-            contextLength = 2048,
+            contextLength = 4096,
             // TODO: Update with actual download URL when available
             downloadUrl = "https://github.com/monday8am/koogagent/releases/download/TODO/hammer2_0.5b_q8_ekv2048.zip",
-            bundleFilename = "hammer2_0.5b_q8_ekv2048.litertlm",
-            inferenceLibrary = InferenceLibrary.LITERT,
+            bundleFilename = "hammer2.1_0.5b_q8_ekv4096.task",
+            inferenceLibrary = InferenceLibrary.MEDIAPIPE,
             hardwareAcceleration = HardwareBackend.CPU_ONLY,
             defaultTopK = 40,
             defaultTopP = 0.9f,
-            defaultTemperature = 0.3f,
+            defaultTemperature = 0.7f,
+            defaultMaxOutputTokens = 4096,
+        )
+
+    val HAMMER2_1_1_5B =
+        ModelConfiguration(
+            displayName = "Hammer 2.1 1.5B (Mediapipe, 2K)",
+            modelFamily = "hammer2",
+            parameterCount = 0.5f,
+            quantization = "int8",
+            contextLength = 4096,
+            // TODO: Update with actual download URL when available
+            downloadUrl = "https://github.com/monday8am/koogagent/releases/download/TODO/hammer2_0.5b_q8_ekv2048.zip",
+            bundleFilename = "hammer2.1_1.5b_q8_ekv4096.task",
+            inferenceLibrary = InferenceLibrary.MEDIAPIPE,
+            hardwareAcceleration = HardwareBackend.CPU_ONLY,
+            defaultTopK = 40,
+            defaultTopP = 0.9f,
+            defaultTemperature = 0.7f,
+            defaultMaxOutputTokens = 2048,
         )
 
     val ALL_MODELS =
         listOf(
-            QWEN3_0_6B, // Default (best balance)
-            GEMMA3_1B, // High-end
-            HAMMER2_1_5B, // Low-end
+            QWEN3_0_6B,
+            GEMMA3_1B,
+            HAMMER2_1_0_5B,
+            HAMMER2_1_1_5B,
         )
 
-    val DEFAULT = QWEN3_0_6B
+    val DEFAULT = HAMMER2_1_0_5B
 
-    fun findById(id: String): ModelConfiguration? = ALL_MODELS.find { it.id == id }
+    fun findById(id: String): ModelConfiguration? = ALL_MODELS.find { it.modelId == id }
 }

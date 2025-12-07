@@ -14,8 +14,8 @@ import com.monday8am.koogagent.data.MotivationLevel
 import com.monday8am.koogagent.data.NotificationContext
 import com.monday8am.koogagent.data.NotificationResult
 import com.monday8am.koogagent.data.WeatherProvider
-import com.monday8am.presentation.testing.GemmaToolCallingTest
 import com.monday8am.presentation.testing.TestResultFrame
+import com.monday8am.presentation.testing.ToolCallingTest
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -47,14 +47,10 @@ data class UiState(
     val statusMessage: LogMessage = LogMessage.Initializing,
     val context: NotificationContext = defaultNotificationContext,
     val selectedModel: ModelConfiguration,
-    val isModelReady: Boolean = false,
     val notification: NotificationResult? = null,
-    val downloadStatus: ModelDownloadManager.Status = ModelDownloadManager.Status.Pending,
 )
 
 sealed class UiAction {
-    data object DownloadModel : UiAction()
-
     data object ShowNotification : UiAction()
 
     data object RunModelTests : UiAction()
@@ -93,12 +89,12 @@ interface NotificationViewModel {
 @OptIn(ExperimentalCoroutinesApi::class)
 class NotificationViewModelImpl(
     private val selectedModel: ModelConfiguration,
+    private val modelPath: String,
     private val inferenceEngine: LocalInferenceEngine,
     private val notificationEngine: NotificationEngine,
     private val weatherProvider: WeatherProvider,
     private val locationProvider: LocationProvider,
     private val deviceContextProvider: DeviceContextProvider,
-    private val modelManager: ModelDownloadManager,
 ) : NotificationViewModel {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
@@ -126,21 +122,13 @@ class NotificationViewModelImpl(
                 val actionFlow =
                     when (action) {
                         UiAction.Initialize -> {
-                            flowOf(value = modelManager.modelExists(bundleFilename = selectedModel.bundleFilename))
-                        }
-
-                        UiAction.DownloadModel -> {
-                            modelManager.downloadModel(
-                                modelId = selectedModel.id,
-                                downloadUrl = selectedModel.downloadUrl,
-                                bundleFilename = selectedModel.bundleFilename,
-                            )
+                            flowOf(value = Unit)
                         }
 
                         UiAction.ShowNotification -> {
                             inferenceEngine.initializeAsFlow(
                                 modelConfig = selectedModel,
-                                modelPath = modelManager.getModelPath(bundleFilename = selectedModel.bundleFilename),
+                                modelPath = modelPath,
                             )
                         }
 
@@ -148,7 +136,7 @@ class NotificationViewModelImpl(
                             inferenceEngine
                                 .initializeAsFlow(
                                     modelConfig = selectedModel,
-                                    modelPath = modelManager.getModelPath(bundleFilename = selectedModel.bundleFilename),
+                                    modelPath = modelPath,
                                 ).flatMapConcat { engine ->
                                     runModelTests(
                                         promptExecutor = engine::prompt,
@@ -170,7 +158,7 @@ class NotificationViewModelImpl(
                 actionFlow
                     .map<Any, ActionState> { result -> ActionState.Success(result) }
                     .onStart {
-                        if (action is UiAction.DownloadModel || action is UiAction.ShowNotification || action is UiAction.RunModelTests) {
+                        if (action is UiAction.ShowNotification || action is UiAction.RunModelTests) {
                             emit(ActionState.Loading)
                         }
                     }.catch { throwable -> emit(ActionState.Error(throwable)) }
@@ -193,7 +181,6 @@ class NotificationViewModelImpl(
     }
 
     override fun dispose() {
-        modelManager.cancelDownload()
         inferenceEngine.closeSession()
         scope.cancel()
     }
@@ -206,7 +193,6 @@ class NotificationViewModelImpl(
         when (actionState) {
             is ActionState.Loading -> {
                 when (action) {
-                    UiAction.DownloadModel -> state.copy(downloadStatus = ModelDownloadManager.Status.InProgress(0f))
                     UiAction.ShowNotification -> state.copy(statusMessage = LogMessage.InitializingModel)
                     UiAction.RunModelTests -> state.copy(statusMessage = LogMessage.InitTests)
                     else -> state
@@ -215,21 +201,6 @@ class NotificationViewModelImpl(
 
             is ActionState.Success -> {
                 when (action) {
-                    is UiAction.DownloadModel -> {
-                        val status = actionState.result as ModelDownloadManager.Status
-                        val logMessage =
-                            when (status) {
-                                is ModelDownloadManager.Status.InProgress -> LogMessage.Downloading(status.progress ?: 0f)
-                                is ModelDownloadManager.Status.Completed -> LogMessage.DownloadComplete
-                                else -> LogMessage.DownloadFinished
-                            }
-                        state.copy(
-                            downloadStatus = status,
-                            statusMessage = logMessage,
-                            isModelReady = status is ModelDownloadManager.Status.Completed,
-                        )
-                    }
-
                     is UiAction.ShowNotification -> {
                         createNotification(promptExecutor = inferenceEngine::prompt, context = state.context)
                         state.copy(statusMessage = LogMessage.PromptingWithContext(state.context.formatted))
@@ -247,15 +218,8 @@ class NotificationViewModelImpl(
                     }
 
                     is UiAction.Initialize -> {
-                        val isModelReady = actionState.result as Boolean
                         state.copy(
-                            statusMessage =
-                                if (isModelReady) {
-                                    LogMessage.WelcomeModelReady(selectedModel.displayName)
-                                } else {
-                                    LogMessage.WelcomeDownloadRequired
-                                },
-                            isModelReady = isModelReady,
+                            statusMessage = LogMessage.WelcomeModelReady(selectedModel.displayName),
                         )
                     }
 
@@ -300,7 +264,7 @@ class NotificationViewModelImpl(
         promptExecutor: suspend (String) -> Result<String>,
         streamPromptExecutor: (String) -> Flow<String>,
         resetConversation: () -> Result<Unit>,
-    ) = GemmaToolCallingTest(
+    ) = ToolCallingTest(
         promptExecutor = { prompt ->
             promptExecutor(prompt).getOrThrow()
         },

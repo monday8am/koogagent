@@ -13,18 +13,6 @@ fun LogMessage.toDisplayString(): String =
             "Initializing model for notification..."
         }
 
-        is LogMessage.Downloading -> {
-            "Downloading: ${"%.2f".format(progress)}%"
-        }
-
-        is LogMessage.DownloadComplete -> {
-            "Download complete! Model is ready."
-        }
-
-        is LogMessage.DownloadFinished -> {
-            "Download finished."
-        }
-
         is LogMessage.PromptingWithContext -> {
             "Prompting with context:\n $contextFormatted"
         }
@@ -35,10 +23,6 @@ fun LogMessage.toDisplayString(): String =
 
         is LogMessage.WelcomeModelReady -> {
             "Welcome to Yazio notificator :)\nInitialized with model $modelName"
-        }
-
-        is LogMessage.WelcomeDownloadRequired -> {
-            "Welcome!\nPress download model button. It's a one time operation and it will take close to 4 minutes."
         }
 
         is LogMessage.Error -> {

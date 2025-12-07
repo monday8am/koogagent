@@ -9,6 +9,7 @@ import com.monday8am.koogagent.data.MotivationLevel
 import com.monday8am.koogagent.data.NotificationContext
 import com.monday8am.koogagent.data.NotificationResult
 import com.monday8am.koogagent.data.WeatherProvider
+import com.monday8am.presentation.modelselector.ModelDownloadManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
