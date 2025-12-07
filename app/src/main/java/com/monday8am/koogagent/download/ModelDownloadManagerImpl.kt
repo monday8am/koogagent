@@ -8,8 +8,6 @@ import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.workDataOf
 import com.monday8am.presentation.modelselector.ModelDownloadManager
-import java.io.File
-import java.util.UUID
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.ProducerScope
@@ -20,6 +18,8 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
+import java.util.UUID
 
 class ModelDownloadManagerImpl(
     context: Context,
@@ -39,65 +39,72 @@ class ModelDownloadManagerImpl(
         modelId: String,
         downloadUrl: String,
         bundleFilename: String,
-    ): Flow<ModelDownloadManager.Status> = channelFlow {
-        val destinationFile = File(getModelPath(bundleFilename))
+    ): Flow<ModelDownloadManager.Status> =
+        channelFlow {
+            val destinationFile = File(getModelPath(bundleFilename))
 
-        if (destinationFile.exists()) {
-            send(ModelDownloadManager.Status.Completed(destinationFile))
-            close()
-            return@channelFlow
+            if (destinationFile.exists()) {
+                send(ModelDownloadManager.Status.Completed(destinationFile))
+                close()
+                return@channelFlow
+            }
+
+            val workName = "model-download-$modelId"
+            var workInfo = findRunningWork(workName)
+
+            if (workInfo == null) {
+                val workRequest = createDownloadWorkRequest(downloadUrl, destinationFile)
+                workManager.enqueueUniqueWork(workName, ExistingWorkPolicy.KEEP, workRequest)
+                workInfo = findRunningWork(workName)
+            }
+
+            if (workInfo != null) {
+                observeWork(workInfo.id, destinationFile)
+            } else {
+                // This is a safeguard for the unlikely case that work fails to be found even after enqueuing.
+                val errorStatus = ModelDownloadManager.Status.Failed("Could not find or start the download job.")
+                send(errorStatus)
+                close()
+            }
         }
 
-        val workName = "model-download-$modelId"
-        var workInfo = findRunningWork(workName)
-
-        if (workInfo == null) {
-            val workRequest = createDownloadWorkRequest(downloadUrl, destinationFile)
-            workManager.enqueueUniqueWork(workName, ExistingWorkPolicy.KEEP, workRequest)
-            workInfo = findRunningWork(workName)
-        }
-
-        if (workInfo != null) {
-            observeWork(workInfo.id, destinationFile)
-        } else {
-            // This is a safeguard for the unlikely case that work fails to be found even after enqueuing.
-            val errorStatus = ModelDownloadManager.Status.Failed("Could not find or start the download job.")
-            send(errorStatus)
-            close()
-        }
-    }
-
-    private fun createDownloadWorkRequest(downloadUrl: String, destinationFile: File): OneTimeWorkRequest {
-        return OneTimeWorkRequestBuilder<DownloadUnzipWorker>()
+    private fun createDownloadWorkRequest(
+        downloadUrl: String,
+        destinationFile: File,
+    ): OneTimeWorkRequest =
+        OneTimeWorkRequestBuilder<DownloadUnzipWorker>()
             .setInputData(
                 workDataOf(
                     DownloadUnzipWorker.KEY_URL to downloadUrl,
                     DownloadUnzipWorker.KEY_DESTINATION_PATH to destinationFile.absolutePath,
                 ),
-            )
-            .addTag(WORK_TAG)
+            ).addTag(WORK_TAG)
             .build()
-    }
 
-    private suspend fun findRunningWork(workName: String): WorkInfo? = withContext(dispatcher) {
-        workManager.getWorkInfosForUniqueWork(workName).get()
-            .firstOrNull { !it.state.isFinished }
-    }
+    private suspend fun findRunningWork(workName: String): WorkInfo? =
+        withContext(dispatcher) {
+            workManager
+                .getWorkInfosForUniqueWork(workName)
+                .get()
+                .firstOrNull { !it.state.isFinished }
+        }
 
     private suspend fun ProducerScope<ModelDownloadManager.Status>.observeWork(
         workId: UUID,
         destinationFile: File,
     ) {
-        val observerJob = launch {
-            workManager.getWorkInfoByIdFlow(workId)
-                .mapNotNull { it } // Filter out any null initial values
-                .collectLatest { info ->
-                    send(info.toModelDownloadManagerStatus(destinationFile))
-                    if (info.state.isFinished) {
-                        close() // Close the flow when work is complete
+        val observerJob =
+            launch {
+                workManager
+                    .getWorkInfoByIdFlow(workId)
+                    .mapNotNull { it } // Filter out any null initial values
+                    .collectLatest { info ->
+                        send(info.toModelDownloadManagerStatus(destinationFile))
+                        if (info.state.isFinished) {
+                            close() // Close the flow when work is complete
+                        }
                     }
-                }
-        }
+            }
 
         // awaitClose is the crucial part for cleanup.
         awaitClose {
@@ -114,7 +121,9 @@ class ModelDownloadManagerImpl(
 
     private fun WorkInfo.toModelDownloadManagerStatus(file: File): ModelDownloadManager.Status =
         when (state) {
-            WorkInfo.State.ENQUEUED, WorkInfo.State.BLOCKED -> ModelDownloadManager.Status.Pending
+            WorkInfo.State.ENQUEUED, WorkInfo.State.BLOCKED -> {
+                ModelDownloadManager.Status.Pending
+            }
 
             WorkInfo.State.RUNNING -> {
                 val progress = progress.getFloat(DownloadUnzipWorker.KEY_PROGRESS, 0f)
@@ -122,15 +131,20 @@ class ModelDownloadManagerImpl(
                 ModelDownloadManager.Status.InProgress(progress.coerceIn(0f, 100f))
             }
 
-            WorkInfo.State.SUCCEEDED -> ModelDownloadManager.Status.Completed(file)
+            WorkInfo.State.SUCCEEDED -> {
+                ModelDownloadManager.Status.Completed(file)
+            }
 
             WorkInfo.State.FAILED -> {
-                val errorMessage = outputData.getString(DownloadUnzipWorker.KEY_ERROR_MESSAGE)
-                    ?: "Download failed due to an unknown error."
+                val errorMessage =
+                    outputData.getString(DownloadUnzipWorker.KEY_ERROR_MESSAGE)
+                        ?: "Download failed due to an unknown error."
                 ModelDownloadManager.Status.Failed(errorMessage)
             }
 
-            WorkInfo.State.CANCELLED -> ModelDownloadManager.Status.Cancelled
+            WorkInfo.State.CANCELLED -> {
+                ModelDownloadManager.Status.Cancelled
+            }
         }
 
     companion object {

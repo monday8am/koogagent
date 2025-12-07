@@ -167,14 +167,15 @@ private fun CircularProgressWithText(
 private fun ModelCardPreview_NotDownloaded() {
     KoogAgentTheme {
         ModelCard(
-            modelInfo = ModelInfo(
-                config = ModelCatalog.QWEN3_0_6B,
-                isDownloaded = false,
-                downloadStatus = DownloadStatus.NotStarted
-            ),
+            modelInfo =
+                ModelInfo(
+                    config = ModelCatalog.QWEN3_0_6B,
+                    isDownloaded = false,
+                    downloadStatus = DownloadStatus.NotStarted,
+                ),
             isSelected = false,
             onDownloadClick = {},
-            onSelectClick = {}
+            onSelectClick = {},
         )
     }
 }
@@ -184,14 +185,15 @@ private fun ModelCardPreview_NotDownloaded() {
 private fun ModelCardPreview_Downloading() {
     KoogAgentTheme {
         ModelCard(
-            modelInfo = ModelInfo(
-                config = ModelCatalog.GEMMA3_1B,
-                isDownloaded = false,
-                downloadStatus = DownloadStatus.Downloading(42f)
-            ),
+            modelInfo =
+                ModelInfo(
+                    config = ModelCatalog.GEMMA3_1B,
+                    isDownloaded = false,
+                    downloadStatus = DownloadStatus.Downloading(42f),
+                ),
             isSelected = false,
             onDownloadClick = {},
-            onSelectClick = {}
+            onSelectClick = {},
         )
     }
 }
@@ -201,14 +203,15 @@ private fun ModelCardPreview_Downloading() {
 private fun ModelCardPreview_Queued() {
     KoogAgentTheme {
         ModelCard(
-            modelInfo = ModelInfo(
-                config = ModelCatalog.GEMMA3_1B,
-                isDownloaded = false,
-                downloadStatus = DownloadStatus.Queued
-            ),
+            modelInfo =
+                ModelInfo(
+                    config = ModelCatalog.GEMMA3_1B,
+                    isDownloaded = false,
+                    downloadStatus = DownloadStatus.Queued,
+                ),
             isSelected = false,
             onDownloadClick = {},
-            onSelectClick = {}
+            onSelectClick = {},
         )
     }
 }
@@ -218,14 +221,15 @@ private fun ModelCardPreview_Queued() {
 private fun ModelCardPreview_DownloadedSelected() {
     KoogAgentTheme {
         ModelCard(
-            modelInfo = ModelInfo(
-                config = ModelCatalog.HAMMER2_1_0_5B,
-                isDownloaded = true,
-                downloadStatus = DownloadStatus.Completed
-            ),
+            modelInfo =
+                ModelInfo(
+                    config = ModelCatalog.HAMMER2_1_0_5B,
+                    isDownloaded = true,
+                    downloadStatus = DownloadStatus.Completed,
+                ),
             isSelected = true,
             onDownloadClick = {},
-            onSelectClick = {}
+            onSelectClick = {},
         )
     }
 }
@@ -235,14 +239,15 @@ private fun ModelCardPreview_DownloadedSelected() {
 private fun ModelCardPreview_Failed() {
     KoogAgentTheme {
         ModelCard(
-            modelInfo = ModelInfo(
-                config = ModelCatalog.HAMMER2_1_0_5B,
-                isDownloaded = false,
-                downloadStatus = DownloadStatus.Failed("Network error")
-            ),
+            modelInfo =
+                ModelInfo(
+                    config = ModelCatalog.HAMMER2_1_0_5B,
+                    isDownloaded = false,
+                    downloadStatus = DownloadStatus.Failed("Network error"),
+                ),
             isSelected = false,
             onDownloadClick = {},
-            onSelectClick = {}
+            onSelectClick = {},
         )
     }
 }

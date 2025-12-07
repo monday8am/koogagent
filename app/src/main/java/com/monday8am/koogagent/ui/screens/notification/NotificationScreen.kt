@@ -34,55 +34,72 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
+import com.monday8am.koogagent.Dependencies
 import com.monday8am.koogagent.data.MealType
 import com.monday8am.koogagent.data.ModelCatalog
 import com.monday8am.koogagent.data.ModelConfiguration
 import com.monday8am.koogagent.data.MotivationLevel
 import com.monday8am.koogagent.data.NotificationContext
+import com.monday8am.koogagent.download.ModelDownloadManagerImpl
+import com.monday8am.koogagent.inference.InferenceEngineFactory
 import com.monday8am.koogagent.ui.theme.KoogAgentTheme
 import com.monday8am.koogagent.ui.toDisplayString
+import com.monday8am.presentation.notifications.NotificationViewModelImpl
 import com.monday8am.presentation.notifications.UiAction
 import com.monday8am.presentation.notifications.defaultNotificationContext
 
 /**
  * Notification Screen - Main screen for generating notifications.
- *
- * This is the renamed MainScreen from the original app.
- * ViewModel is now scoped to this navigation destination instead of MainActivity.
- *
- * @param viewModelFactory Factory for creating NotificationViewModel (injected from NavHost)
- * @param modifier Optional modifier for composable
  */
 @Composable
-fun NotificationScreen(
-    viewModelFactory: NotificationViewModelFactory,
-    modifier: Modifier = Modifier,
-    viewModel: AndroidNotificationViewModel = viewModel(factory = viewModelFactory),
-) {
+fun NotificationScreen(modelId: String) {
+    val viewModel: AndroidNotificationViewModel =
+        remember(modelId) {
+            val selectedModel = ModelCatalog.findById(modelId) ?: ModelCatalog.DEFAULT
+
+            val inferenceEngine =
+                InferenceEngineFactory.create(
+                    context = Dependencies.appContext,
+                    inferenceLibrary = selectedModel.inferenceLibrary,
+                    liteRtTools = Dependencies.nativeTools,
+                    mediaPipeTools = Dependencies.mediaPipeTools,
+                )
+
+            val modelPath =
+                (Dependencies.modelDownloadManager as ModelDownloadManagerImpl)
+                    .getModelPath(selectedModel.bundleFilename)
+
+            val impl =
+                NotificationViewModelImpl(
+                    selectedModel = selectedModel,
+                    modelPath = modelPath,
+                    inferenceEngine = inferenceEngine,
+                    notificationEngine = Dependencies.notificationEngine,
+                    weatherProvider = Dependencies.weatherProvider,
+                    locationProvider = Dependencies.locationProvider,
+                    deviceContextProvider = Dependencies.deviceContextProvider,
+                )
+
+            AndroidNotificationViewModel(impl, selectedModel)
+        }
+
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     NotificationContent(
         log = state.statusMessage.toDisplayString(),
         selectedModel = state.selectedModel,
         notificationContext = state.context,
-        isModelReady = state.isModelReady,
         onNotificationContextChange = { viewModel.onUiAction(UiAction.UpdateContext(context = it)) },
         onPressButton = { viewModel.onUiAction(uiAction = it) },
-        modifier = modifier,
+        modifier = Modifier,
     )
 }
 
-/**
- * Stateless notification content.
- * This is the original MainScreen composable, renamed for clarity.
- */
 @Composable
 private fun NotificationContent(
     log: String,
     selectedModel: ModelConfiguration,
     notificationContext: NotificationContext,
-    isModelReady: Boolean,
     onNotificationContextChange: (NotificationContext) -> Unit,
     onPressButton: (UiAction) -> Unit,
     modifier: Modifier = Modifier,
@@ -93,25 +110,30 @@ private fun NotificationContent(
         modifier =
             modifier
                 .fillMaxSize()
-                .padding(16.dp),
+                .padding(horizontal = 16.dp),
     ) {
         ModelInfoCard(model = selectedModel, modifier = Modifier.padding(top = 32.dp))
 
         LogPanel(textLog = log)
 
-        Button(
-            onClick = { onPressButton(UiAction.ShowNotification) },
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = spacedBy(16.dp),
         ) {
-            Text(
-                text = "Trigger Notification",
-            )
-        }
-        Button(
-            onClick = { onPressButton(UiAction.RunModelTests) },
-        ) {
-            Text(
-                text = "Run tests",
-            )
+            Button(
+                onClick = { onPressButton(UiAction.ShowNotification) },
+            ) {
+                Text(
+                    text = "Trigger Notification",
+                )
+            }
+            Button(
+                onClick = { onPressButton(UiAction.RunModelTests) },
+            ) {
+                Text(
+                    text = "Run tests",
+                )
+            }
         }
 
         NotificationContextEditor(
@@ -274,7 +296,6 @@ private fun NotificationContentPreview() {
         NotificationContent(
             log = "Welcome to Yazio notificator!",
             notificationContext = defaultNotificationContext,
-            isModelReady = true,
             onNotificationContextChange = { },
             onPressButton = { },
             selectedModel = ModelCatalog.DEFAULT,

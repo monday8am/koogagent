@@ -47,7 +47,6 @@ data class UiState(
     val statusMessage: LogMessage = LogMessage.Initializing,
     val context: NotificationContext = defaultNotificationContext,
     val selectedModel: ModelConfiguration,
-    val isModelReady: Boolean = false,
     val notification: NotificationResult? = null,
 )
 
@@ -221,7 +220,6 @@ class NotificationViewModelImpl(
                     is UiAction.Initialize -> {
                         state.copy(
                             statusMessage = LogMessage.WelcomeModelReady(selectedModel.displayName),
-                            isModelReady = true,
                         )
                     }
 

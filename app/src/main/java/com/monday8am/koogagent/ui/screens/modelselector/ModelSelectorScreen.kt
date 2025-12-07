@@ -15,38 +15,41 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
+import com.monday8am.koogagent.Dependencies
 import com.monday8am.koogagent.data.ModelCatalog
 import com.monday8am.koogagent.ui.theme.KoogAgentTheme
 import com.monday8am.presentation.modelselector.DownloadInfo
 import com.monday8am.presentation.modelselector.DownloadStatus
 import com.monday8am.presentation.modelselector.ModelInfo
+import com.monday8am.presentation.modelselector.ModelSelectorViewModelImpl
 import com.monday8am.presentation.modelselector.UiAction
 import com.monday8am.presentation.modelselector.UiState
 
 /**
  * Model Selector Screen - Entry point for model selection.
- *
- * @param onNavigateToNotification Callback when user wants to proceed to notification screen (receives modelId)
- * @param viewModelFactory Factory for creating ViewModel (injected from MainActivity)
- * @param modifier Optional modifier for composable
  */
 @Composable
-fun ModelSelectorScreen(
-    onNavigateToNotification: (String) -> Unit,
-    viewModelFactory: ModelSelectorViewModelFactory,
-    modifier: Modifier = Modifier,
-    viewModel: AndroidModelSelectorViewModel = viewModel(factory = viewModelFactory),
-) {
+fun ModelSelectorScreen(onNavigateToNotification: (String) -> Unit) {
+    val viewModel =
+        remember {
+            AndroidModelSelectorViewModel(
+                ModelSelectorViewModelImpl(
+                    availableModels = ModelCatalog.ALL_MODELS,
+                    modelDownloadManager = Dependencies.modelDownloadManager,
+                ),
+            )
+        }
+
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     ModelSelectorScreenContent(
         uiState = uiState,
-        modifier = modifier,
+        modifier = Modifier,
         onAction = viewModel::onUiAction,
         onNavigateToNotification = onNavigateToNotification,
     )
@@ -140,18 +143,27 @@ private fun ModelSelectorScreenContent(
 private fun ModelSelectorScreenPreview() {
     KoogAgentTheme {
         ModelSelectorScreenContent(
-            uiState = UiState(
-                models = ModelCatalog.ALL_MODELS.map {
-                    ModelInfo(
-                        config = it,
-                        isDownloaded = it.modelId == ModelCatalog.GEMMA3_1B.modelId,
-                        downloadStatus = if (it.modelId == ModelCatalog.GEMMA3_1B.modelId) DownloadStatus.Downloading(10f) else DownloadStatus.Completed,
-                    )
-                },
-                selectedModelId = ModelCatalog.GEMMA3_1B.modelId,
-                currentDownload = DownloadInfo(ModelCatalog.GEMMA3_1B.modelId, 10f),
-                statusMessage = "Downloading model: GEMMA3_1B"
-            )
+            uiState =
+                UiState(
+                    models =
+                        ModelCatalog.ALL_MODELS.map {
+                            ModelInfo(
+                                config = it,
+                                isDownloaded = it.modelId == ModelCatalog.GEMMA3_1B.modelId,
+                                downloadStatus =
+                                    if (it.modelId ==
+                                        ModelCatalog.GEMMA3_1B.modelId
+                                    ) {
+                                        DownloadStatus.Downloading(10f)
+                                    } else {
+                                        DownloadStatus.Completed
+                                    },
+                            )
+                        },
+                    selectedModelId = ModelCatalog.GEMMA3_1B.modelId,
+                    currentDownload = DownloadInfo(ModelCatalog.GEMMA3_1B.modelId, 10f),
+                    statusMessage = "Downloading model: GEMMA3_1B",
+                ),
         )
     }
 }

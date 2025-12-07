@@ -187,13 +187,12 @@ class ModelSelectorViewModelImpl(
         state: UiState,
         action: UiAction,
         actionState: ActionState,
-    ): UiState {
-        return when (actionState) {
+    ): UiState =
+        when (actionState) {
             is ActionState.Loading -> reduceLoading(state, action)
             is ActionState.Success -> reduceSuccess(state, action, actionState)
             is ActionState.Error -> state.copy(statusMessage = "Error: ${actionState.throwable.message ?: "Unknown error"}")
         }
-    }
 
     private fun reduceLoading(
         state: UiState,
