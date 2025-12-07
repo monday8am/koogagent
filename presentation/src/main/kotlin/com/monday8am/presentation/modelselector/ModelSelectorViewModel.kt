@@ -1,7 +1,7 @@
 package com.monday8am.presentation.modelselector
 
 import com.monday8am.koogagent.data.ModelConfiguration
-import com.monday8am.presentation.notifications.ModelDownloadManager
+import com.monday8am.presentation.modelselector.ModelDownloadManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -31,26 +31,17 @@ data class UiState(
     val statusMessage: String = "Select a model to get started",
 )
 
-/**
- * Per-model information including download state
- */
 data class ModelInfo(
     val config: ModelConfiguration,
     val isDownloaded: Boolean = false,
     val downloadStatus: DownloadStatus = DownloadStatus.NotStarted,
 )
 
-/**
- * Information about the currently downloading model
- */
 data class DownloadInfo(
     val modelId: String,
     val progress: Float, // 0-100
 )
 
-/**
- * Download status for each model
- */
 sealed interface DownloadStatus {
     data object NotStarted : DownloadStatus
 
@@ -67,9 +58,6 @@ sealed interface DownloadStatus {
     ) : DownloadStatus
 }
 
-/**
- * User actions and internal events
- */
 sealed class UiAction {
     data class SelectModel(
         val modelId: String,
@@ -94,9 +82,6 @@ sealed class UiAction {
     ) : UiAction()
 }
 
-/**
- * Action processing results
- */
 internal sealed interface ActionState {
     data object Loading : ActionState
 
@@ -109,25 +94,16 @@ internal sealed interface ActionState {
     ) : ActionState
 }
 
-/**
- * Internal sealed class for queue actions
- */
 private sealed interface QueueAction {
     data class Added(
         val modelId: String,
     ) : QueueAction
 }
 
-/**
- * Internal sealed class for download start
- */
 private data class StartDownload(
     val modelId: String,
 )
 
-/**
- * Platform-agnostic ViewModel interface
- */
 interface ModelSelectorViewModel {
     val uiState: Flow<UiState>
 
@@ -136,9 +112,6 @@ interface ModelSelectorViewModel {
     fun dispose()
 }
 
-/**
- * Implementation of ModelSelectorViewModel using MVI pattern
- */
 @OptIn(ExperimentalCoroutinesApi::class)
 class ModelSelectorViewModelImpl(
     private val availableModels: List<ModelConfiguration>,
@@ -261,14 +234,12 @@ class ModelSelectorViewModelImpl(
             is UiAction.DownloadModel -> {
                 val modelId = actionState.result as String
                 if (state.currentDownload != null) {
-                    // Queue download
                     state.copy(
                         queuedDownloads = state.queuedDownloads + modelId,
                         models = state.updateModelStatus(modelId, DownloadStatus.Queued),
                         statusMessage = "Download queued",
                     )
                 } else {
-                    // Start download immediately
                     onUiAction(UiAction.ProcessNextDownload(modelId))
                     state.copy(
                         currentDownload = DownloadInfo(modelId = modelId, progress = 0f),

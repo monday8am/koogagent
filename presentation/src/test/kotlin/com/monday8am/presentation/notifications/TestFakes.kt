@@ -8,6 +8,7 @@ import com.monday8am.koogagent.data.ModelConfiguration
 import com.monday8am.koogagent.data.NotificationResult
 import com.monday8am.koogagent.data.WeatherCondition
 import com.monday8am.koogagent.data.WeatherProvider
+import com.monday8am.presentation.modelselector.ModelDownloadManager
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf

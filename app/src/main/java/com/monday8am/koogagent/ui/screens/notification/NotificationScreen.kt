@@ -40,8 +40,6 @@ import com.monday8am.koogagent.data.ModelCatalog
 import com.monday8am.koogagent.data.ModelConfiguration
 import com.monday8am.koogagent.data.MotivationLevel
 import com.monday8am.koogagent.data.NotificationContext
-import com.monday8am.koogagent.ui.AndroidNotificationViewModel
-import com.monday8am.koogagent.ui.NotificationViewModelFactory
 import com.monday8am.koogagent.ui.theme.KoogAgentTheme
 import com.monday8am.koogagent.ui.toDisplayString
 import com.monday8am.presentation.notifications.UiAction

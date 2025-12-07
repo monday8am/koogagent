@@ -7,7 +7,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
-import com.monday8am.koogagent.ui.NotificationViewModelFactory
+import com.monday8am.koogagent.ui.screens.notification.NotificationViewModelFactory
 import com.monday8am.koogagent.ui.screens.modelselector.ModelSelectorScreen
 import com.monday8am.koogagent.ui.screens.modelselector.ModelSelectorViewModelFactory
 import com.monday8am.koogagent.ui.screens.notification.NotificationScreen

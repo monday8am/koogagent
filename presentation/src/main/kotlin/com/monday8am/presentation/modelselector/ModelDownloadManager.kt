@@ -1,7 +1,7 @@
-package com.monday8am.presentation.notifications
+package com.monday8am.presentation.modelselector
 
-import kotlinx.coroutines.flow.Flow
 import java.io.File
+import kotlinx.coroutines.flow.Flow
 
 interface ModelDownloadManager {
     sealed interface Status {

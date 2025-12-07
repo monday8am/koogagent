@@ -1,4 +1,4 @@
-package com.monday8am.koogagent.ui
+package com.monday8am.koogagent.ui.screens.notification
 
 import android.content.Context
 import androidx.lifecycle.ViewModel

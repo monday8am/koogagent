@@ -17,7 +17,7 @@ import com.monday8am.koogagent.inference.litertlm.NativeLocationTools
 import com.monday8am.koogagent.inference.mediapipe.MediaPipeTools
 import com.monday8am.koogagent.ui.DeviceContextProviderImpl
 import com.monday8am.koogagent.ui.NotificationEngineImpl
-import com.monday8am.koogagent.ui.NotificationViewModelFactory
+import com.monday8am.koogagent.ui.screens.notification.NotificationViewModelFactory
 import com.monday8am.koogagent.ui.navigation.AppNavigation
 import com.monday8am.koogagent.ui.screens.modelselector.ModelSelectorViewModelFactory
 import com.monday8am.koogagent.ui.theme.KoogAgentTheme

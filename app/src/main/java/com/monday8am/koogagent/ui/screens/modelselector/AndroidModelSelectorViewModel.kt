@@ -7,7 +7,7 @@ import com.monday8am.koogagent.data.ModelConfiguration
 import com.monday8am.presentation.modelselector.ModelSelectorViewModel
 import com.monday8am.presentation.modelselector.ModelSelectorViewModelImpl
 import com.monday8am.presentation.modelselector.UiState
-import com.monday8am.presentation.notifications.ModelDownloadManager
+import com.monday8am.presentation.modelselector.ModelDownloadManager
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
