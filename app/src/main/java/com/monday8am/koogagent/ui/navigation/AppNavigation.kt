@@ -24,7 +24,7 @@ fun AppNavigation(
             ModelSelectorScreen(
                 onNavigateToNotification = { modelId ->
                     navController.navigate(Route.Notification(modelId))
-                }
+                },
             )
         }
         composable<Route.Notification> { backStackEntry ->

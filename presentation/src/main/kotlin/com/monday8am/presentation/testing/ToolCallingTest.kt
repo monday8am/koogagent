@@ -106,14 +106,14 @@ internal data class TestCase(
     val toolFormat: ToolFormat = ToolFormat.NATIVE,
 )
 
-internal class GemmaToolCallingTest(
+internal class ToolCallingTest(
     private val promptExecutor: suspend (String) -> String?,
     private val streamPromptExecutor: (String) -> Flow<String>,
     private val resetConversation: () -> Result<Unit>,
     private val weatherProvider: WeatherProvider,
     private val locationProvider: LocationProvider,
 ) {
-    private val logger = Logger.withTag("GemmaToolCallingTest")
+    private val logger = Logger.withTag("ToolCallingTest")
     private val testIterations = 5
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -325,7 +325,7 @@ internal class GemmaToolCallingTest(
                 val agent =
                     NotificationAgent.local(
                         promptExecutor = promptExecutor,
-                        modelId = "gemma3-1b-it-int4",
+                        modelId = "Local Agent",
                         toolFormat = testCase.toolFormat,
                     )
 
@@ -437,7 +437,7 @@ internal class GemmaToolCallingTest(
         testCases
             .asFlow()
             .flatMapConcat { testCase ->
-                runTest(testCase, asStream = false)
+                runTest(testCase, asStream = true)
             }.catch { e ->
                 // This catches exceptions from the upstream flow (runTest or its processing).
                 logger.e(e) { "A failure occurred during the test suite execution" }

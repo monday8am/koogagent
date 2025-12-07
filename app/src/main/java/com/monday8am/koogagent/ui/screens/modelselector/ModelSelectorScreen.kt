@@ -130,7 +130,7 @@ private fun ModelSelectorScreenContent(
                 },
                 enabled =
                     uiState.selectedModelId != null &&
-                            uiState.models.find { it.config.modelId == uiState.selectedModelId }?.isDownloaded == true,
+                        uiState.models.find { it.config.modelId == uiState.selectedModelId }?.isDownloaded == true,
             ) {
                 Text("Go to Notifications")
             }

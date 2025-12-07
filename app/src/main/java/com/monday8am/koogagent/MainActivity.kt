@@ -19,7 +19,6 @@ class MainActivity : ComponentActivity() {
         // Initialize service locator with application context
         Dependencies.appContext = applicationContext
 
-        // Setup notification channel and permissions
         (Dependencies.notificationEngine as com.monday8am.koogagent.ui.NotificationEngineImpl).apply {
             createChannel()
             requestNotificationPermission(this@MainActivity)

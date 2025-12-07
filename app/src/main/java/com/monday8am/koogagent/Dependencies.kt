@@ -12,9 +12,9 @@ import com.monday8am.koogagent.inference.litertlm.NativeLocationTools
 import com.monday8am.koogagent.inference.mediapipe.MediaPipeTools
 import com.monday8am.koogagent.ui.DeviceContextProviderImpl
 import com.monday8am.koogagent.ui.NotificationEngineImpl
+import com.monday8am.presentation.modelselector.ModelDownloadManager
 import com.monday8am.presentation.notifications.DeviceContextProvider
 import com.monday8am.presentation.notifications.NotificationEngine
-import com.monday8am.presentation.modelselector.ModelDownloadManager
 
 /**
  * Simple service locator for app dependencies.

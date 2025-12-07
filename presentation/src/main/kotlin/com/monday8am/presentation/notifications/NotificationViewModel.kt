@@ -14,8 +14,8 @@ import com.monday8am.koogagent.data.MotivationLevel
 import com.monday8am.koogagent.data.NotificationContext
 import com.monday8am.koogagent.data.NotificationResult
 import com.monday8am.koogagent.data.WeatherProvider
-import com.monday8am.presentation.testing.GemmaToolCallingTest
 import com.monday8am.presentation.testing.TestResultFrame
+import com.monday8am.presentation.testing.ToolCallingTest
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -264,7 +264,7 @@ class NotificationViewModelImpl(
         promptExecutor: suspend (String) -> Result<String>,
         streamPromptExecutor: (String) -> Flow<String>,
         resetConversation: () -> Result<Unit>,
-    ) = GemmaToolCallingTest(
+    ) = ToolCallingTest(
         promptExecutor = { prompt ->
             promptExecutor(prompt).getOrThrow()
         },
