@@ -102,9 +102,9 @@ class NotificationViewModelImpl(
     private val toolFormat =
         when (selectedModel.modelFamily) {
             "qwen3" -> ToolFormat.NATIVE
-            "gemma3" -> ToolFormat.REACT
-            "hammer2" -> ToolFormat.REACT
-            else -> ToolFormat.REACT
+            "gemma3" -> ToolFormat.NATIVE
+            "hammer2" -> ToolFormat.HERMES
+            else -> ToolFormat.NATIVE
         }
 
     private val toolRegistry =

@@ -233,7 +233,7 @@ private fun <T : Enum<T>> EnumDropdown(
 
     ExposedDropdownMenuBox(
         expanded = expanded,
-        onExpandedChange = { },
+        onExpandedChange = { expanded = !expanded },
         modifier = modifier.fillMaxWidth(),
     ) {
         TextField(
