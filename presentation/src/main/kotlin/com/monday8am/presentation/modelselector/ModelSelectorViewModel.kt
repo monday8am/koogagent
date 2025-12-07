@@ -1,7 +1,6 @@
 package com.monday8am.presentation.modelselector
 
 import com.monday8am.koogagent.data.ModelConfiguration
-import com.monday8am.presentation.modelselector.ModelDownloadManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -94,16 +93,6 @@ internal sealed interface ActionState {
     ) : ActionState
 }
 
-private sealed interface QueueAction {
-    data class Added(
-        val modelId: String,
-    ) : QueueAction
-}
-
-private data class StartDownload(
-    val modelId: String,
-)
-
 interface ModelSelectorViewModel {
     val uiState: Flow<UiState>
 
@@ -160,7 +149,6 @@ class ModelSelectorViewModelImpl(
                     val model = availableModels.first { it.modelId == action.modelId }
                     modelDownloadManager
                         .downloadModel(model.modelId, model.downloadUrl, model.bundleFilename)
-                        .map { status -> UiAction.DownloadProgress(action.modelId, status) }
                 }
 
                 is UiAction.CancelCurrentDownload -> {
@@ -199,12 +187,13 @@ class ModelSelectorViewModelImpl(
         state: UiState,
         action: UiAction,
         actionState: ActionState,
-    ): UiState =
-        when (actionState) {
+    ): UiState {
+        return when (actionState) {
             is ActionState.Loading -> reduceLoading(state, action)
             is ActionState.Success -> reduceSuccess(state, action, actionState)
             is ActionState.Error -> state.copy(statusMessage = "Error: ${actionState.throwable.message ?: "Unknown error"}")
         }
+    }
 
     private fun reduceLoading(
         state: UiState,
@@ -248,8 +237,8 @@ class ModelSelectorViewModelImpl(
                 }
             }
 
-            is UiAction.DownloadProgress -> {
-                reduceDownloadProgress(state, action)
+            is UiAction.ProcessNextDownload -> {
+                reduceDownloadProgress(state = state, modelId = action.modelId, status = actionState.result as ModelDownloadManager.Status)
             }
 
             is UiAction.SelectModel -> {
@@ -274,24 +263,26 @@ class ModelSelectorViewModelImpl(
             }
         }
 
+    @Suppress("DefaultLocale")
     private fun reduceDownloadProgress(
         state: UiState,
-        action: UiAction.DownloadProgress,
+        modelId: String,
+        status: ModelDownloadManager.Status,
     ): UiState =
-        when (val status = action.status) {
+        when (status) {
             is ModelDownloadManager.Status.InProgress -> {
                 val progress = status.progress ?: 0f
                 state.copy(
-                    currentDownload = DownloadInfo(action.modelId, progress),
-                    models = state.updateModelStatus(action.modelId, DownloadStatus.Downloading(progress)),
-                    statusMessage = "Downloading ${progress.toInt()}%",
+                    currentDownload = DownloadInfo(modelId, progress),
+                    models = state.updateModelStatus(modelId, DownloadStatus.Downloading(progress)),
+                    statusMessage = "Downloading: $modelId",
                 )
             }
 
             is ModelDownloadManager.Status.Completed -> {
                 val updatedModels =
                     state.models.map {
-                        if (it.config.modelId == action.modelId) {
+                        if (it.config.modelId == modelId) {
                             it.copy(isDownloaded = true, downloadStatus = DownloadStatus.Completed)
                         } else {
                             it
@@ -301,13 +292,13 @@ class ModelSelectorViewModelImpl(
             }
 
             is ModelDownloadManager.Status.Failed -> {
-                val updatedModels = state.updateModelStatus(action.modelId, DownloadStatus.Failed(status.message))
+                val updatedModels = state.updateModelStatus(modelId, DownloadStatus.Failed(status.message))
                 processNextInQueue(state.copy(models = updatedModels), "Download failed: ${status.message}")
             }
 
             is ModelDownloadManager.Status.Cancelled -> {
                 state.copy(
-                    models = state.updateModelStatus(action.modelId, DownloadStatus.NotStarted),
+                    models = state.updateModelStatus(modelId, DownloadStatus.NotStarted),
                     currentDownload = null,
                     queuedDownloads = emptyList(), // Clear queue on cancel
                     statusMessage = "Download cancelled",
