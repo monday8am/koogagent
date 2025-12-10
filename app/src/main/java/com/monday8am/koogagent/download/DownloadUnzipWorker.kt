@@ -40,6 +40,7 @@ class DownloadUnzipWorker(
                 val destinationPath =
                     inputData.getString(KEY_DESTINATION_PATH)
                         ?: return@withContext Result.failure(workDataOf(KEY_ERROR_MESSAGE to "Destination path not provided"))
+                val requiresUnzip = inputData.getBoolean(KEY_REQUIRES_UNZIP, true)
 
                 val destinationFile = File(destinationPath)
                 val parentDir =
@@ -54,11 +55,17 @@ class DownloadUnzipWorker(
                     }
                 }
 
-                val zipFile = File(applicationContext.cacheDir, "demo-data.zip")
-
-                downloadFile(url, zipFile)
-                unzipWithProgress(zipFile, parentDir)
-                zipFile.delete()
+                if (requiresUnzip) {
+                    // ZIP download flow: download to temp file, extract, delete temp
+                    // Download uses 0-85% of progress, extraction uses 85-100%
+                    val zipFile = File(applicationContext.cacheDir, "model-download.zip")
+                    downloadFile(url, zipFile, scaleForUnzip = true)
+                    unzipWithProgress(zipFile, parentDir)
+                    zipFile.delete()
+                } else {
+                    // Direct download flow: download directly to destination (full 0-100%)
+                    downloadFile(url, destinationFile, scaleForUnzip = false)
+                }
 
                 setProgress(workDataOf(KEY_PROGRESS to 100))
                 Result.success()
@@ -71,6 +78,7 @@ class DownloadUnzipWorker(
     private suspend fun downloadFile(
         url: String,
         destFile: File,
+        scaleForUnzip: Boolean = false,
     ) {
         val request = Request.Builder().url(url).build()
         client.newCall(request).execute().use { response ->
@@ -82,7 +90,13 @@ class DownloadUnzipWorker(
             body.byteStream().use { input ->
                 FileOutputStream(destFile).use { output ->
                     copyStreamWithProgress(input, output, totalBytes) { progress ->
-                        setProgress(workDataOf(KEY_PROGRESS to progress))
+                        // Scale progress: 0-85% for ZIP downloads, 0-100% for direct downloads
+                        val scaledProgress = if (scaleForUnzip) {
+                            progress * DOWNLOAD_PROGRESS_WEIGHT
+                        } else {
+                            progress
+                        }
+                        setProgress(workDataOf(KEY_PROGRESS to scaledProgress))
                     }
                 }
             }
@@ -93,10 +107,10 @@ class DownloadUnzipWorker(
         zipFile: File,
         targetDir: File,
     ) {
-        // Count entries first (for percentage calculation)
-        val totalEntries = countZipEntries(zipFile)
+        // Calculate total uncompressed size for byte-based progress (more accurate than entry count)
+        val totalUncompressedSize = calculateTotalUncompressedSize(zipFile)
+        var bytesExtracted = 0L
 
-        var processedEntries = 0
         ZipInputStream(BufferedInputStream(FileInputStream(zipFile))).use { zis ->
             var entry: ZipEntry? = zis.nextEntry
             while (entry != null) {
@@ -107,18 +121,14 @@ class DownloadUnzipWorker(
                 } else {
                     newFile.parentFile?.mkdirs()
                     FileOutputStream(newFile).use { fos ->
-                        copyStream(zis, fos) // standard chunked copy
+                        bytesExtracted += copyStreamWithExtractProgress(
+                            zis,
+                            fos,
+                            bytesExtracted,
+                            totalUncompressedSize,
+                        )
                     }
                 }
-
-                processedEntries++
-                val unzipProgress =
-                    if (totalEntries > 0) {
-                        (processedEntries * 100 / totalEntries.toFloat())
-                    } else {
-                        100f
-                    }
-                setProgress(workDataOf(KEY_PROGRESS to unzipProgress))
 
                 zis.closeEntry()
                 entry = zis.nextEntry
@@ -126,14 +136,43 @@ class DownloadUnzipWorker(
         }
     }
 
-    private fun countZipEntries(zipFile: File): Int {
-        var count = 0
+    private fun calculateTotalUncompressedSize(zipFile: File): Long {
+        var totalSize = 0L
         ZipInputStream(BufferedInputStream(FileInputStream(zipFile))).use { zis ->
-            while (zis.nextEntry != null) {
-                count++
+            var entry: ZipEntry? = zis.nextEntry
+            while (entry != null) {
+                if (!entry.isDirectory) {
+                    // Use entry.size if available, otherwise estimate from compressed size
+                    totalSize += entry.size.takeIf { it >= 0 } ?: (entry.compressedSize * 2)
+                }
+                entry = zis.nextEntry
             }
         }
-        return count
+        return totalSize
+    }
+
+    private suspend fun copyStreamWithExtractProgress(
+        input: InputStream,
+        output: OutputStream,
+        currentBytesExtracted: Long,
+        totalBytes: Long,
+    ): Long {
+        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+        var bytesRead: Int
+        var bytesCopied = 0L
+
+        while (input.read(buffer).also { bytesRead = it } != -1) {
+            output.write(buffer, 0, bytesRead)
+            bytesCopied += bytesRead
+
+            if (totalBytes > 0) {
+                // Calculate extraction progress (0-100%) and scale to 85-100% range
+                val extractProgress = ((currentBytesExtracted + bytesCopied) * 100f) / totalBytes
+                val scaledProgress = EXTRACT_PROGRESS_START + (extractProgress * EXTRACT_PROGRESS_WEIGHT)
+                setProgress(workDataOf(KEY_PROGRESS to scaledProgress.coerceAtMost(100f)))
+            }
+        }
+        return bytesCopied
     }
 
     private suspend fun copyStreamWithProgress(
@@ -157,21 +196,17 @@ class DownloadUnzipWorker(
         }
     }
 
-    private fun copyStream(
-        input: InputStream,
-        output: OutputStream,
-    ) {
-        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-        var bytesRead: Int
-        while (input.read(buffer).also { bytesRead = it } != -1) {
-            output.write(buffer, 0, bytesRead)
-        }
-    }
-
     companion object {
         const val KEY_URL = "KEY_URL"
         const val KEY_DESTINATION_PATH = "KEY_DESTINATION_PATH"
+        const val KEY_REQUIRES_UNZIP = "KEY_REQUIRES_UNZIP"
         const val KEY_PROGRESS = "KEY_PROGRESS"
         const val KEY_ERROR_MESSAGE = "KEY_ERROR_MESSAGE"
+
+        // Progress weight constants for split progress reporting
+        // Download: 0-85%, Extract: 85-100%
+        private const val DOWNLOAD_PROGRESS_WEIGHT = 0.85f
+        private const val EXTRACT_PROGRESS_START = 85f
+        private const val EXTRACT_PROGRESS_WEIGHT = 0.15f
     }
 }
