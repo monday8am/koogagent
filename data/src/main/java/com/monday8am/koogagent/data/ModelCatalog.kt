@@ -15,7 +15,7 @@ object ModelCatalog {
             downloadUrl = "https://huggingface.co/litert-community/Qwen3-0.6B/resolve/main/Qwen3-0.6B.litertlm",
             bundleFilename = "Qwen3-0.6B.litertlm",
             inferenceLibrary = InferenceLibrary.LITERT,
-            hardwareAcceleration = HardwareBackend.CPU_ONLY,
+            hardwareAcceleration = HardwareBackend.GPU_SUPPORTED,
             defaultTopK = 40,
             defaultTopP = 0.85f,
             defaultTemperature = 0.2f,

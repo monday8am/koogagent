@@ -416,7 +416,7 @@ internal class ToolCallingTest(
                 TestCase(
                     name = "TEST 0: Basic Content",
                     tools = listOf(),
-                    queries = listOf(TestQuery("Hi!")),
+                    queries = listOf(TestQuery("Where is my location?")),
                     systemPrompt = "You are a helpful assistant!",
                     validator = { result ->
                         // The if-expression is more concise.
