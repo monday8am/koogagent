@@ -4,60 +4,90 @@ A prototype that explores how **agentic frameworks** and **on-device small langu
 
 Inspired by the Yazio app, this project combines:
 
-- [JetBrains Koog](https://github.com/JetBrains/koog) – agentic framework for language-model-driven agents  
-- [MediaPipe LLM Inference API](https://ai.google.dev/edge/mediapipe/solutions/genai/llm_inference) – local inference on Android  
-- Simulated MCPs – mock weather, season, and local meal context inputs
+- [LiteRT-LM](https://github.com/nicholasngai/LiteRT-LM) – on-device LLM inference with GPU/CPU support
+- [MediaPipe GenAI](https://ai.google.dev/edge/mediapipe/solutions/genai/llm_inference) – alternative inference backend for specific models
+- [JetBrains Koog](https://github.com/JetBrains/koog) – agentic framework structure for tool management
+- Real weather data via [Open-Meteo API](https://open-meteo.com/)
 
 
-### Read the Full Article
+### Read the Articles
 
-Check out the full technical write-up:  
-**[From Flat Notifications to Edge AI (Medium)](https://medium.com/@angel.anton/from-flat-notifications-to-edge-ai-42a594ce3b0c)**
+**Latest:** [Function Calling with Edge AI](https://monday8am.com/blog/2025/12/10/function-calling-edge-ai.html) – deep dive into tool calling challenges and the current state of on-device agentic AI.
+
+**Original:** [From Flat Notifications to Edge AI (Medium)](https://medium.com/@angel.anton/from-flat-notifications-to-edge-ai-42a594ce3b0c) – the initial concept and motivation.
 
 ---
 
-_Disclaimer: It's a prototype app. Althout it solves problems like MediaPipe Inference API + Koog agents integration, the code is created for **fast iteration**, **experimentation** and **learning**._ 
+_Disclaimer: This is a prototype app created for **fast iteration**, **experimentation**, and **learning**. While exploring the limits of edge AI tool calling, it serves as an alternative to Google's AI Edge Gallery app, focused specifically on text generation and agentic workflows._
 
 ### What It Does
 
 This prototype generates smarter notifications using local context and on-device inference:
 
-- Time-aware prompts (e.g. before lunch or late evening)
-- Weather- and location-aware suggestions
+- Time-aware prompts (e.g., before lunch or late evening)
+- Weather- and location-aware suggestions (real weather data from Open-Meteo)
 - Dietary and streak-based personalization
-- Fully offline — no cloud LLM fallback in the initial version
+- **Tool calling validation** – test framework for evaluating function calling capabilities
+- **Model management** – download and switch between different SLMs
+- Fully offline — no cloud LLM fallback
+
+
+### Architecture
+
+The project uses a **four-module KMP-ready architecture**:
+
+| Module | Description |
+|--------|-------------|
+| `:data` | Pure Kotlin data models and provider interfaces (zero dependencies) |
+| `:agent` | Platform-agnostic notification agent with multiple tool calling formats |
+| `:presentation` | MVI state management and ViewModels (KMP-ready) |
+| `:app` | Android implementations (LiteRT-LM, MediaPipe, Compose UI) |
+
+
+### Supported Models
+
+| Model | Parameters | Inference | Context |
+|-------|------------|-----------|---------|
+| Qwen3 0.6B | 0.6B (int8) | LiteRT-LM | 4K tokens |
+| Gemma 3 1B | 1B (int4) | LiteRT-LM | 4K tokens |
+| Hammer 2.1 0.5B | 0.5B (int8) | MediaPipe | 2K tokens |
+| Hammer 2.1 1.5B | 1.5B (int8) | MediaPipe | 2K tokens |
 
 
 ### Key Components
 
-| Component       | Description |
-|----------------|-------------|
-| Koog Agent      | Orchestrates task execution, context assembly, and prompt creation |
-| MediaPipe SLM   | Loads and runs the small language model locally on Android |
-| Input/Output DTOs | Structured data exchange with the model (context in, text out) |
-| Notification Engine | Displays the generated messages as Android push notifications |
+| Component | Description |
+|-----------|-------------|
+| NotificationAgent | Unified agent supporting multiple LLM backends and tool formats |
+| LiteRT-LM Engine | Primary inference runtime with GPU acceleration |
+| MediaPipe GenAI | Alternative runtime for Hammer2.1 models |
+| Tool Registry | Multiple formats: SIMPLE, OPENAPI, SLIM, REACT, HERMES, NATIVE |
+| Model Selector | UI for downloading and switching between models |
+| Test Framework | Validates tool calling accuracy across models |
 
 
 ### Tech Stack
 
-- Kotlin (Multiplatform-ready)
+- Kotlin (Multiplatform-ready modules)
 - Jetpack Compose
-- MediaPipe Inference API
-- Local SLM models (Gemma, Mistral)
+- LiteRT-LM 0.8.0
+- MediaPipe GenAI 0.10.29
+- Local SLM models (Qwen3, Gemma, Hammer2.1)
 - Ollama (for JVM-side testing)
 
 
 ### Roadmap
 
-- [ ] Add real MCP inputs (weather, season, meals)
-- [ ] Prompt tuning and safety filtering
-- [ ] Remote LLM fallback with opt-in
+- [ ] Llama.cpp runtime integration
+- [ ] RAG-based alternatives for context injection
+- [ ] LiteRT-LM native tool calling improvements
+- [ ] Play Store publication
 - [ ] iOS support via Kotlin Multiplatform
-- [ ] Translation and post-processing layer
+
 
 ### Screenshots
 
-<img src="screenshots/prototype.png" width="700" />
+<img src="screenshots/screenshots.jpg" width="700" />
 
 
 ---
