@@ -12,9 +12,9 @@ Inspired by the Yazio app, this project combines:
 
 ### Read the Articles
 
-**Part #2:** [Function Calling with Edge AI](https://monday8am.com/blog/2025/12/10/function-calling-edge-ai.html) – deep dive into tool calling challenges and the current state of on-device agentic AI. (Read it on Medium)
+**Part #2:** [Function Calling with Edge AI](https://monday8am.com/blog/2025/12/10/function-calling-edge-ai.html) – deep dive into tool calling challenges and the current state of on-device agentic AI. (Medium)
 
-**Original:** [From Flat Notifications to Edge AI](https://monday8am.com/blog/2025/10/01/flat-notifications-edge-ai.html) – the initial concept and motivation. ([Read it on Medium](https://medium.com/@angel.anton/from-flat-notifications-to-edge-ai-42a594ce3b0c))
+**Part #1:** [From Flat Notifications to Edge AI](https://monday8am.com/blog/2025/10/01/flat-notifications-edge-ai.html) – the initial concept and motivation. ([Medium](https://medium.com/@angel.anton/from-flat-notifications-to-edge-ai-42a594ce3b0c))
 
 ---
 
