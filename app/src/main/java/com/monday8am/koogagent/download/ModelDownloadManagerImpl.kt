@@ -71,15 +71,20 @@ class ModelDownloadManagerImpl(
     private fun createDownloadWorkRequest(
         downloadUrl: String,
         destinationFile: File,
-    ): OneTimeWorkRequest =
-        OneTimeWorkRequestBuilder<DownloadUnzipWorker>()
+    ): OneTimeWorkRequest {
+        // Detect download type: ZIP files need extraction, others are downloaded directly
+        val requiresUnzip = downloadUrl.endsWith(".zip", ignoreCase = true)
+
+        return OneTimeWorkRequestBuilder<DownloadUnzipWorker>()
             .setInputData(
                 workDataOf(
                     DownloadUnzipWorker.KEY_URL to downloadUrl,
                     DownloadUnzipWorker.KEY_DESTINATION_PATH to destinationFile.absolutePath,
+                    DownloadUnzipWorker.KEY_REQUIRES_UNZIP to requiresUnzip,
                 ),
             ).addTag(WORK_TAG)
             .build()
+    }
 
     private suspend fun findRunningWork(workName: String): WorkInfo? =
         withContext(dispatcher) {
