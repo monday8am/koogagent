@@ -275,13 +275,14 @@ class ModelSelectorViewModelImpl(
                 val result = actionState.result as Pair<Boolean, String>
                 val (success, modelId) = result
                 if (success) {
-                    val updatedModels = state.models.map {
-                        if (it.config.modelId == modelId) {
-                            it.copy(isDownloaded = false, downloadStatus = DownloadStatus.NotStarted)
-                        } else {
-                            it
+                    val updatedModels =
+                        state.models.map {
+                            if (it.config.modelId == modelId) {
+                                it.copy(isDownloaded = false, downloadStatus = DownloadStatus.NotStarted)
+                            } else {
+                                it
+                            }
                         }
-                    }
                     val newSelectedId = if (state.selectedModelId == modelId) null else state.selectedModelId
                     state.copy(
                         models = updatedModels,

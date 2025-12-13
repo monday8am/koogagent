@@ -19,7 +19,6 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ModelSelectorViewModelTest {
-
     private val testDispatcher = StandardTestDispatcher()
     private val model1 = ModelCatalog.QWEN3_0_6B
     private val model2 = ModelCatalog.GEMMA3_1B
@@ -32,10 +31,11 @@ class ModelSelectorViewModelTest {
     fun setup() {
         Dispatchers.setMain(testDispatcher)
         // Create a fresh ViewModel for each test
-        viewModel = ModelSelectorViewModelImpl(
-            availableModels = testModels,
-            modelDownloadManager = FakeModelDownloadManager(),
-        )
+        viewModel =
+            ModelSelectorViewModelImpl(
+                availableModels = testModels,
+                modelDownloadManager = FakeModelDownloadManager(),
+            )
     }
 
     @AfterTest
@@ -58,10 +58,11 @@ class ModelSelectorViewModelTest {
 
     @Test
     fun `Initialize should correctly count downloaded models`() {
-        val modelInfoList = listOf(
-            ModelInfo(config = model1, isDownloaded = true),
-            ModelInfo(config = model2, isDownloaded = false),
-        )
+        val modelInfoList =
+            listOf(
+                ModelInfo(config = model1, isDownloaded = true),
+                ModelInfo(config = model2, isDownloaded = false),
+            )
 
         val newState = reduce(action = UiAction.Initialize, result = modelInfoList)
 
@@ -82,16 +83,21 @@ class ModelSelectorViewModelTest {
 
     @Test
     fun `DeleteModel should reset model status and show deleted message`() {
-        val stateWithDownloadedModel = givenState(models = listOf(
-            ModelInfo(config = model1, isDownloaded = true, downloadStatus = DownloadStatus.Completed),
-            ModelInfo(config = model2, isDownloaded = false)
-        ))
+        val stateWithDownloadedModel =
+            givenState(
+                models =
+                    listOf(
+                        ModelInfo(config = model1, isDownloaded = true, downloadStatus = DownloadStatus.Completed),
+                        ModelInfo(config = model2, isDownloaded = false),
+                    ),
+            )
 
-        val newState = reduce(
-            state = stateWithDownloadedModel,
-            action = UiAction.DeleteModel(model1.modelId),
-            result = true to model1.modelId
-        )
+        val newState =
+            reduce(
+                state = stateWithDownloadedModel,
+                action = UiAction.DeleteModel(model1.modelId),
+                result = true to model1.modelId,
+            )
 
         val deletedModel = newState.models.find { it.config.modelId == model1.modelId }
         assertFalse(deletedModel!!.isDownloaded)
@@ -101,16 +107,18 @@ class ModelSelectorViewModelTest {
 
     @Test
     fun `DeleteModel should clear selection if the deleted model was selected`() {
-        val stateWithSelection = givenState(
-            selectedModelId = model1.modelId,
-            models = listOf(ModelInfo(config = model1, isDownloaded = true))
-        )
+        val stateWithSelection =
+            givenState(
+                selectedModelId = model1.modelId,
+                models = listOf(ModelInfo(config = model1, isDownloaded = true)),
+            )
 
-        val newState = reduce(
-            state = stateWithSelection,
-            action = UiAction.DeleteModel(model1.modelId),
-            result = true to model1.modelId
-        )
+        val newState =
+            reduce(
+                state = stateWithSelection,
+                action = UiAction.DeleteModel(model1.modelId),
+                result = true to model1.modelId,
+            )
 
         assertNull(newState.selectedModelId)
     }
@@ -130,16 +138,18 @@ class ModelSelectorViewModelTest {
 
     @Test
     fun `DownloadModel should queue a download if another is already in progress`() {
-        val stateWithDownload = givenState(
-            currentDownload = DownloadInfo(modelId = model1.modelId, progress = 50f),
-            models = testModels.map { ModelInfo(config = it) }
-        )
+        val stateWithDownload =
+            givenState(
+                currentDownload = DownloadInfo(modelId = model1.modelId, progress = 50f),
+                models = testModels.map { ModelInfo(config = it) },
+            )
 
-        val newState = reduce(
-            state = stateWithDownload,
-            action = UiAction.DownloadModel(model2.modelId),
-            result = model2.modelId
-        )
+        val newState =
+            reduce(
+                state = stateWithDownload,
+                action = UiAction.DownloadModel(model2.modelId),
+                result = model2.modelId,
+            )
 
         assertTrue(newState.queuedDownloads.contains(model2.modelId))
         assertEquals(model1.modelId, newState.currentDownload?.modelId) // Unchanged
@@ -153,11 +163,12 @@ class ModelSelectorViewModelTest {
         val stateWithModels = givenState(models = testModels.map { ModelInfo(config = it) })
         val progress = 45f
 
-        val newState = reduce(
-            state = stateWithModels,
-            action = UiAction.ProcessNextDownload(model1.modelId),
-            result = ModelDownloadManager.Status.InProgress(progress)
-        )
+        val newState =
+            reduce(
+                state = stateWithModels,
+                action = UiAction.ProcessNextDownload(model1.modelId),
+                result = ModelDownloadManager.Status.InProgress(progress),
+            )
 
         assertEquals(model1.modelId, newState.currentDownload?.modelId)
         assertEquals(progress, newState.currentDownload?.progress)
@@ -170,11 +181,12 @@ class ModelSelectorViewModelTest {
     fun `ProcessNextDownload Completed should mark model as downloaded`() {
         val stateWithModels = givenState(models = testModels.map { ModelInfo(config = it) })
 
-        val newState = reduce(
-            state = stateWithModels,
-            action = UiAction.ProcessNextDownload(model1.modelId),
-            result = ModelDownloadManager.Status.Completed(File("dummy"))
-        )
+        val newState =
+            reduce(
+                state = stateWithModels,
+                action = UiAction.ProcessNextDownload(model1.modelId),
+                result = ModelDownloadManager.Status.Completed(File("dummy")),
+            )
 
         assertNull(newState.currentDownload)
         val model = newState.models.find { it.config.modelId == model1.modelId }
@@ -185,16 +197,18 @@ class ModelSelectorViewModelTest {
 
     @Test
     fun `CancelCurrentDownload should clear all downloads and queues`() {
-        val stateWithDownloads = givenState(
-            currentDownload = DownloadInfo(modelId = model1.modelId, progress = 50f),
-            queuedDownloads = listOf(model2.modelId)
-        )
+        val stateWithDownloads =
+            givenState(
+                currentDownload = DownloadInfo(modelId = model1.modelId, progress = 50f),
+                queuedDownloads = listOf(model2.modelId),
+            )
 
-        val newState = reduce(
-            state = stateWithDownloads,
-            action = UiAction.CancelCurrentDownload,
-            result = Unit
-        )
+        val newState =
+            reduce(
+                state = stateWithDownloads,
+                action = UiAction.CancelCurrentDownload,
+                result = Unit,
+            )
 
         assertNull(newState.currentDownload)
         assertTrue(newState.queuedDownloads.isEmpty())
@@ -212,35 +226,35 @@ class ModelSelectorViewModelTest {
         models: List<ModelInfo> = emptyList(),
         selectedModelId: String? = null,
         currentDownload: DownloadInfo? = null,
-        queuedDownloads: List<String> = emptyList()
-    ): UiState {
-        return initialState.copy(
+        queuedDownloads: List<String> = emptyList(),
+    ): UiState =
+        initialState.copy(
             models = models,
             selectedModelId = selectedModelId,
             currentDownload = currentDownload,
-            queuedDownloads = queuedDownloads
+            queuedDownloads = queuedDownloads,
         )
-    }
 
     /**
      * A helper to execute the reduce function with a simplified signature.
      * It defaults to using the initial state and a Success ActionState.
      */
-    private fun <T: Any> reduce(
+    private fun <T : Any> reduce(
         state: UiState = this.initialState,
         action: UiAction,
-        result: T
-    ): UiState {
-        return viewModel.reduce(state, action, ActionState.Success(result))
-    }
+        result: T,
+    ): UiState = viewModel.reduce(state, action, ActionState.Success(result))
 
     /**
      * A custom assertion to check if the status message contains all given substrings.
      */
-    private fun assertStatusMessageContains(state: UiState, vararg expected: String) {
+    private fun assertStatusMessageContains(
+        state: UiState,
+        vararg expected: String,
+    ) {
         assertTrue(
             expected.all { state.statusMessage.contains(it, ignoreCase = true) },
-            "Expected status message '${state.statusMessage}' to contain all of: ${expected.joinToString()}"
+            "Expected status message '${state.statusMessage}' to contain all of: ${expected.joinToString()}",
         )
     }
 }

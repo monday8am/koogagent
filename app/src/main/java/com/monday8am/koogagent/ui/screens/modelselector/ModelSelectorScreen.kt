@@ -136,10 +136,11 @@ private fun ModelSelectorScreenContent(
                             onAction(UiAction.DeleteModel(modelId))
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error,
-                        contentColor = MaterialTheme.colorScheme.onError,
-                    ),
+                    colors =
+                        ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error,
+                            contentColor = MaterialTheme.colorScheme.onError,
+                        ),
                 ) {
                     Icon(
                         imageVector = Icons.Default.Delete,
