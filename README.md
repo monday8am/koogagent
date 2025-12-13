@@ -4,7 +4,7 @@ A prototype that explores how **agentic frameworks** and **on-device small langu
 
 Inspired by the Yazio app, this project combines:
 
-- [LiteRT-LM](https://github.com/nicholasngai/LiteRT-LM) – on-device LLM inference with GPU/CPU support
+- [LiteRT-LM](https://github.com/google-ai-edge/LiteRT-LM) – on-device LLM inference with GPU/CPU support
 - [MediaPipe GenAI](https://ai.google.dev/edge/mediapipe/solutions/genai/llm_inference) – alternative inference backend for specific models
 - [JetBrains Koog](https://github.com/JetBrains/koog) – agentic framework structure for tool management
 - Real weather data via [Open-Meteo API](https://open-meteo.com/)
@@ -12,9 +12,9 @@ Inspired by the Yazio app, this project combines:
 
 ### Read the Articles
 
-**Part #2:** [Function Calling with Edge AI](https://monday8am.com/blog/2025/12/10/function-calling-edge-ai.html) – deep dive into tool calling challenges and the current state of on-device agentic AI. (Medium)
-
 **Part #1:** [From Flat Notifications to Edge AI](https://monday8am.com/blog/2025/10/01/flat-notifications-edge-ai.html) – the initial concept and motivation. ([Medium](https://medium.com/@angel.anton/from-flat-notifications-to-edge-ai-42a594ce3b0c))
+
+**Part #2:** [Function Calling with Edge AI](https://monday8am.com/blog/2025/12/10/function-calling-edge-ai.html) – deep dive into tool calling challenges and the current state of on-device agentic AI. ([Medium](https://medium.com/@angel.anton/researching-tool-calling-in-on-device-ai-1c6143854ff3))
 
 ---
 
