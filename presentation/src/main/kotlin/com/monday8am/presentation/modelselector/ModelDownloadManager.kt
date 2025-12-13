@@ -33,4 +33,6 @@ interface ModelDownloadManager {
     ): Flow<Status>
 
     fun cancelDownload()
+
+    suspend fun deleteModel(bundleFilename: String): Boolean
 }

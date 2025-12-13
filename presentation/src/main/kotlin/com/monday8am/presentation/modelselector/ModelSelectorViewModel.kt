@@ -68,6 +68,10 @@ sealed class UiAction {
 
     data object CancelCurrentDownload : UiAction()
 
+    data class DeleteModel(
+        val modelId: String,
+    ) : UiAction()
+
     // Internal actions
     internal data object Initialize : UiAction()
 
@@ -158,13 +162,21 @@ class ModelSelectorViewModelImpl(
                 is UiAction.DownloadProgress -> {
                     flowOf(action)
                 }
+
+                is UiAction.DeleteModel -> {
+                    flow {
+                        val model = availableModels.first { it.modelId == action.modelId }
+                        val success = modelDownloadManager.deleteModel(model.bundleFilename)
+                        emit(success to action.modelId)
+                    }
+                }
             }
 
         return actionFlow
             .map<Any, ActionState> { result -> ActionState.Success(result) }
             .onStart {
                 if (action is UiAction.DownloadModel || action is UiAction.ProcessNextDownload ||
-                    action is UiAction.CancelCurrentDownload
+                    action is UiAction.CancelCurrentDownload || action is UiAction.DeleteModel
                 ) {
                     emit(ActionState.Loading)
                 }
@@ -201,6 +213,7 @@ class ModelSelectorViewModelImpl(
         when (action) {
             is UiAction.ProcessNextDownload -> state.copy(statusMessage = "Starting download...")
             is UiAction.CancelCurrentDownload -> state.copy(statusMessage = "Cancelling downloads...")
+            is UiAction.DeleteModel -> state.copy(statusMessage = "Deleting model...")
             else -> state
         }
 
@@ -255,6 +268,29 @@ class ModelSelectorViewModelImpl(
                     queuedDownloads = emptyList(),
                     statusMessage = "Downloads cancelled",
                 )
+            }
+
+            is UiAction.DeleteModel -> {
+                @Suppress("UNCHECKED_CAST")
+                val result = actionState.result as Pair<Boolean, String>
+                val (success, modelId) = result
+                if (success) {
+                    val updatedModels = state.models.map {
+                        if (it.config.modelId == modelId) {
+                            it.copy(isDownloaded = false, downloadStatus = DownloadStatus.NotStarted)
+                        } else {
+                            it
+                        }
+                    }
+                    val newSelectedId = if (state.selectedModelId == modelId) null else state.selectedModelId
+                    state.copy(
+                        models = updatedModels,
+                        selectedModelId = newSelectedId,
+                        statusMessage = "Model deleted",
+                    )
+                } else {
+                    state.copy(statusMessage = "Failed to delete model")
+                }
             }
 
             else -> {
