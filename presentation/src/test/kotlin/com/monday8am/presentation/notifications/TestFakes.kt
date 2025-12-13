@@ -94,4 +94,6 @@ internal class FakeModelDownloadManager(
     override suspend fun modelExists(bundleFilename: String): Boolean = modelExists
 
     override fun getModelPath(bundleFilename: String): String = "/fake/path/$bundleFilename"
+
+    override suspend fun deleteModel(bundleFilename: String): Boolean = true
 }
