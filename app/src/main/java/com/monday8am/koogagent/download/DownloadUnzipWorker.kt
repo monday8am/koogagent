@@ -91,11 +91,12 @@ class DownloadUnzipWorker(
                 FileOutputStream(destFile).use { output ->
                     copyStreamWithProgress(input, output, totalBytes) { progress ->
                         // Scale progress: 0-85% for ZIP downloads, 0-100% for direct downloads
-                        val scaledProgress = if (scaleForUnzip) {
-                            progress * DOWNLOAD_PROGRESS_WEIGHT
-                        } else {
-                            progress
-                        }
+                        val scaledProgress =
+                            if (scaleForUnzip) {
+                                progress * DOWNLOAD_PROGRESS_WEIGHT
+                            } else {
+                                progress
+                            }
                         setProgress(workDataOf(KEY_PROGRESS to scaledProgress))
                     }
                 }
@@ -121,12 +122,13 @@ class DownloadUnzipWorker(
                 } else {
                     newFile.parentFile?.mkdirs()
                     FileOutputStream(newFile).use { fos ->
-                        bytesExtracted += copyStreamWithExtractProgress(
-                            zis,
-                            fos,
-                            bytesExtracted,
-                            totalUncompressedSize,
-                        )
+                        bytesExtracted +=
+                            copyStreamWithExtractProgress(
+                                zis,
+                                fos,
+                                bytesExtracted,
+                                totalUncompressedSize,
+                            )
                     }
                 }
 

@@ -9,7 +9,6 @@ import com.monday8am.koogagent.data.MotivationLevel
 import com.monday8am.koogagent.data.NotificationContext
 import com.monday8am.koogagent.data.NotificationResult
 import com.monday8am.koogagent.data.WeatherProvider
-import com.monday8am.presentation.modelselector.ModelDownloadManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -20,7 +19,6 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -31,6 +29,7 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class NotificationViewModelIntegrationTest {
     private val testDispatcher = StandardTestDispatcher()
+    private val testModelPath = "/fake/path/model.bin"
 
     @BeforeTest
     fun setup() {
@@ -43,76 +42,15 @@ class NotificationViewModelIntegrationTest {
     }
 
     @Test
-    fun `initial state should emit Initializing message when model not exists`() =
+    fun `initial state should emit WelcomeModelReady message`() =
         runTest {
-            val modelManager = FakeModelDownloadManager(modelExists = false)
-            val viewModel = createViewModel(modelManager = modelManager)
-
-            viewModel.uiState.test {
-                skipInitialState()
-                val state = awaitItem()
-                assertEquals(LogMessage.WelcomeDownloadRequired, state.statusMessage)
-                assertFalse(state.isModelReady)
-            }
-
-            viewModel.dispose()
-        }
-
-    @Test
-    fun `initial state should emit WelcomeModelReady when model exists`() =
-        runTest {
-            val modelManager = FakeModelDownloadManager(modelExists = true)
-            val viewModel = createViewModel(modelManager = modelManager)
+            val viewModel = createViewModel()
 
             viewModel.uiState.test {
                 skipInitialState() // Skip the default UiState()
 
                 val state = awaitItem() // Get the initialized state
                 assertTrue(state.statusMessage is LogMessage.WelcomeModelReady)
-                assertTrue(state.isModelReady)
-            }
-
-            viewModel.dispose()
-        }
-
-    @Test
-    fun `DownloadModel action should emit download progress states`() =
-        runTest {
-            val modelManager =
-                FakeModelDownloadManager(
-                    modelExists = false,
-                    progressSteps = listOf(0.25f, 0.5f, 0.75f, 1.0f),
-                )
-            val viewModel = createViewModel(modelManager = modelManager)
-
-            viewModel.uiState.test {
-                skipInitialState() // Skip initial emission
-                awaitItem() // Skip download model ready item
-
-                viewModel.onUiAction(UiAction.DownloadModel)
-
-                val welcomeDownload = awaitItem()
-                assertTrue(welcomeDownload.statusMessage is LogMessage.WelcomeDownloadRequired)
-
-                val progressState1 = awaitItem()
-                assertTrue(progressState1.statusMessage is LogMessage.Downloading)
-                assertEquals(0.25f, progressState1.statusMessage.progress)
-
-                val progressState2 = awaitItem()
-                assertTrue(progressState2.statusMessage is LogMessage.Downloading)
-                assertEquals(0.5f, progressState2.statusMessage.progress)
-
-                val progressState3 = awaitItem()
-                assertTrue(progressState3.statusMessage is LogMessage.Downloading)
-                assertEquals(0.75f, progressState3.statusMessage.progress)
-
-                val progressState4 = awaitItem()
-                assertTrue(progressState4.statusMessage is LogMessage.Downloading)
-                assertEquals(1.0f, progressState4.statusMessage.progress)
-
-                val completedState = awaitItem()
-                assertEquals(LogMessage.DownloadComplete, completedState.statusMessage)
-                assertTrue(completedState.isModelReady)
             }
 
             viewModel.dispose()
@@ -125,7 +63,7 @@ class NotificationViewModelIntegrationTest {
 
             viewModel.uiState.test {
                 skipInitialState() // Skip initial emission
-                awaitItem() // Skip download model ready item
+                awaitItem() // Skip WelcomeModelReady item
 
                 // Update context
                 val newContext =
@@ -156,7 +94,7 @@ class NotificationViewModelIntegrationTest {
 
             viewModel.uiState.test {
                 skipInitialState()
-                awaitItem() // Skip download model ready item
+                awaitItem() // Skip WelcomeModelReady item
 
                 // Trigger notification
                 viewModel.onUiAction(UiAction.ShowNotification)
@@ -171,29 +109,6 @@ class NotificationViewModelIntegrationTest {
 
                 // Verify engine was initialized
                 assertTrue(inferenceEngine.initializeCalled)
-            }
-
-            viewModel.dispose()
-        }
-
-    @Test
-    fun `Error during download should emit Error message`() =
-        runTest {
-            val modelManager = FakeModelDownloadManager(shouldFail = true)
-            val viewModel = createViewModel(modelManager = modelManager)
-
-            viewModel.uiState.test {
-                skipInitialState() // Skip initial emission
-                awaitItem() // Skip download model ready item
-
-                // Trigger download
-                viewModel.onUiAction(UiAction.DownloadModel)
-                awaitItem() // Skip download model notification
-
-                // Should emit error state with LogMessage.Error
-                val errorState = awaitItem()
-                assertTrue(errorState.statusMessage is LogMessage.Error)
-                assertEquals("Download failed", errorState.statusMessage.message)
             }
 
             viewModel.dispose()
@@ -216,7 +131,7 @@ class NotificationViewModelIntegrationTest {
 
             viewModel.uiState.test {
                 skipInitialState() // Skip initial emission
-                awaitItem() // Skip download model ready item
+                awaitItem() // Skip WelcomeModelReady item
 
                 // Trigger notification ready
                 viewModel.onUiAction(UiAction.NotificationReady(testNotification))
@@ -238,21 +153,54 @@ class NotificationViewModelIntegrationTest {
             viewModel.dispose()
         }
 
+    @Test
+    fun `Error during initialization should emit Error message`() =
+        runTest {
+            val failingEngine =
+                object : LocalInferenceEngine by FakeLocalInferenceEngine() {
+                    override fun initializeAsFlow(
+                        modelConfig: com.monday8am.koogagent.data.ModelConfiguration,
+                        modelPath: String,
+                    ) = kotlinx.coroutines.flow.flow<LocalInferenceEngine> {
+                        throw Exception("Initialization failed")
+                    }
+                }
+            val viewModel = createViewModel(inferenceEngine = failingEngine)
+
+            viewModel.uiState.test {
+                skipInitialState()
+                awaitItem() // Skip WelcomeModelReady item
+
+                // Trigger notification which will fail during engine initialization
+                viewModel.onUiAction(UiAction.ShowNotification)
+
+                // Should first emit loading
+                val loadingState = awaitItem()
+                assertEquals(LogMessage.InitializingModel, loadingState.statusMessage)
+
+                // Then should emit error
+                val errorState = awaitItem()
+                assertTrue(errorState.statusMessage is LogMessage.Error)
+                assertEquals("Initialization failed", (errorState.statusMessage as LogMessage.Error).message)
+            }
+
+            viewModel.dispose()
+        }
+
     private fun createViewModel(
         inferenceEngine: LocalInferenceEngine = FakeLocalInferenceEngine(),
         notificationEngine: NotificationEngine = FakeNotificationEngine(),
         weatherProvider: WeatherProvider = FakeWeatherProvider(),
         locationProvider: LocationProvider = FakeLocationProvider(),
         deviceContextProvider: DeviceContextProvider = FakeDeviceContextProvider(),
-        modelManager: ModelDownloadManager = FakeModelDownloadManager(),
     ): NotificationViewModelImpl =
         NotificationViewModelImpl(
             selectedModel = ModelCatalog.DEFAULT,
+            modelPath = testModelPath,
             inferenceEngine = inferenceEngine,
             notificationEngine = notificationEngine,
             weatherProvider = weatherProvider,
             locationProvider = locationProvider,
             deviceContextProvider = deviceContextProvider,
-            modelManager = modelManager,
         )
 }

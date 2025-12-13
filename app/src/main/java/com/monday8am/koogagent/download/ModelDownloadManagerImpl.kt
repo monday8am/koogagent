@@ -35,6 +35,16 @@ class ModelDownloadManagerImpl(
             File(getModelPath(bundleFilename)).exists()
         }
 
+    override suspend fun deleteModel(bundleFilename: String): Boolean =
+        withContext(dispatcher) {
+            val modelFile = File(getModelPath(bundleFilename))
+            if (modelFile.exists()) {
+                modelFile.delete()
+            } else {
+                true // Already deleted
+            }
+        }
+
     override fun downloadModel(
         modelId: String,
         downloadUrl: String,

@@ -5,7 +5,6 @@ import com.monday8am.koogagent.data.ModelCatalog
 import com.monday8am.koogagent.data.MotivationLevel
 import com.monday8am.koogagent.data.NotificationContext
 import com.monday8am.koogagent.data.NotificationResult
-import com.monday8am.presentation.modelselector.ModelDownloadManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -15,7 +14,6 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
@@ -25,6 +23,7 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class NotificationViewModelTest {
     private val testModel = ModelCatalog.DEFAULT
+    private val testModelPath = "/fake/path/model.bin"
     private val initialState = UiState(selectedModel = testModel)
     private val testDispatcher = StandardTestDispatcher()
 
@@ -63,31 +62,16 @@ class NotificationViewModelTest {
         weatherProvider: FakeWeatherProvider = FakeWeatherProvider(),
         locationProvider: FakeLocationProvider = FakeLocationProvider(),
         deviceContextProvider: FakeDeviceContextProvider = FakeDeviceContextProvider(),
-        modelManager: FakeModelDownloadManager = FakeModelDownloadManager(),
     ): NotificationViewModelImpl =
         NotificationViewModelImpl(
             selectedModel = testModel,
+            modelPath = testModelPath,
             inferenceEngine = inferenceEngine,
             notificationEngine = notificationEngine,
             weatherProvider = weatherProvider,
             locationProvider = locationProvider,
             deviceContextProvider = deviceContextProvider,
-            modelManager = modelManager,
         )
-
-    @Test
-    fun `reduce with DownloadModel Loading should update download status`() {
-        val viewModel = createViewModel()
-
-        val newState =
-            viewModel.reduce(
-                state = initialState,
-                action = UiAction.DownloadModel,
-                actionState = ActionState.Loading,
-            )
-
-        assertEquals(ModelDownloadManager.Status.InProgress(0f), newState.downloadStatus)
-    }
 
     @Test
     fun `reduce with ShowNotification Loading should set InitializingModel message`() {
@@ -104,51 +88,17 @@ class NotificationViewModelTest {
     }
 
     @Test
-    fun `reduce with DownloadModel InProgress should set Downloading message with progress`() {
-        val viewModel = createViewModel()
-        val progress = 0.45f
-
-        val newState =
-            viewModel.reduce(
-                state = initialState,
-                action = UiAction.DownloadModel,
-                actionState = ActionState.Success(ModelDownloadManager.Status.InProgress(progress)),
-            )
-
-        assertTrue(newState.statusMessage is LogMessage.Downloading)
-        assertEquals(progress, newState.statusMessage.progress)
-        assertFalse(newState.isModelReady)
-    }
-
-    @Test
-    fun `reduce with DownloadModel Completed should set DownloadComplete message and mark model ready`() {
+    fun `reduce with RunModelTests Loading should set InitTests message`() {
         val viewModel = createViewModel()
 
         val newState =
             viewModel.reduce(
                 state = initialState,
-                action = UiAction.DownloadModel,
-                actionState = ActionState.Success(ModelDownloadManager.Status.Completed(java.io.File("/fake/model.bin"))),
+                action = UiAction.RunModelTests,
+                actionState = ActionState.Loading,
             )
 
-        assertEquals(LogMessage.DownloadComplete, newState.statusMessage)
-        assertTrue(newState.isModelReady)
-        assertTrue(newState.downloadStatus is ModelDownloadManager.Status.Completed)
-    }
-
-    @Test
-    fun `reduce with DownloadModel other status should set DownloadFinished message`() {
-        val viewModel = createViewModel()
-
-        val newState =
-            viewModel.reduce(
-                state = initialState,
-                action = UiAction.DownloadModel,
-                actionState = ActionState.Success(ModelDownloadManager.Status.Pending),
-            )
-
-        assertEquals(LogMessage.DownloadFinished, newState.statusMessage)
-        assertFalse(newState.isModelReady)
+        assertEquals(LogMessage.InitTests, newState.statusMessage)
     }
 
     @Test
@@ -164,7 +114,7 @@ class NotificationViewModelTest {
             )
 
         assertTrue(newState.statusMessage is LogMessage.PromptingWithContext)
-        assertTrue(newState.statusMessage.contextFormatted.contains("BREAKFAST"))
+        assertTrue((newState.statusMessage as LogMessage.PromptingWithContext).contextFormatted.contains("BREAKFAST"))
     }
 
     @Test
@@ -180,7 +130,7 @@ class NotificationViewModelTest {
 
         assertTrue(newState.statusMessage is LogMessage.NotificationGenerated)
         assertEquals(testNotification, newState.notification)
-        assertTrue(newState.statusMessage.notificationFormatted.contains("Test Title"))
+        assertTrue((newState.statusMessage as LogMessage.NotificationGenerated).notificationFormatted.contains("Test Title"))
     }
 
     // === Tests for UpdateContext Success ===
@@ -198,40 +148,23 @@ class NotificationViewModelTest {
 
         assertEquals(testContext, newState.context)
         assertEquals(initialState.statusMessage, newState.statusMessage) // Unchanged
-        assertEquals(initialState.isModelReady, newState.isModelReady) // Unchanged
     }
 
     // === Tests for Initialize Success ===
 
     @Test
-    fun `reduce with Initialize Success when model ready should set WelcomeModelReady message`() {
+    fun `reduce with Initialize Success should set WelcomeModelReady message`() {
         val viewModel = createViewModel()
 
         val newState =
             viewModel.reduce(
                 state = initialState,
                 action = UiAction.Initialize,
-                actionState = ActionState.Success(true),
+                actionState = ActionState.Success(Unit),
             )
 
         assertTrue(newState.statusMessage is LogMessage.WelcomeModelReady)
-        assertTrue(newState.isModelReady)
-        assertTrue(newState.statusMessage.modelName.contains("Qwen"))
-    }
-
-    @Test
-    fun `reduce with Initialize Success when model not ready should set WelcomeDownloadRequired message`() {
-        val viewModel = createViewModel()
-
-        val newState =
-            viewModel.reduce(
-                state = initialState,
-                action = UiAction.Initialize,
-                actionState = ActionState.Success(false),
-            )
-
-        assertEquals(LogMessage.WelcomeDownloadRequired, newState.statusMessage)
-        assertFalse(newState.isModelReady)
+        assertTrue((newState.statusMessage as LogMessage.WelcomeModelReady).modelName.isNotEmpty())
     }
 
     // === Tests for Error state ===
@@ -244,12 +177,12 @@ class NotificationViewModelTest {
         val newState =
             viewModel.reduce(
                 state = initialState,
-                action = UiAction.DownloadModel,
+                action = UiAction.ShowNotification,
                 actionState = ActionState.Error(Exception(errorMessage)),
             )
 
         assertTrue(newState.statusMessage is LogMessage.Error)
-        assertEquals(errorMessage, newState.statusMessage.message)
+        assertEquals(errorMessage, (newState.statusMessage as LogMessage.Error).message)
     }
 
     @Test
@@ -264,6 +197,6 @@ class NotificationViewModelTest {
             )
 
         assertTrue(newState.statusMessage is LogMessage.Error)
-        assertEquals("Unknown error", newState.statusMessage.message)
+        assertEquals("Unknown error", (newState.statusMessage as LogMessage.Error).message)
     }
 }

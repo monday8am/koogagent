@@ -36,7 +36,13 @@
       "Bash(JAVA_HOME=/opt/homebrew/Cellar/openjdk@17/17.0.17/libexec/openjdk.jdk/Contents/Home ./gradlew build:*)",
       "Bash(JAVA_HOME=/opt/homebrew/Cellar/openjdk@17/17.0.17/libexec/openjdk.jdk/Contents/Home ./gradlew:*)",
       "WebFetch(domain:monday8am.com)",
-      "Bash(git -C /Users/anton/Projects/KoogAgent log --oneline)"
+      "Bash(git -C /Users/anton/Projects/KoogAgent log --oneline)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git checkout:*)",
+      "Bash(git push:*)",
+      "Bash(gh pr create:*)",
+      "mcp__github__create_pull_request"
     ],
     "deny": [],
     "ask": []
