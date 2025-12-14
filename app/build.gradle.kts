@@ -1,8 +1,22 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+}
+
+// Load keystore properties from file or environment variables
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystoreProperties = Properties().apply {
+    if (keystorePropertiesFile.exists()) {
+        load(keystorePropertiesFile.inputStream())
+    }
+}
+
+fun getKeystoreProperty(key: String, envVar: String): String? {
+    return keystoreProperties.getProperty(key) ?: System.getenv(envVar)
 }
 
 android {
@@ -19,10 +33,23 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("release") {
+            val storeFilePath = getKeystoreProperty("storeFile", "KEYSTORE_FILE")
+            if (storeFilePath != null) {
+                storeFile = file(storeFilePath)
+                storePassword = getKeystoreProperty("storePassword", "KEYSTORE_PASSWORD")
+                keyAlias = getKeystoreProperty("keyAlias", "KEY_ALIAS")
+                keyPassword = getKeystoreProperty("keyPassword", "KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 
