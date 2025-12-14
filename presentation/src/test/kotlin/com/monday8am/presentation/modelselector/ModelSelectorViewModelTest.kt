@@ -159,15 +159,15 @@ class ModelSelectorViewModelTest {
     }
 
     @Test
-    fun `ProcessNextDownload InProgress should update download progress`() {
+    fun `DownloadProgress InProgress should update download progress`() {
         val stateWithModels = givenState(models = testModels.map { ModelInfo(config = it) })
         val progress = 45f
 
         val newState =
             reduce(
                 state = stateWithModels,
-                action = UiAction.ProcessNextDownload(model1.modelId),
-                result = ModelDownloadManager.Status.InProgress(progress),
+                action = UiAction.DownloadProgress(model1.modelId, ModelDownloadManager.Status.InProgress(progress)),
+                result = UiAction.DownloadProgress(model1.modelId, ModelDownloadManager.Status.InProgress(progress)),
             )
 
         assertEquals(model1.modelId, newState.currentDownload?.modelId)
@@ -178,14 +178,14 @@ class ModelSelectorViewModelTest {
     }
 
     @Test
-    fun `ProcessNextDownload Completed should mark model as downloaded`() {
+    fun `DownloadProgress Completed should mark model as downloaded`() {
         val stateWithModels = givenState(models = testModels.map { ModelInfo(config = it) })
 
         val newState =
             reduce(
                 state = stateWithModels,
-                action = UiAction.ProcessNextDownload(model1.modelId),
-                result = ModelDownloadManager.Status.Completed(File("dummy")),
+                action = UiAction.DownloadProgress(model1.modelId, ModelDownloadManager.Status.Completed(File("dummy"))),
+                result = UiAction.DownloadProgress(model1.modelId, ModelDownloadManager.Status.Completed(File("dummy"))),
             )
 
         assertNull(newState.currentDownload)
