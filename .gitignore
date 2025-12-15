@@ -33,3 +33,6 @@ google-services.json
 
 # Android Profiling
 *.hprof
+
+# Claude Code settings (may contain sensitive data)
+.claude/settings.local.json
