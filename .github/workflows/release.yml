@@ -39,14 +39,15 @@ jobs:
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         run: |
-          echo "$KEYSTORE_BASE64" | base64 --decode > app/release.keystore
+          mkdir -p signing
+          echo "$KEYSTORE_BASE64" | base64 --decode > signing/release.keystore
 
       - name: Run tests
         run: ./gradlew test
 
       - name: Build release AAB
         env:
-          KEYSTORE_FILE: app/release.keystore
+          KEYSTORE_FILE: signing/release.keystore
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
@@ -54,7 +55,7 @@ jobs:
 
       - name: Build release APK
         env:
-          KEYSTORE_FILE: app/release.keystore
+          KEYSTORE_FILE: signing/release.keystore
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}

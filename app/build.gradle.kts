@@ -8,7 +8,7 @@ plugins {
 }
 
 // Load keystore properties from file or environment variables
-val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystorePropertiesFile = rootProject.file("signing/keystore.properties")
 val keystoreProperties = Properties().apply {
     if (keystorePropertiesFile.exists()) {
         load(keystorePropertiesFile.inputStream())
@@ -37,7 +37,8 @@ android {
         create("release") {
             val storeFilePath = getKeystoreProperty("storeFile", "KEYSTORE_FILE")
             if (storeFilePath != null) {
-                storeFile = file(storeFilePath)
+                // Resolve relative to project root (works for both local and CI)
+                storeFile = rootProject.file(storeFilePath)
                 storePassword = getKeystoreProperty("storePassword", "KEYSTORE_PASSWORD")
                 keyAlias = getKeystoreProperty("keyAlias", "KEY_ALIAS")
                 keyPassword = getKeystoreProperty("keyPassword", "KEY_PASSWORD")
