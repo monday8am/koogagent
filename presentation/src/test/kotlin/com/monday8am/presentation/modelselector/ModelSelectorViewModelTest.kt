@@ -128,11 +128,12 @@ class ModelSelectorViewModelTest {
     // region Download Flow Tests
 
     @Test
-    fun `DownloadModel should start a new download if none is active`() {
+    fun `DownloadModel should start a new download and select model if none is active`() {
         val newState = reduce(action = UiAction.DownloadModel(model1.modelId), result = model1.modelId)
 
         assertEquals(model1.modelId, newState.currentDownload?.modelId)
         assertEquals(0f, newState.currentDownload?.progress)
+        assertEquals(model1.modelId, newState.selectedModelId)
         assertStatusMessageContains(newState, "Starting download")
     }
 
@@ -159,15 +160,15 @@ class ModelSelectorViewModelTest {
     }
 
     @Test
-    fun `ProcessNextDownload InProgress should update download progress`() {
+    fun `DownloadProgress InProgress should update download progress`() {
         val stateWithModels = givenState(models = testModels.map { ModelInfo(config = it) })
         val progress = 45f
 
         val newState =
             reduce(
                 state = stateWithModels,
-                action = UiAction.ProcessNextDownload(model1.modelId),
-                result = ModelDownloadManager.Status.InProgress(progress),
+                action = UiAction.DownloadProgress(model1.modelId, ModelDownloadManager.Status.InProgress(progress)),
+                result = UiAction.DownloadProgress(model1.modelId, ModelDownloadManager.Status.InProgress(progress)),
             )
 
         assertEquals(model1.modelId, newState.currentDownload?.modelId)
@@ -178,14 +179,14 @@ class ModelSelectorViewModelTest {
     }
 
     @Test
-    fun `ProcessNextDownload Completed should mark model as downloaded`() {
+    fun `DownloadProgress Completed should mark model as downloaded`() {
         val stateWithModels = givenState(models = testModels.map { ModelInfo(config = it) })
 
         val newState =
             reduce(
                 state = stateWithModels,
-                action = UiAction.ProcessNextDownload(model1.modelId),
-                result = ModelDownloadManager.Status.Completed(File("dummy")),
+                action = UiAction.DownloadProgress(model1.modelId, ModelDownloadManager.Status.Completed(File("dummy"))),
+                result = UiAction.DownloadProgress(model1.modelId, ModelDownloadManager.Status.Completed(File("dummy"))),
             )
 
         assertNull(newState.currentDownload)
@@ -196,7 +197,7 @@ class ModelSelectorViewModelTest {
     }
 
     @Test
-    fun `CancelCurrentDownload should clear all downloads and queues`() {
+    fun `CancelCurrentDownload should clear currentDownload and queued list`() {
         val stateWithDownloads =
             givenState(
                 currentDownload = DownloadInfo(modelId = model1.modelId, progress = 50f),
@@ -213,6 +214,67 @@ class ModelSelectorViewModelTest {
         assertNull(newState.currentDownload)
         assertTrue(newState.queuedDownloads.isEmpty())
         assertStatusMessageContains(newState, "cancelled")
+    }
+
+    @Test
+    fun `DownloadProgress Cancelled should reset all downloading and queued models to NotStarted`() {
+        val stateWithDownloads =
+            givenState(
+                currentDownload = DownloadInfo(modelId = model1.modelId, progress = 50f),
+                queuedDownloads = listOf(model2.modelId),
+                models =
+                    listOf(
+                        ModelInfo(config = model1, downloadStatus = DownloadStatus.Downloading(50f)),
+                        ModelInfo(config = model2, downloadStatus = DownloadStatus.Queued),
+                    ),
+            )
+
+        val newState =
+            reduce(
+                state = stateWithDownloads,
+                action = UiAction.DownloadProgress(model1.modelId, ModelDownloadManager.Status.Cancelled),
+                result = UiAction.DownloadProgress(model1.modelId, ModelDownloadManager.Status.Cancelled),
+            )
+
+        // All downloading/queued models should be reset to NotStarted
+        val downloadingModel = newState.models.find { it.config.modelId == model1.modelId }
+        val queuedModel = newState.models.find { it.config.modelId == model2.modelId }
+        assertEquals(DownloadStatus.NotStarted, downloadingModel?.downloadStatus)
+        assertEquals(DownloadStatus.NotStarted, queuedModel?.downloadStatus)
+
+        // Download state should be cleared
+        assertNull(newState.currentDownload)
+        assertTrue(newState.queuedDownloads.isEmpty())
+        assertStatusMessageContains(newState, "cancelled")
+    }
+
+    @Test
+    fun `DownloadProgress Cancelled should not affect already completed models`() {
+        val stateWithMixedModels =
+            givenState(
+                currentDownload = DownloadInfo(modelId = model1.modelId, progress = 50f),
+                models =
+                    listOf(
+                        ModelInfo(config = model1, downloadStatus = DownloadStatus.Downloading(50f)),
+                        ModelInfo(config = model2, isDownloaded = true, downloadStatus = DownloadStatus.Completed),
+                    ),
+            )
+
+        val newState =
+            reduce(
+                state = stateWithMixedModels,
+                action = UiAction.DownloadProgress(model1.modelId, ModelDownloadManager.Status.Cancelled),
+                result = UiAction.DownloadProgress(model1.modelId, ModelDownloadManager.Status.Cancelled),
+            )
+
+        // Downloading model should be reset
+        val downloadingModel = newState.models.find { it.config.modelId == model1.modelId }
+        assertEquals(DownloadStatus.NotStarted, downloadingModel?.downloadStatus)
+
+        // Completed model should remain unchanged
+        val completedModel = newState.models.find { it.config.modelId == model2.modelId }
+        assertEquals(DownloadStatus.Completed, completedModel?.downloadStatus)
+        assertTrue(completedModel?.isDownloaded == true)
     }
 
     // endregion

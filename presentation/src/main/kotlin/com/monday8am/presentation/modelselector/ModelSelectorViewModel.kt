@@ -1,5 +1,6 @@
 package com.monday8am.presentation.modelselector
 
+import co.touchlab.kermit.Logger
 import com.monday8am.koogagent.data.ModelConfiguration
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -15,6 +16,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.scan
 import kotlinx.coroutines.launch
@@ -118,6 +120,7 @@ class ModelSelectorViewModelImpl(
         userActions
             .onStart { emit(UiAction.Initialize) }
             .flatMapConcat { action -> processAction(action) }
+            .onEach { if (it.first !is UiAction.ProcessNextDownload) Logger.d { "Action: $it" } }
             .flowOn(Dispatchers.IO)
             .scan(UiState()) { state, (action, actionState) ->
                 reduce(state, action, actionState)
@@ -150,12 +153,22 @@ class ModelSelectorViewModelImpl(
                 }
 
                 is UiAction.ProcessNextDownload -> {
-                    val model = availableModels.first { it.modelId == action.modelId }
-                    modelDownloadManager
-                        .downloadModel(model.modelId, model.downloadUrl, model.bundleFilename)
+                    // Launch download in separate coroutine to avoid blocking action flow.
+                    // The coroutine will terminate naturally when the download completes or is cancelled.
+                    scope.launch {
+                        val model = availableModels.first { it.modelId == action.modelId }
+                        modelDownloadManager
+                            .downloadModel(model.modelId, model.downloadUrl, model.bundleFilename)
+                            .collect { status ->
+                                userActions.emit(UiAction.DownloadProgress(action.modelId, status))
+                            }
+                    }
+                    flowOf(Unit) // Return immediately
                 }
 
                 is UiAction.CancelCurrentDownload -> {
+                    // cancelDownload() triggers WorkManager cancellation, which causes
+                    // the downloadModel() flow to emit Status.Cancelled and complete naturally
                     flow { emit(modelDownloadManager.cancelDownload()) }
                 }
 
@@ -243,6 +256,7 @@ class ModelSelectorViewModelImpl(
                 } else {
                     onUiAction(UiAction.ProcessNextDownload(modelId))
                     state.copy(
+                        selectedModelId = modelId,
                         currentDownload = DownloadInfo(modelId = modelId, progress = 0f),
                         statusMessage = "Starting download...",
                     )
@@ -250,7 +264,12 @@ class ModelSelectorViewModelImpl(
             }
 
             is UiAction.ProcessNextDownload -> {
-                reduceDownloadProgress(state = state, modelId = action.modelId, status = actionState.result as ModelDownloadManager.Status)
+                // Download launched in background, nothing to reduce here
+                state
+            }
+
+            is UiAction.DownloadProgress -> {
+                reduceDownloadProgress(state = state, modelId = action.modelId, status = action.status)
             }
 
             is UiAction.SelectModel -> {
@@ -293,10 +312,6 @@ class ModelSelectorViewModelImpl(
                     state.copy(statusMessage = "Failed to delete model")
                 }
             }
-
-            else -> {
-                state
-            }
         }
 
     @Suppress("DefaultLocale")
@@ -334,7 +349,13 @@ class ModelSelectorViewModelImpl(
 
             is ModelDownloadManager.Status.Cancelled -> {
                 state.copy(
-                    models = state.updateModelStatus(modelId, DownloadStatus.NotStarted),
+                    models = state.models.map {
+                        if (it.downloadStatus is DownloadStatus.Downloading || it.downloadStatus == DownloadStatus.Queued) {
+                            it.copy(downloadStatus = DownloadStatus.NotStarted)
+                        } else {
+                            it
+                        }
+                    },
                     currentDownload = null,
                     queuedDownloads = emptyList(), // Clear queue on cancel
                     statusMessage = "Download cancelled",
