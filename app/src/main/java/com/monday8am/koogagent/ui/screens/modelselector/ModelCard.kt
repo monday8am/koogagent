@@ -59,7 +59,7 @@ internal fun ModelCard(
         modifier =
             modifier
                 .fillMaxWidth()
-                .clickable(enabled = modelInfo.isDownloaded) { onSelectClick() },
+                .clickable(true) { onSelectClick() },
         colors = CardDefaults.cardColors(containerColor = backgroundColor),
         border = if (isSelected) BorderStroke(2.dp, Color.Green) else null,
     ) {

@@ -256,6 +256,7 @@ class ModelSelectorViewModelImpl(
                 } else {
                     onUiAction(UiAction.ProcessNextDownload(modelId))
                     state.copy(
+                        selectedModelId = modelId,
                         currentDownload = DownloadInfo(modelId = modelId, progress = 0f),
                         statusMessage = "Starting download...",
                     )
@@ -348,7 +349,13 @@ class ModelSelectorViewModelImpl(
 
             is ModelDownloadManager.Status.Cancelled -> {
                 state.copy(
-                    models = state.updateModelStatus(modelId, DownloadStatus.NotStarted),
+                    models = state.models.map {
+                        if (it.downloadStatus is DownloadStatus.Downloading || it.downloadStatus == DownloadStatus.Queued) {
+                            it.copy(downloadStatus = DownloadStatus.NotStarted)
+                        } else {
+                            it
+                        }
+                    },
                     currentDownload = null,
                     queuedDownloads = emptyList(), // Clear queue on cancel
                     statusMessage = "Download cancelled",

@@ -7,17 +7,16 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -109,7 +108,6 @@ private fun ModelSelectorScreenContent(
             }
         }
 
-        // Bottom actions
         Row(
             modifier =
                 Modifier
@@ -117,53 +115,61 @@ private fun ModelSelectorScreenContent(
                     .padding(top = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            if (uiState.currentDownload != null) {
-                OutlinedButton(
-                    onClick = {
-                        onAction(UiAction.CancelCurrentDownload)
-                    },
-                ) {
-                    Text("Cancel Download")
-                }
-            }
+
 
             // Delete button - visible only when downloaded model is selected
-            val selectedModel = uiState.models.find { it.config.modelId == uiState.selectedModelId }
-            if (selectedModel?.isDownloaded == true) {
-                Button(
-                    onClick = {
-                        uiState.selectedModelId?.let { modelId ->
-                            onAction(UiAction.DeleteModel(modelId))
-                        }
-                    },
-                    colors =
-                        ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.error,
-                            contentColor = MaterialTheme.colorScheme.onError,
-                        ),
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "Delete",
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Delete")
+            val downloadStatus = uiState.models.find { it.config.modelId == uiState.selectedModelId }?.downloadStatus ?: DownloadStatus.NotStarted
+
+            when (downloadStatus) {
+                is DownloadStatus.Downloading,
+                is DownloadStatus.Queued -> {
+                    Button(
+                        onClick = {
+                            onAction(UiAction.CancelCurrentDownload)
+                        },
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Cancel,
+                            contentDescription = "Cancel download",
+                        )
+                    }
+                }
+                is DownloadStatus.Completed -> {
+                    Button(
+                        onClick = {
+                            uiState.selectedModelId?.let { modelId ->
+                                onAction(UiAction.DeleteModel(modelId))
+                            }
+                        },
+                        colors =
+                            ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error,
+                                contentColor = MaterialTheme.colorScheme.onError,
+                            ),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete",
+                        )
+                    }
+                }
+                else -> {
                 }
             }
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // Navigate button (only enabled if model selected and downloaded)
             Button(
                 onClick = {
                     uiState.selectedModelId?.let(onNavigateToNotification)
                 },
-                enabled =
-                    uiState.selectedModelId != null &&
-                        uiState.models.find { it.config.modelId == uiState.selectedModelId }?.isDownloaded == true,
+                enabled = downloadStatus == DownloadStatus.Completed,
             ) {
-                Text("Go to Notifications")
+                Text("Try model")
+                Icon(
+                    imageVector = Icons.AutoMirrored.Default.ArrowForward,
+                    contentDescription = "Go forward",
+                )
             }
         }
     }
@@ -180,7 +186,7 @@ private fun ModelSelectorScreenPreview() {
                         ModelCatalog.ALL_MODELS.map {
                             ModelInfo(
                                 config = it,
-                                isDownloaded = it.modelId == ModelCatalog.GEMMA3_1B.modelId,
+                                isDownloaded = it.modelId != ModelCatalog.GEMMA3_1B.modelId,
                                 downloadStatus =
                                     if (it.modelId ==
                                         ModelCatalog.GEMMA3_1B.modelId
