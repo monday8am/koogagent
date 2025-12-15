@@ -40,7 +40,10 @@ jobs:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         run: |
           mkdir -p signing
-          echo "$KEYSTORE_BASE64" | base64 --decode > signing/release.keystore
+          echo "$KEYSTORE_BASE64" | base64 -d > signing/release.keystore
+          # Verify keystore is valid
+          ls -lh signing/release.keystore
+          file signing/release.keystore
 
       - name: Run tests
         run: ./gradlew test
