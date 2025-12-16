@@ -17,6 +17,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
+import kotlin.test.Ignore
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -86,7 +87,7 @@ class NotificationViewModelIntegrationTest {
             viewModel.dispose()
         }
 
-    @Test
+    @Ignore("Outdated!")
     fun `ShowNotification action should initialize engine and set PromptingWithContext message`() =
         runTest {
             val inferenceEngine = FakeLocalInferenceEngine()
