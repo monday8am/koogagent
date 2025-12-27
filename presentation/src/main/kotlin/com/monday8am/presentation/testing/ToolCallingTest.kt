@@ -13,7 +13,6 @@ import ai.koog.prompt.streaming.StreamFrame
 import co.touchlab.kermit.Logger
 import co.touchlab.kermit.Severity
 import com.monday8am.agent.core.NotificationAgent
-import com.monday8am.agent.core.ToolFormat
 import com.monday8am.agent.local.LocalInferenceLLMClient
 import com.monday8am.agent.tools.GetLocation
 import com.monday8am.agent.tools.GetWeather
@@ -103,7 +102,6 @@ internal data class TestCase(
     val queries: List<TestQuery>,
     val systemPrompt: String,
     val validator: (result: String) -> ValidationResult,
-    val toolFormat: ToolFormat = ToolFormat.NATIVE,
 )
 
 internal class ToolCallingTest(
@@ -326,7 +324,6 @@ internal class ToolCallingTest(
                     NotificationAgent.local(
                         promptExecutor = promptExecutor,
                         modelId = "Local Agent",
-                        toolFormat = testCase.toolFormat,
                     )
 
                 // Initialize with tools if provided
@@ -719,12 +716,11 @@ internal class ToolCallingTest(
                         else -> {
                             ValidationResult.Fail(
                                 message = "No location or weather data in response",
-                                details = "Expected Hermes-style tool calling to retrieve data",
+                                details = "Expected native tool calling to retrieve data",
                             )
                         }
                     }
                 },
-                toolFormat = ToolFormat.HERMES,
             ),
         )
 

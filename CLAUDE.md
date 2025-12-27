@@ -28,11 +28,11 @@ KoogAgent is an Android prototype that explores how agentic frameworks and on-de
 2. **`:agent` module** (Pure Kotlin/JVM)
    - Platform-agnostic notification generation logic
    - `NotificationGenerator` class orchestrates the AI agent
-   - `NotificationAgent` - unified agent supporting multiple LLM backends and tool calling protocols
-   - 5 tool format options: SIMPLE, OPENAPI, SLIM, REACT (text-based), NATIVE (Ollama API)
-   - LLM clients: `GemmaLLMClient`, `OpenApiLLMClient`, `SlimLLMClient`, `ReActLLMClient`, `OllamaLLMClient`
+   - `NotificationAgent` - unified agent supporting multiple LLM backends (local inference and Koog framework)
+   - `LocalInferenceLLMClient` - bridge between Koog and platform-specific inference engines (LiteRT-LM, MediaPipe)
    - Core models: `LocalLLModel`, `LocalInferenceEngine` interface
    - Tools: `GetLocationTool`, `GetWeatherToolFromLocation`
+   - Tool calling handled natively by platform implementations (no custom protocols)
    - Depends on `:data`
 
 3. **`:presentation` module** (Pure Kotlin - KMP-Ready) ✨ NEW
@@ -65,17 +65,19 @@ KoogAgent is an Android prototype that explores how agentic frameworks and on-de
 ### Key Integration Points
 
 **Koog Agent Integration:**
-- `NotificationAgent` is a unified agent supporting multiple LLM backends and tool calling protocols
+- `NotificationAgent` is a unified agent supporting two LLM backends:
+  - **LOCAL**: Local inference engines (LiteRT-LM, MediaPipe) via `LocalInferenceLLMClient`
+  - **KOOG**: Koog framework agents (Ollama) via `simpleOllamaAIExecutor()`
 - Creates Koog `AIAgent` instances with:
   - System prompt defining the nutritionist role
-  - Configurable LLM executors based on `toolFormat`:
-    - Text-based formats (SIMPLE, OPENAPI, SLIM, REACT): Use `SimpleGemmaAIExecutor` with respective LLM client
-    - NATIVE format: Use Koog's `simpleOllamaAIExecutor()` for Ollama API
+  - LLM executor (either LocalInferenceAIExecutor or simpleOllamaAIExecutor)
   - Event handlers for debugging (tool calls, agent finished, errors)
-  - Temperature setting (0.7)
+  - Temperature setting (0.2)
   - Model information (provider, id, capabilities) built from constructor parameters
-- Text-based formats use custom tool protocols (Gemma requires prompt-based JSON, not native tool calling)
-- NATIVE format uses Ollama's OpenAI-compatible tool calling API
+- Tool calling is handled natively:
+  - LiteRT-LM: Uses `@Tool` annotations, tools passed via `ConversationConfig`
+  - MediaPipe: Uses `HammerFormatter` with protobuf `Tool` objects
+  - Ollama: Uses OpenAI-compatible tool calling API
 
 **LiteRT-LM Integration:**
 - `LocalInferenceEngineImpl` implements `LocalInferenceEngine` interface (in `app/litert/`)
@@ -88,9 +90,16 @@ KoogAgent is an Android prototype that explores how agentic frameworks and on-de
 - `ConversationConfig` parameters:
   - `samplerConfig`: topK, topP, temperature
   - `systemMessage`: Optional system prompt (as `Message`)
-  - `tools`: List of tool objects (not used due to Gemma limitation)
+  - `tools`: List of tool objects with `@Tool` annotations (works with Qwen3 and compatible models)
 - `sendMessageAsync()` extension (in `ConversationExtensions.kt`) bridges `MessageCallback` to Kotlin coroutines
 - Response collected via `MessageCallback`: `onMessage()` → `onDone()` → returns full text
+
+**MediaPipe Integration:**
+- `MediaPipeInferenceEngineImpl` implements `LocalInferenceEngine` interface (in `app/inference/mediapipe/`)
+- Uses MediaPipe's `GenerativeModel`/`ChatSession` API with `HammerFormatter`
+- `LlmInference` created via MediaPipe options, wrapped in `LlmInferenceBackend`
+- Tools defined as protobuf `Tool` objects (in `MediaPipeTools.kt`)
+- `HammerFormatter` handles function calling protocol for Hammer 2.1 model
 
 **Data Flow (MVI Pattern):**
 1. UI dispatches `UiAction.ShowNotification`
@@ -170,93 +179,68 @@ KoogAgent is an Android prototype that explores how agentic frameworks and on-de
 - `ModelDownloadManager.getModelPath()` returns absolute path for LiteRT-LM Engine
 - **Lazy evaluation**: `getLocalModel()` function evaluates path when needed, not at construction time
 
-### Tool Calling Architecture: Why Gemma 1B Requires Custom Protocol
-
-**Critical Finding:** Gemma 1B does not support LiteRT-LM's native tool calling system. This was discovered through investigation when initial attempts to use `@Tool` annotations failed.
-
-#### Investigation Process
-
-**1. Initial Attempt (Failed)**
-- Implemented tools using LiteRT-LM's `@Tool` annotations (`LocationTools`, `WeatherTools`)
-- Passed tools to `ConversationConfig(tools = listOf(...))`
-- Expected automatic OpenAPI schema generation and tool detection
-- **Result:** Model did not detect or use tools during testing
-
-**2. Root Cause Analysis**
-
-Discovered that LiteRT-LM's native tool calling requires models with specialized processors:
-
-**Source:** [LiteRT-LM Conversation Documentation](https://github.com/google-ai-edge/LiteRT-LM/blob/main/docs/conversation.md)
-
-> "**Function Calling Models (e.g., `Qwen3`):** The `Qwen3DataProcessor` handle `tool_calls` and `tool_response` content."
-
-Only models like Qwen3 natively generate `tool_calls` and `tool_response` content types.
-
-**3. Gemma's Architectural Limitation**
-
-Gemma fundamentally does not output tool-specific tokens:
-
-**Source:** [Google AI - Function calling with Gemma](https://ai.google.dev/gemma/docs/capabilities/function-calling)
-
-> "Gemma does not output a tool specific token."
-
-> "Instead, your framework must detect tool calls by checking if the output structure matches your specified function format."
-
-> Gemma supports: "JSON-style: `{"name": function name, "parameters": {argument mappings}}`"
-
-**4. Google's Official Solution**
-
-Google provides a separate SDK for Gemma tool calling (MediaPipe-based):
-
-**Source:** [AI Edge Function Calling SDK - Android Guide](https://ai.google.dev/edge/mediapipe/solutions/genai/function_calling/android)
-
-> "The SDK supports three models with built-in formatters:
-> - **Gemma**: Use `GemmaFormatter`"
-
-The `GemmaFormatter` (from `com.google.ai.edge.localagents:localagents-fc:0.1.0`) "formats the structured function declarations into text" and handles "parsing model output."
-
-#### Conclusion: Incompatible Architectures
-
-**LiteRT-LM Native Tool Calling:**
-- Designed for models that output structured `tool_calls` content (like Qwen3)
-- Automatic schema generation via `@Tool` annotations
-- Model natively understands when to invoke tools
-
-**Gemma 1B Approach:**
-- Requires explicit tool schemas in prompt text
-- Outputs plain text formatted as JSON (no special tokens)
-- Framework must parse JSON output and detect tool calls
-- This is exactly what the custom protocol implements
+### Tool Calling Architecture
 
 **Current Implementation:**
-- `NotificationAgent` provides unified interface for all tool calling approaches
-- Uses custom text-based protocols with Koog's `ToolRegistry` for Gemma-style models
-- Uses native Ollama API for server-based models (NATIVE format)
-- Tools: `GetLocationTool`, `GetWeatherToolFromLocation`
-- Text-based prompts include explicit tool schemas and JSON formatting instructions
-- Response parsers detect tool calls via pattern matching (JSON, XML, or natural language)
+The project uses native tool calling from platform inference engines. No custom text-based protocols are needed.
 
-**5 Tool Calling Formats:**
-1. **SIMPLE** - Simplified JSON: `{"tool":"ToolName"}` (no parameters) - for Gemma
-2. **OPENAPI** - OpenAPI spec: `{"name":"FunctionName", "parameters":{...}}` - for Gemma
-3. **SLIM** - XML-like tags: `<function>FunctionName</function>` with optional `<parameters>` - for Gemma
-4. **REACT** - Natural language: `Thought:` and `Action:` patterns (recommended by Google for small models like Gemma)
-5. **HERMES** - Qwen format: XML tags `<tools></tools>` for definitions, `<tool_call></tool_call>` for invocations - **Use for Qwen3**
+**How It Works:**
+1. **LiteRT-LM** (Qwen3, Gemma3):
+   - Tools defined with `@Tool` annotations in `LiteRTLmTools.kt`
+   - Tools passed to `ConversationConfig.tools` during initialization
+   - Model outputs `tool_calls` content type (handled by LiteRT-LM processors like `Qwen3DataProcessor`)
+   - `LocalInferenceEngineImpl` manages the conversation lifecycle
 
-**Alternative Options Investigated:**
-1. **Custom Text-Based Protocols** (formats 1-4) - Works with LiteRT-LM inference ✅
-2. **AI Edge Function Calling SDK** - Requires reverting to MediaPipe ❌
-3. **Native Ollama Protocol** (format 5) - Works with Ollama server ✅
+2. **MediaPipe** (Hammer 2.1):
+   - Tools defined as protobuf `Tool` objects in `MediaPipeTools.kt`
+   - `HammerFormatter` handles function calling protocol
+   - `GenerativeModel` created with tools and formatter
+   - `MediaPipeInferenceEngineImpl` wraps the model and manages chat sessions
 
-### LLM Client Bridges
-- All LLM clients implement Koog's `LLMClient` interface
-- **Text-based clients** (`GemmaLLMClient`, `OpenApiLLMClient`, `SlimLLMClient`, `ReActLLMClient`):
-  - Wrap LiteRT-LM inference via `promptExecutor` function
-  - Convert Koog `Prompt` (list of messages) to concatenated string
-  - Maintain conversation state (`isFirstTurn` flag)
-  - Return `Message.Assistant` with generated text
-  - Do not support streaming or moderation (throws exceptions)
-- **OllamaLLMClient**: Placeholder for NATIVE format (actual execution uses `simpleOllamaAIExecutor()`)
+3. **Koog Integration:**
+   - `LocalInferenceLLMClient` bridges between Koog's `LLMClient` interface and platform engines
+   - Simply passes prompts through to `promptExecutor` (no protocol translation)
+   - `NotificationAgent` uses this client via `LocalInferenceAIExecutor`
+   - Tools registered in `ToolRegistry` for Koog's tool execution framework
+
+**Model Compatibility:**
+- **Qwen3** (0.6B-8B): Native LiteRT-LM tool calling via `Qwen3DataProcessor`
+- **Gemma3** (1B): LiteRT-LM native tools (requires model support)
+- **Hammer 2.1** (0.5B): MediaPipe with `HammerFormatter`
+
+---
+
+### Previous Approach: Custom Text-Based Protocols (Deprecated)
+
+**Historical Context:**
+Earlier versions implemented custom text-based tool calling protocols (SIMPLE, OPENAPI, SLIM, REACT, HERMES) due to limitations with Gemma 1B and LiteRT-LM's native tool calling.
+
+**Why It Was Needed:**
+- Gemma 1B doesn't output tool-specific tokens
+- Required explicit tool schemas in prompt text
+- Framework had to parse JSON/XML output to detect tool calls
+- Created 5 custom LLMClient implementations (~2,400 lines of code)
+
+**Why It Was Removed:**
+- Modern platform implementations (LiteRT-LM, MediaPipe) handle tool calling natively
+- All supported models now use their native tool calling mechanisms
+- Simpler architecture with tool calling at the platform layer (`:app`) instead of abstraction layer (`:agent`)
+- Reduced code complexity and maintenance burden
+
+**References for Understanding:**
+- [LiteRT-LM Function Calling](https://github.com/google-ai-edge/LiteRT-LM/blob/main/docs/conversation.md) - Qwen3DataProcessor
+- [Google AI - Gemma Function Calling](https://ai.google.dev/gemma/docs/capabilities/function-calling) - Why Gemma needs special handling
+- [AI Edge Function Calling SDK](https://ai.google.dev/edge/mediapipe/solutions/genai/function_calling/android) - MediaPipe approach
+
+### LLM Client Bridge
+- `LocalInferenceLLMClient` implements Koog's `LLMClient` interface
+- Simple passthrough bridge to platform inference engines:
+  - Takes `promptExecutor: suspend (String) -> String?` function
+  - Optionally takes `streamPromptExecutor: (String) -> Flow<String>` for streaming
+  - Converts Koog's `Prompt` (list of messages) to string and passes to executor
+  - Returns `Message.Assistant` with generated text
+  - Supports streaming via `executeStreaming()` if stream executor provided
+  - Does not support moderation (throws UnsupportedOperationException)
 
 ### Weather Integration
 - **Real weather data** fetched from Open-Meteo API (https://open-meteo.com/)
@@ -310,20 +294,20 @@ Not enabled for release builds (prototype phase)
 ## Testing Strategy
 
 ### JVM Testing with Ollama
-- Use `:agent` module with `NotificationAgent` (NATIVE format)
+- Use `:agent` module with `NotificationAgent.koog()`
 - Run local Ollama server at `http://10.0.2.2:11434` (Android emulator host)
 - Tests can verify prompt construction and tool calling without LiteRT-LM
-- Example: `agent/ollama/App.kt` creates agent with `ToolFormat.NATIVE`
+- Example: `agent/ollama/App.kt` creates agent with Ollama backend
 
 ### Android Testing
-- LiteRT-LM requires actual device or emulator with model files
-- Model must be downloaded to device storage (`.litertlm` format)
+- LiteRT-LM and MediaPipe require actual device or emulator with model files
+- Models must be downloaded to device storage (`.litertlm` format for LiteRT, `.bin` for MediaPipe)
 - UI tests in `app/src/androidTest`
-- Tool calling tests verify custom protocol (not LiteRT native tools due to Gemma limitation)
+- Tool calling tests verify native platform tool calling (LiteRT-LM or MediaPipe)
 
 ## Re-exporting Models with Larger Context
 
-If you need to increase the context window (e.g., to use HERMES format with Qwen3):
+If you need to increase the context window for longer conversations or more complex prompts:
 
 ### Option 1: Using AI Edge Torch (Recommended)
 ```bash
@@ -349,10 +333,10 @@ python export_to_litert.py \
 - Quantization: `int4`, `int8`, `fp16` (smaller = faster, less accurate)
 
 ### Context Size Recommendations
-- **1024 tokens**: REACT format only (current model)
-- **2048 tokens**: REACT + SIMPLE formats
-- **4096 tokens**: All formats including HERMES (recommended)
-- **8192+ tokens**: Long conversations with tool calling
+- **1024 tokens**: Basic prompts and single-turn conversations
+- **2048 tokens**: Multi-turn conversations with moderate history
+- **4096 tokens**: Complex prompts with tool calling (recommended)
+- **8192+ tokens**: Long conversations with extensive tool calling
 
 **Note**: Larger context = more memory usage. Test on target device to ensure acceptable performance.
 
@@ -388,10 +372,6 @@ python export_to_litert.py \
   - Model filename often indicates context: `qwen3_0.6b_q8_ekv1024.litertlm` = 1024 tokens
   - Attempting to exceed compiled context causes `GATHER_ND index out of bounds` errors
   - To increase context: Must re-export model from HuggingFace with larger KV cache
-- **Tool Format vs Context Size**:
-  - HERMES format: Requires 4096+ tokens (verbose XML schemas ~600-800 tokens)
-  - REACT format: Works with 1024 tokens (compact natural language prompts ~200-300 tokens)
-  - SIMPLE/OPENAPI: Medium verbosity (~300-400 tokens)
 
 ### Working with LiteRT-LM Conversations
 - `Conversation` maintains conversation state across multiple queries
@@ -512,55 +492,52 @@ sealed class UiAction {
 ### Unified Agent Architecture
 
 **NotificationAgent Design:**
-The project previously had separate `GemmaAgent` and `OllamaAgent` classes with a `NotificationAgent` interface. These have been unified into a single `NotificationAgent` class with two distinct factory methods for clarity.
+`NotificationAgent` provides a unified interface for creating AI agents with two backend types:
 
 **Two Backend Types:**
-1. **LOCAL** - Local inference-based agents (LiteRT-LM, etc.)
-   - Requires: `promptExecutor` + `toolFormat`
-   - Supports: SIMPLE, OPENAPI, SLIM, REACT protocols
-   - Use case: On-device models like Gemma
+1. **LOCAL** - Local inference-based agents (LiteRT-LM, MediaPipe)
+   - Requires: `promptExecutor` function
+   - Tool calling: Handled natively by platform implementation
+   - Use case: On-device models (Qwen3, Gemma3, Hammer2.1)
 
 2. **KOOG** - Koog framework agents (Ollama, etc.)
    - Uses: Built-in executors (no promptExecutor needed)
-   - Supports: Native tool calling via Ollama API
+   - Tool calling: Native Ollama API
    - Use case: Server-based models, future Koog-compatible agents
 
 **Factory Methods:**
 ```kotlin
-// Local inference agent (e.g., Gemma with LiteRT-LM)
+// Local inference agent (LiteRT-LM or MediaPipe)
 NotificationAgent.local(
     promptExecutor: suspend (String) -> String?,
     modelId: String,
-    toolFormat: ToolFormat = ToolFormat.REACT,
     modelProvider: LLMProvider = LLMProvider.Google,
 )
 
-// Koog framework agent (e.g., Ollama)
-// Mirrors AIAgent's API - accepts LLModel directly
+// Koog framework agent (Ollama)
 NotificationAgent.koog(
     model: LLModel,
 )
 ```
 
 **Key Design Decisions:**
-1. **Explicit Backend Selection**: Factory methods make it clear which type of agent you're creating
-2. **Required Parameters Only**: LOCAL agents need `promptExecutor` + `toolFormat`, KOOG agents just need the model
+1. **Explicit Backend Selection**: Factory methods clarify which type of agent you're creating
+2. **Minimal Parameters**: LOCAL agents only need `promptExecutor` + `modelId`
 3. **Model Configuration**:
-   - LOCAL: Builds `LLModel` internally from simple `modelId` string
-   - KOOG: Accepts `LLModel` directly (mirrors `AIAgent` API, avoids rebuilding model)
-4. **Strategy**: Always uses Koog's default strategy (removed OllamaAgent's multi-tool loop for simplicity)
-5. **No Interface**: With only one implementation, the `NotificationAgent` interface was removed
+   - LOCAL: Builds `LLModel` internally from `modelId` string
+   - KOOG: Accepts `LLModel` directly (mirrors `AIAgent` API)
+4. **Tool Calling**: Platform-specific, not configured at agent level
+5. **Single Class**: No interface needed with only one implementation
 
 **Usage Examples:**
 ```kotlin
-// On-device Gemma with REACT protocol (recommended)
+// On-device Qwen3 with LiteRT-LM
 val agent = NotificationAgent.local(
     promptExecutor = { prompt -> inferenceEngine.prompt(prompt).getOrThrow() },
-    modelId = "gemma3-1b-it-int4",
-    toolFormat = ToolFormat.REACT,
+    modelId = "qwen3-0.6b-instruct-int4",
 )
 
-// Server-based Ollama with native tool calling
+// Server-based Ollama
 val client = OllamaClient()
 val llModel = client.getModels().firstOrNull()?.toLLModel()
 val agent = NotificationAgent.koog(

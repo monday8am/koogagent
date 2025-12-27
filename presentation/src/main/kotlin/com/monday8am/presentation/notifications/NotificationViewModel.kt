@@ -4,7 +4,6 @@ import ai.koog.agents.core.tools.ToolRegistry
 import com.monday8am.agent.core.LocalInferenceEngine
 import com.monday8am.agent.core.NotificationAgent
 import com.monday8am.agent.core.NotificationGenerator
-import com.monday8am.agent.core.ToolFormat
 import com.monday8am.agent.tools.GetLocation
 import com.monday8am.agent.tools.GetWeatherFromLocation
 import com.monday8am.koogagent.data.LocationProvider
@@ -97,15 +96,6 @@ class NotificationViewModelImpl(
     private val deviceContextProvider: DeviceContextProvider,
 ) : NotificationViewModel {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-
-    // Tool format determined once at construction based on model family
-    private val toolFormat =
-        when (selectedModel.modelFamily) {
-            "qwen3" -> ToolFormat.NATIVE
-            "gemma3" -> ToolFormat.NATIVE
-            "hammer2" -> ToolFormat.HERMES
-            else -> ToolFormat.NATIVE
-        }
 
     private val toolRegistry =
         ToolRegistry {
@@ -252,7 +242,6 @@ class NotificationViewModelImpl(
                         promptExecutor(prompt).getOrThrow()
                     },
                     modelId = selectedModel.modelId,
-                    toolFormat = toolFormat,
                 )
             agent.initializeWithTools(toolRegistry = toolRegistry)
             val content = NotificationGenerator(agent = agent).generate(notificationContext)
