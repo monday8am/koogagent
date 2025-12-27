@@ -1,7 +1,6 @@
 package com.monday8am.agent.tools
 
 import ai.koog.agents.core.tools.SimpleTool
-import ai.koog.agents.core.tools.ToolDescriptor
 import com.monday8am.agent.core.logger
 import com.monday8am.koogagent.data.LocationProvider
 import com.monday8am.koogagent.data.WeatherCondition
@@ -16,24 +15,16 @@ import kotlinx.serialization.builtins.serializer
 class GetWeather(
     private val locationProvider: LocationProvider,
     private val weatherProvider: WeatherProvider,
-) : SimpleTool<Unit>() {
-    override val argsSerializer = Unit.serializer()
-
-    override val description: String
-        get() = "Call this function to get the current weather. Parameters not required!"
-
-    override val descriptor =
-        ToolDescriptor(
-            name = "GetWeather",
-            description = description,
-            requiredParameters = listOf(),
-        )
-
+) : SimpleTool<Unit>(
+    name = "GetWeather",
+    description = "Call this function to get the current weather. Parameters not required!",
+    argsSerializer = Unit.serializer(),
+) {
     /**
      * Fetches current weather information for the user's location.
      * Use this tool when you need weather context to personalize meal or hydration suggestions.
      */
-    override suspend fun doExecute(args: Unit): String =
+    override suspend fun execute(args: Unit): String =
         try {
             val location = locationProvider.getLocation()
             val weather = weatherProvider.getCurrentWeather(latitude = location.latitude, longitude = location.longitude)

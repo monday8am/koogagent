@@ -29,10 +29,10 @@ val installCommonEventHandling: FeatureContext.() -> Unit = {
             kermitLogger.d { "LLM call ended with \ntools: ${it.tools}\nresponses:${it.responses}" }
         }
         onToolCallStarting { eventContext ->
-            kermitLogger.d { "Tool called: ${eventContext.tool} with args ${eventContext.toolArgs}" }
+            kermitLogger.d { "Tool called: ${eventContext.toolName} with args ${eventContext.toolArgs}" }
         }
         onToolCallCompleted {
-            kermitLogger.d { "Tool call ended with result: ${it.result}" }
+            kermitLogger.d { "Tool call ended with result: ${it.toolName}" }
         }
         onAgentCompleted { eventContext ->
             kermitLogger.d { "Agent finished with result: ${eventContext.result}" }

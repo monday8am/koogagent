@@ -26,7 +26,12 @@ internal data class WeatherResult(
 
 class GetWeatherFromLocation(
     private val weatherProvider: WeatherProvider,
-) : SimpleTool<GetWeatherFromLocation.Args>() {
+) : SimpleTool<GetWeatherFromLocation.Args>(
+    name = "GetWeatherFromLocation",
+    description = "Call this function to get the weather using latitude and longitude parameters. " +
+            "The latitude and longitude are needed as parameters.",
+    argsSerializer = Args.serializer(),
+) {
     @Serializable
     data class Args(
         @property:LLMDescription("Latitude of the location in double format")
@@ -35,29 +40,11 @@ class GetWeatherFromLocation(
         val longitude: Double,
     )
 
-    override val argsSerializer = Args.serializer()
-
-    override val description: String
-        get() =
-            "Call this function to get the weather using latitude and longitude parameters. " +
-                "The latitude and longitude are needed as parameters."
-
-    override val descriptor =
-        ToolDescriptor(
-            name = "GetWeatherFromLocation",
-            description = description,
-            requiredParameters =
-                listOf(
-                    ToolParameterDescriptor(name = "latitude", description = "geo latitude", type = ToolParameterType.String),
-                    ToolParameterDescriptor(name = "longitude", description = "geo longitude", type = ToolParameterType.String),
-                ),
-        )
-
     /**
      * Fetches current weather information for the user's location.
      * Use this tool when you need weather context to personalize meal or hydration suggestions.
      */
-    override suspend fun doExecute(args: Args): String =
+    override suspend fun execute(args: Args): String =
         try {
             val weather = weatherProvider.getCurrentWeather(latitude = args.latitude, longitude = args.longitude)
             if (weather != null) {

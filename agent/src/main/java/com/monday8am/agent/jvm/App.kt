@@ -14,7 +14,7 @@ private val qwen3 = "/Users/anton/Downloads/qwen3_0.6b_q8_ekv4096.litertlm"
 private val hammer2p1 = "/Users/anton/Downloads/hammer2.1_0.5b_q8_ekv4096.litertlm"
 
 suspend fun main() {
-    Engine.setNativeMinLogServerity(LogSeverity.INFO) // hide log for TUI app
+    Engine.setNativeMinLogSeverity(LogSeverity.INFO) // hide log for TUI app
 
     val engineConfig =
         EngineConfig(

@@ -29,7 +29,7 @@ object ModelCatalog {
             quantization = "int8",
             contextLength = 4096,
             downloadUrl = "https://huggingface.co/litert-community/Qwen2.5-1.5B-Instruct/resolve/main/Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv4096.litertlm",
-            bundleFilename = "Qwen3-0.6B.litertlm",
+            bundleFilename = "Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv4096.litertlm",
             inferenceLibrary = InferenceLibrary.LITERT,
             hardwareAcceleration = HardwareBackend.GPU_SUPPORTED,
             defaultTopK = 40,
