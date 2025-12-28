@@ -3,7 +3,6 @@ package com.monday8am.presentation.testing
 import co.touchlab.kermit.Logger
 import co.touchlab.kermit.Severity
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
@@ -60,12 +59,6 @@ sealed interface TestResultFrame {
     ) : TestResultFrame
 }
 
-private enum class ParserState {
-    Content,
-    Thinking,
-    ToolCall,
-}
-
 /**
  * Test case definition - framework-agnostic.
  *
@@ -92,7 +85,6 @@ internal data class TestCase(
  * framework layers. Tools are configured at the platform layer (LiteRT-LM/MediaPipe),
  * tests just validate output.
  *
- * @param promptExecutor Executes a prompt and returns the response
  * @param streamPromptExecutor Executes a prompt and streams the response
  * @param resetConversation Resets conversation state between tests
  */
@@ -170,85 +162,6 @@ class ToolCallingTest(
                     ),
                 )
             }
-    }
-
-    /**
-     * Internal processor to handle tag-based streaming state.
-     */
-    private class TagProcessor(
-        private val parseTags: Boolean,
-    ) {
-        private val currentBlock = StringBuilder()
-        private var state = ParserState.Content
-
-        /** The content accumulated for validation (after stripping tags if enabled) */
-        val resultContent: String get() = currentBlock.toString()
-
-        fun process(chunk: String): TestResultFrame {
-            currentBlock.append(chunk)
-
-            if (!parseTags) {
-                return TestResultFrame.Content(chunk, currentBlock.toString())
-            }
-
-            // Simple state machine to detect tags. Using a window to handle split tokens.
-            // We check the tail of currentBlock for state transitions.
-            val lookBack = currentBlock.takeLast(20).toString()
-
-            when (state) {
-                ParserState.Content -> {
-                    if (lookBack.contains("<think>")) {
-                        state = ParserState.Thinking
-                        stripTag("<think>")
-                    } else if (lookBack.contains("<tool_call")) {
-                        state = ParserState.ToolCall
-                        stripTag("<tool_call")
-                    }
-                }
-
-                ParserState.Thinking -> {
-                    if (lookBack.contains("</think>")) {
-                        state = ParserState.Content
-                        stripTag("</think>", clearBefore = true)
-                    }
-                }
-
-                ParserState.ToolCall -> {
-                    if (lookBack.contains("</tool_call>")) {
-                        state = ParserState.Content
-                        stripTag("</tool_call>", clearBefore = true)
-                    }
-                }
-            }
-
-            return when (state) {
-                ParserState.Thinking -> TestResultFrame.Thinking(chunk, currentBlock.toString())
-                ParserState.ToolCall -> TestResultFrame.Tool(chunk, currentBlock.toString())
-                ParserState.Content -> TestResultFrame.Content(chunk, currentBlock.toString())
-            }
-        }
-
-        private fun stripTag(
-            tag: String,
-            clearBefore: Boolean = false,
-        ) {
-            val content = currentBlock.toString()
-            val index = content.lastIndexOf(tag)
-            if (index != -1) {
-                if (clearBefore) {
-                    val remaining = content.substring(index + tag.length)
-                    currentBlock.clear()
-                    currentBlock.append(remaining)
-                } else {
-                    // Just remove the tag itself if we're starting a new block
-                    // Actually, if we're starting <think>, we might want to clear previous content
-                    // if it's just whitespace or if the contract is "one block at a time".
-                    // The original code cleared on END tags.
-                    // For start tags, let's just keep everything for now but remove the tag.
-                    currentBlock.delete(index, index + tag.length)
-                }
-            }
-        }
     }
 
     companion object {

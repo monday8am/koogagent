@@ -10,4 +10,9 @@ sealed interface Route {
     data class Notification(
         val modelId: String,
     ) : Route
+
+    @Serializable
+    data class Testing(
+        val modelId: String,
+    ) : Route
 }

@@ -13,8 +13,6 @@ import com.monday8am.koogagent.data.MotivationLevel
 import com.monday8am.koogagent.data.NotificationContext
 import com.monday8am.koogagent.data.NotificationResult
 import com.monday8am.koogagent.data.WeatherProvider
-import com.monday8am.presentation.testing.TestResultFrame
-import com.monday8am.presentation.testing.ToolCallingTest
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -51,8 +49,6 @@ data class UiState(
 
 sealed class UiAction {
     data object ShowNotification : UiAction()
-
-    data object RunModelTests : UiAction()
 
     data class UpdateContext(
         val context: NotificationContext,
@@ -122,19 +118,6 @@ class NotificationViewModelImpl(
                             )
                         }
 
-                        UiAction.RunModelTests -> {
-                            inferenceEngine
-                                .initializeAsFlow(
-                                    modelConfig = selectedModel,
-                                    modelPath = modelPath,
-                                ).flatMapConcat { engine ->
-                                    runModelTests(
-                                        streamPromptExecutor = engine::promptStreaming,
-                                        resetConversation = engine::resetConversation,
-                                    )
-                                }
-                        }
-
                         is UiAction.UpdateContext -> {
                             flowOf(value = action.context)
                         }
@@ -147,7 +130,7 @@ class NotificationViewModelImpl(
                 actionFlow
                     .map<Any, ActionState> { result -> ActionState.Success(result) }
                     .onStart {
-                        if (action is UiAction.ShowNotification || action is UiAction.RunModelTests) {
+                        if (action is UiAction.ShowNotification) {
                             emit(ActionState.Loading)
                         }
                     }.catch { throwable -> emit(ActionState.Error(throwable)) }
@@ -183,7 +166,6 @@ class NotificationViewModelImpl(
             is ActionState.Loading -> {
                 when (action) {
                     UiAction.ShowNotification -> state.copy(statusMessage = LogMessage.InitializingModel)
-                    UiAction.RunModelTests -> state.copy(statusMessage = LogMessage.InitTests)
                     else -> state
                 }
             }
@@ -210,10 +192,6 @@ class NotificationViewModelImpl(
                         state.copy(
                             statusMessage = LogMessage.WelcomeModelReady(selectedModel.displayName),
                         )
-                    }
-
-                    UiAction.RunModelTests -> {
-                        state.copy(statusMessage = LogMessage.TestResultMessage(actionState.result as TestResultFrame))
                     }
                 }
             }
@@ -247,12 +225,4 @@ class NotificationViewModelImpl(
             onUiAction(uiAction = UiAction.NotificationReady(content = content))
         }
     }
-
-    private fun runModelTests(
-        streamPromptExecutor: (String) -> Flow<String>,
-        resetConversation: () -> Result<Unit>,
-    ) = ToolCallingTest(
-        streamPromptExecutor = streamPromptExecutor,
-        resetConversation = resetConversation,
-    ).runAllTest()
 }

@@ -116,24 +116,12 @@ private fun NotificationContent(
 
         LogPanel(textLog = log)
 
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = spacedBy(16.dp),
+        Button(
+            onClick = { onPressButton(UiAction.ShowNotification) },
         ) {
-            Button(
-                onClick = { onPressButton(UiAction.ShowNotification) },
-            ) {
-                Text(
-                    text = "Trigger Notification",
-                )
-            }
-            Button(
-                onClick = { onPressButton(UiAction.RunModelTests) },
-            ) {
-                Text(
-                    text = "Run tests",
-                )
-            }
+            Text(
+                text = "Trigger Notification",
+            )
         }
 
         NotificationContextEditor(
