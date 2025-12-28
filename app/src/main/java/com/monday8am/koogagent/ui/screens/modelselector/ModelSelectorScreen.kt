@@ -115,14 +115,14 @@ private fun ModelSelectorScreenContent(
                     .padding(top = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-
-
             // Delete button - visible only when downloaded model is selected
-            val downloadStatus = uiState.models.find { it.config.modelId == uiState.selectedModelId }?.downloadStatus ?: DownloadStatus.NotStarted
+            val downloadStatus =
+                uiState.models.find { it.config.modelId == uiState.selectedModelId }?.downloadStatus ?: DownloadStatus.NotStarted
 
             when (downloadStatus) {
                 is DownloadStatus.Downloading,
-                is DownloadStatus.Queued -> {
+                is DownloadStatus.Queued,
+                -> {
                     Button(
                         onClick = {
                             onAction(UiAction.CancelCurrentDownload)
@@ -134,6 +134,7 @@ private fun ModelSelectorScreenContent(
                         )
                     }
                 }
+
                 is DownloadStatus.Completed -> {
                     Button(
                         onClick = {
@@ -153,6 +154,7 @@ private fun ModelSelectorScreenContent(
                         )
                     }
                 }
+
                 else -> {
                 }
             }

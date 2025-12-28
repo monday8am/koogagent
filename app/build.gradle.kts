@@ -9,15 +9,17 @@ plugins {
 
 // Load keystore properties from file or environment variables
 val keystorePropertiesFile = rootProject.file("signing/keystore.properties")
-val keystoreProperties = Properties().apply {
-    if (keystorePropertiesFile.exists()) {
-        load(keystorePropertiesFile.inputStream())
+val keystoreProperties =
+    Properties().apply {
+        if (keystorePropertiesFile.exists()) {
+            load(keystorePropertiesFile.inputStream())
+        }
     }
-}
 
-fun getKeystoreProperty(key: String, envVar: String): String? {
-    return keystoreProperties.getProperty(key) ?: System.getenv(envVar)
-}
+fun getKeystoreProperty(
+    key: String,
+    envVar: String,
+): String? = keystoreProperties.getProperty(key) ?: System.getenv(envVar)
 
 android {
     namespace = "com.monday8am.koogagent"

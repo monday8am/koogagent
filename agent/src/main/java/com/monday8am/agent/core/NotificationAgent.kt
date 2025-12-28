@@ -9,37 +9,7 @@ import ai.koog.prompt.llm.LLMCapability
 import ai.koog.prompt.llm.LLMProvider
 import ai.koog.prompt.llm.LLModel
 import co.touchlab.kermit.Logger
-import com.monday8am.agent.core.ToolFormat.HERMES
-import com.monday8am.agent.core.ToolFormat.NATIVE
-import com.monday8am.agent.core.ToolFormat.OPENAPI
-import com.monday8am.agent.core.ToolFormat.REACT
-import com.monday8am.agent.core.ToolFormat.SIMPLE
-import com.monday8am.agent.core.ToolFormat.SLIM
-import com.monday8am.agent.local.HermesLLMClient
 import com.monday8am.agent.local.LocalInferenceLLMClient
-import com.monday8am.agent.local.OpenApiLLMClient
-import com.monday8am.agent.local.ReActLLMClient
-import com.monday8am.agent.local.SimpleLLMClient
-import com.monday8am.agent.local.SlimLLMClient
-
-/**
- * Tool calling format options for the notification agent.
- *
- * @property SIMPLE Simplified JSON format: `{"tool":"ToolName"}` (no parameters) - Custom protocol for Gemma
- * @property OPENAPI OpenAPI specification format: `{"name":"FunctionName", "parameters":{...}}` - Custom protocol for Gemma
- * @property SLIM XML-like tag format: `<function>FunctionName</function>` with optional `<parameters>{...}</parameters>` - Custom protocol for Gemma
- * @property REACT ReAct (Reasoning and Acting) pattern: Natural language with `Thought:` and `Action:` (recommended by Google) - Custom protocol for Gemma
- * @property HERMES Hermes-style Qwen format: XML tags with `<tools></tools>` for definitions and `<tool_call></tool_call>` for invocations - Custom protocol
- * @property NATIVE Native LiteRT-LM tool calling: Tools passed via ConversationConfig, handled by model-specific processors (Qwen3DataProcessor, etc.)
- */
-enum class ToolFormat {
-    SIMPLE,
-    OPENAPI,
-    SLIM,
-    REACT,
-    HERMES,
-    NATIVE,
-}
 
 /**
  * Agent backend type determines which executor and configuration to use.
@@ -53,33 +23,36 @@ enum class AgentBackend {
 }
 
 /**
- * Unified agent implementation that supports multiple LLM backends and tool calling protocols.
+ * Unified agent implementation that supports multiple LLM backends.
  *
  * Use factory methods for clearer construction:
- * - `NotificationAgent.local()` for local inference-based agents (Gemma, etc.)
+ * - `NotificationAgent.local()` for local inference-based agents (LiteRT-LM, MediaPipe)
  * - `NotificationAgent.koog()` for Koog framework agents (Ollama, etc.)
+ *
+ * Tool calling is handled natively by the platform implementations:
+ * - LiteRT-LM: Uses @Tool annotations and model-specific processors
+ * - MediaPipe: Uses HammerFormatter with protobuf Tool objects
  */
 class NotificationAgent private constructor(
     private val backend: AgentBackend,
     private val promptExecutor: (suspend (String) -> String?)?,
     private val model: LLModel,
-    private val toolFormat: ToolFormat?,
 ) {
     companion object {
         /**
-         * Creates an agent for local inference (e.g., LiteRT-LM with Gemma or Qwen3).
+         * Creates an agent for local inference (e.g., LiteRT-LM or MediaPipe).
+         *
+         * Tool calling is handled natively by the platform implementation:
+         * - LiteRT-LM: Uses @Tool annotations, tools passed via ConversationConfig
+         * - MediaPipe: Uses HammerFormatter with protobuf Tool objects
          *
          * @param promptExecutor Function that executes prompts against the local LLM
-         * @param modelId Model identifier (e.g., "gemma3-1b-it-int4", "qwen3-0.6b")
-         * @param toolFormat Tool calling protocol:
-         *                   - NATIVE: Use LiteRT-LM's native tool calling (for Qwen3, etc.)
-         *                   - REACT/HERMES/etc: Use custom text-based protocols (for Gemma, etc.)
+         * @param modelId Model identifier (e.g., "gemma3-1b-it-int4", "qwen3-0.6b", "hammer2-0.5b")
          * @param modelProvider LLM provider (default: Google)
          */
         fun local(
             promptExecutor: suspend (String) -> String?,
             modelId: String,
-            toolFormat: ToolFormat = NATIVE,
             modelProvider: LLMProvider = LLMProvider.Google,
         ) = NotificationAgent(
             backend = AgentBackend.LOCAL,
@@ -97,7 +70,6 @@ class NotificationAgent private constructor(
                     maxOutputTokens = 1024L, // Metadata only, actual value from ModelConfiguration
                     contextLength = 4096L, // Metadata only, actual value from ModelConfiguration
                 ),
-            toolFormat = toolFormat,
         )
 
         /**
@@ -113,7 +85,6 @@ class NotificationAgent private constructor(
                 backend = AgentBackend.KOOG,
                 promptExecutor = null,
                 model = model,
-                toolFormat = null,
             )
     }
 
@@ -156,7 +127,6 @@ class NotificationAgent private constructor(
             when (backend) {
                 AgentBackend.LOCAL -> {
                     requireNotNull(promptExecutor) { "promptExecutor required for LOCAL backend" }
-                    requireNotNull(toolFormat) { "toolFormat required for LOCAL backend" }
                     LocalInferenceAIExecutor(llmClient = createLLMClient())
                 }
 
@@ -177,34 +147,7 @@ class NotificationAgent private constructor(
 
     private fun createLLMClient(): LLMClient {
         val executor = requireNotNull(promptExecutor) { "promptExecutor required for LOCAL backend" }
-        val format = requireNotNull(toolFormat) { "toolFormat required for LOCAL backend" }
-        return when (format) {
-            SIMPLE -> {
-                SimpleLLMClient(promptExecutor = executor)
-            }
-
-            OPENAPI -> {
-                OpenApiLLMClient(promptExecutor = executor)
-            }
-
-            SLIM -> {
-                SlimLLMClient(promptExecutor = executor)
-            }
-
-            REACT -> {
-                ReActLLMClient(promptExecutor = executor)
-            }
-
-            HERMES -> {
-                HermesLLMClient(promptExecutor = executor)
-            }
-
-            NATIVE -> {
-                LocalInferenceLLMClient(
-                    promptExecutor = executor,
-                )
-            }
-        }
+        return LocalInferenceLLMClient(promptExecutor = executor)
     }
 }
 

@@ -4,7 +4,6 @@ import ai.koog.agents.core.tools.ToolRegistry
 import com.monday8am.agent.core.LocalInferenceEngine
 import com.monday8am.agent.core.NotificationAgent
 import com.monday8am.agent.core.NotificationGenerator
-import com.monday8am.agent.core.ToolFormat
 import com.monday8am.agent.tools.GetLocation
 import com.monday8am.agent.tools.GetWeatherFromLocation
 import com.monday8am.koogagent.data.LocationProvider
@@ -98,15 +97,6 @@ class NotificationViewModelImpl(
 ) : NotificationViewModel {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
-    // Tool format determined once at construction based on model family
-    private val toolFormat =
-        when (selectedModel.modelFamily) {
-            "qwen3" -> ToolFormat.NATIVE
-            "gemma3" -> ToolFormat.NATIVE
-            "hammer2" -> ToolFormat.HERMES
-            else -> ToolFormat.NATIVE
-        }
-
     private val toolRegistry =
         ToolRegistry {
             tool(tool = GetWeatherFromLocation(weatherProvider))
@@ -139,7 +129,6 @@ class NotificationViewModelImpl(
                                     modelPath = modelPath,
                                 ).flatMapConcat { engine ->
                                     runModelTests(
-                                        promptExecutor = engine::prompt,
                                         streamPromptExecutor = engine::promptStreaming,
                                         resetConversation = engine::resetConversation,
                                     )
@@ -252,7 +241,6 @@ class NotificationViewModelImpl(
                         promptExecutor(prompt).getOrThrow()
                     },
                     modelId = selectedModel.modelId,
-                    toolFormat = toolFormat,
                 )
             agent.initializeWithTools(toolRegistry = toolRegistry)
             val content = NotificationGenerator(agent = agent).generate(notificationContext)
@@ -261,16 +249,10 @@ class NotificationViewModelImpl(
     }
 
     private fun runModelTests(
-        promptExecutor: suspend (String) -> Result<String>,
         streamPromptExecutor: (String) -> Flow<String>,
         resetConversation: () -> Result<Unit>,
     ) = ToolCallingTest(
-        promptExecutor = { prompt ->
-            promptExecutor(prompt).getOrThrow()
-        },
         streamPromptExecutor = streamPromptExecutor,
         resetConversation = resetConversation,
-        weatherProvider = weatherProvider,
-        locationProvider = locationProvider,
     ).runAllTest()
 }

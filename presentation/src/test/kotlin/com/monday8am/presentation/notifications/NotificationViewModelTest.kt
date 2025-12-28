@@ -114,7 +114,7 @@ class NotificationViewModelTest {
             )
 
         assertTrue(newState.statusMessage is LogMessage.PromptingWithContext)
-        assertTrue((newState.statusMessage as LogMessage.PromptingWithContext).contextFormatted.contains("BREAKFAST"))
+        assertTrue(newState.statusMessage.contextFormatted.contains("BREAKFAST"))
     }
 
     @Test
@@ -130,7 +130,7 @@ class NotificationViewModelTest {
 
         assertTrue(newState.statusMessage is LogMessage.NotificationGenerated)
         assertEquals(testNotification, newState.notification)
-        assertTrue((newState.statusMessage as LogMessage.NotificationGenerated).notificationFormatted.contains("Test Title"))
+        assertTrue(newState.statusMessage.notificationFormatted.contains("Test Title"))
     }
 
     // === Tests for UpdateContext Success ===
@@ -164,7 +164,7 @@ class NotificationViewModelTest {
             )
 
         assertTrue(newState.statusMessage is LogMessage.WelcomeModelReady)
-        assertTrue((newState.statusMessage as LogMessage.WelcomeModelReady).modelName.isNotEmpty())
+        assertTrue(newState.statusMessage.modelName.isNotEmpty())
     }
 
     // === Tests for Error state ===
@@ -182,7 +182,7 @@ class NotificationViewModelTest {
             )
 
         assertTrue(newState.statusMessage is LogMessage.Error)
-        assertEquals(errorMessage, (newState.statusMessage as LogMessage.Error).message)
+        assertEquals(errorMessage, newState.statusMessage.message)
     }
 
     @Test
@@ -197,6 +197,6 @@ class NotificationViewModelTest {
             )
 
         assertTrue(newState.statusMessage is LogMessage.Error)
-        assertEquals("Unknown error", (newState.statusMessage as LogMessage.Error).message)
+        assertEquals("Unknown error", newState.statusMessage.message)
     }
 }

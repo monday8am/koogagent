@@ -349,13 +349,14 @@ class ModelSelectorViewModelImpl(
 
             is ModelDownloadManager.Status.Cancelled -> {
                 state.copy(
-                    models = state.models.map {
-                        if (it.downloadStatus is DownloadStatus.Downloading || it.downloadStatus == DownloadStatus.Queued) {
-                            it.copy(downloadStatus = DownloadStatus.NotStarted)
-                        } else {
-                            it
-                        }
-                    },
+                    models =
+                        state.models.map {
+                            if (it.downloadStatus is DownloadStatus.Downloading || it.downloadStatus == DownloadStatus.Queued) {
+                                it.copy(downloadStatus = DownloadStatus.NotStarted)
+                            } else {
+                                it
+                            }
+                        },
                     currentDownload = null,
                     queuedDownloads = emptyList(), // Clear queue on cancel
                     statusMessage = "Download cancelled",
