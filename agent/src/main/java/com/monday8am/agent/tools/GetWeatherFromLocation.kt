@@ -27,11 +27,12 @@ internal data class WeatherResult(
 class GetWeatherFromLocation(
     private val weatherProvider: WeatherProvider,
 ) : SimpleTool<GetWeatherFromLocation.Args>(
-    name = "GetWeatherFromLocation",
-    description = "Call this function to get the weather using latitude and longitude parameters. " +
-            "The latitude and longitude are needed as parameters.",
-    argsSerializer = Args.serializer(),
-) {
+        name = "GetWeatherFromLocation",
+        description =
+            "Call this function to get the weather using latitude and longitude parameters. " +
+                "The latitude and longitude are needed as parameters.",
+        argsSerializer = Args.serializer(),
+    ) {
     @Serializable
     data class Args(
         @property:LLMDescription("Latitude of the location in double format")

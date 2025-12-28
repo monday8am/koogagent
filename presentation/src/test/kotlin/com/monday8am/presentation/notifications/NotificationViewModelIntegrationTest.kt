@@ -182,7 +182,7 @@ class NotificationViewModelIntegrationTest {
                 // Then should emit error
                 val errorState = awaitItem()
                 assertTrue(errorState.statusMessage is LogMessage.Error)
-                assertEquals("Initialization failed", (errorState.statusMessage as LogMessage.Error).message)
+                assertEquals("Initialization failed", errorState.statusMessage.message)
             }
 
             viewModel.dispose()

@@ -61,7 +61,9 @@ sealed interface TestResultFrame {
 }
 
 private enum class ParserState {
-    Content, Thinking, ToolCall
+    Content,
+    Thinking,
+    ToolCall,
 }
 
 /**
@@ -95,7 +97,6 @@ internal data class TestCase(
  * @param resetConversation Resets conversation state between tests
  */
 class ToolCallingTest(
-    private val promptExecutor: suspend (String) -> String?,
     private val streamPromptExecutor: (String) -> Flow<String>,
     private val resetConversation: () -> Result<Unit>,
 ) {
@@ -109,23 +110,24 @@ class ToolCallingTest(
         return runAllTestsStreaming(REGRESSION_TEST_SUITE)
     }
 
-    private fun runAllTestsStreaming(testCases: List<TestCase>): Flow<TestResultFrame> = flow {
-        for (testCase in testCases) {
-            for (query in testCase.queries) {
-                emitAll(runSingleQueryStream(testCase = testCase, query = query))
+    private fun runAllTestsStreaming(testCases: List<TestCase>): Flow<TestResultFrame> =
+        flow {
+            for (testCase in testCases) {
+                for (query in testCase.queries) {
+                    emitAll(runSingleQueryStream(testCase = testCase, query = query))
+                }
+                resetConversation()
             }
-            resetConversation()
+        }.catch { e ->
+            logger.e(e) { "A failure occurred during the test suite execution" }
+            emit(
+                TestResultFrame.Validation(
+                    result = ValidationResult.Fail("Test suite failed: ${e.message}"),
+                    duration = 0,
+                    fullContent = "",
+                ),
+            )
         }
-    }.catch { e ->
-        logger.e(e) { "A failure occurred during the test suite execution" }
-        emit(
-            TestResultFrame.Validation(
-                result = ValidationResult.Fail("Test suite failed: ${e.message}"),
-                duration = 0,
-                fullContent = "",
-            ),
-        )
-    }
 
     /**
      * Executes a single query using streaming and returns result frames.
@@ -173,7 +175,9 @@ class ToolCallingTest(
     /**
      * Internal processor to handle tag-based streaming state.
      */
-    private class TagProcessor(private val parseTags: Boolean) {
+    private class TagProcessor(
+        private val parseTags: Boolean,
+    ) {
         private val currentBlock = StringBuilder()
         private var state = ParserState.Content
 
@@ -224,7 +228,10 @@ class ToolCallingTest(
             }
         }
 
-        private fun stripTag(tag: String, clearBefore: Boolean = false) {
+        private fun stripTag(
+            tag: String,
+            clearBefore: Boolean = false,
+        ) {
             val content = currentBlock.toString()
             val index = content.lastIndexOf(tag)
             if (index != -1) {
@@ -245,73 +252,76 @@ class ToolCallingTest(
     }
 
     companion object {
-        private val REGRESSION_TEST_SUITE = listOf(
-            TestCase(
-                name = "TEST 0: Basic Response",
-                queries = listOf(TestQuery("Hello, how are you?")),
-                systemPrompt = "You are a helpful assistant.",
-                validator = { result ->
-                    if (result.isNotBlank() && result.length > 5) {
-                        ValidationResult.Pass("Valid response received")
-                    } else {
-                        ValidationResult.Fail("Response too short or empty")
-                    }
-                },
-            ),
-            TestCase(
-                name = "TEST 1: Location Query",
-                description = listOf("Expects model to use location tool"),
-                queries = listOf(TestQuery("Where am I located?")),
-                systemPrompt = "You are a helpful assistant with access to location tools.",
-                validator = { result ->
-                    val hasCoordinates = result.contains("40.4") ||
-                            result.contains("latitude", ignoreCase = true) ||
-                            result.contains("longitude", ignoreCase = true) ||
-                            result.contains("location", ignoreCase = true)
-                    if (hasCoordinates) {
-                        ValidationResult.Pass("Location data returned")
-                    } else {
-                        ValidationResult.Fail("No location data in response")
-                    }
-                },
-                parseThinkingTags = true,
-            ),
-            TestCase(
-                name = "TEST 2: Weather Query",
-                description = listOf("Expects model to use weather tool"),
-                queries = listOf(TestQuery("What's the weather like?")),
-                systemPrompt = "You are a weather assistant with access to weather tools.",
-                validator = { result ->
-                    val hasWeather = result.contains("weather", ignoreCase = true) ||
-                            result.contains("temperature", ignoreCase = true) ||
-                            result.contains("sunny", ignoreCase = true) ||
-                            result.contains("cloudy", ignoreCase = true) ||
-                            result.contains("degrees", ignoreCase = true)
-                    if (hasWeather) {
-                        ValidationResult.Pass("Weather data returned")
-                    } else {
-                        ValidationResult.Fail("No weather data in response")
-                    }
-                },
-                parseThinkingTags = true,
-            ),
-            TestCase(
-                name = "TEST 3: Math Reasoning (raw output)",
-                description = listOf("Raw output without tag parsing"),
-                queries = listOf(TestQuery("What is 15 + 27? Think step by step.")),
-                systemPrompt = "You are a math assistant. Show your work.",
-                validator = { result ->
-                    if (result.contains("42")) {
-                        ValidationResult.Pass("Correct answer: 42")
-                    } else {
-                        ValidationResult.Fail(
-                            message = "Incorrect or missing answer",
-                            details = "Expected: 42"
-                        )
-                    }
-                },
-                parseThinkingTags = false, // Raw output mode
-            ),
-        )
+        private val REGRESSION_TEST_SUITE =
+            listOf(
+                TestCase(
+                    name = "TEST 0: Basic Response",
+                    queries = listOf(TestQuery("Hello, how are you?")),
+                    systemPrompt = "You are a helpful assistant.",
+                    validator = { result ->
+                        if (result.isNotBlank() && result.length > 5) {
+                            ValidationResult.Pass("Valid response received")
+                        } else {
+                            ValidationResult.Fail("Response too short or empty")
+                        }
+                    },
+                ),
+                TestCase(
+                    name = "TEST 1: Location Query",
+                    description = listOf("Expects model to use location tool"),
+                    queries = listOf(TestQuery("Where am I located?")),
+                    systemPrompt = "You are a helpful assistant with access to location tools.",
+                    validator = { result ->
+                        val hasCoordinates =
+                            result.contains("40.4") ||
+                                result.contains("latitude", ignoreCase = true) ||
+                                result.contains("longitude", ignoreCase = true) ||
+                                result.contains("location", ignoreCase = true)
+                        if (hasCoordinates) {
+                            ValidationResult.Pass("Location data returned")
+                        } else {
+                            ValidationResult.Fail("No location data in response")
+                        }
+                    },
+                    parseThinkingTags = true,
+                ),
+                TestCase(
+                    name = "TEST 2: Weather Query",
+                    description = listOf("Expects model to use weather tool"),
+                    queries = listOf(TestQuery("What's the weather like?")),
+                    systemPrompt = "You are a weather assistant with access to weather tools.",
+                    validator = { result ->
+                        val hasWeather =
+                            result.contains("weather", ignoreCase = true) ||
+                                result.contains("temperature", ignoreCase = true) ||
+                                result.contains("sunny", ignoreCase = true) ||
+                                result.contains("cloudy", ignoreCase = true) ||
+                                result.contains("degrees", ignoreCase = true)
+                        if (hasWeather) {
+                            ValidationResult.Pass("Weather data returned")
+                        } else {
+                            ValidationResult.Fail("No weather data in response")
+                        }
+                    },
+                    parseThinkingTags = true,
+                ),
+                TestCase(
+                    name = "TEST 3: Math Reasoning (raw output)",
+                    description = listOf("Raw output without tag parsing"),
+                    queries = listOf(TestQuery("What is 15 + 27? Think step by step.")),
+                    systemPrompt = "You are a math assistant. Show your work.",
+                    validator = { result ->
+                        if (result.contains("42")) {
+                            ValidationResult.Pass("Correct answer: 42")
+                        } else {
+                            ValidationResult.Fail(
+                                message = "Incorrect or missing answer",
+                                details = "Expected: 42",
+                            )
+                        }
+                    },
+                    parseThinkingTags = false, // Raw output mode
+                ),
+            )
     }
 }

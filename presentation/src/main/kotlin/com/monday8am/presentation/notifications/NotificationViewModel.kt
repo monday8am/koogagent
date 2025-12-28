@@ -129,7 +129,6 @@ class NotificationViewModelImpl(
                                     modelPath = modelPath,
                                 ).flatMapConcat { engine ->
                                     runModelTests(
-                                        promptExecutor = engine::prompt,
                                         streamPromptExecutor = engine::promptStreaming,
                                         resetConversation = engine::resetConversation,
                                     )
@@ -250,13 +249,9 @@ class NotificationViewModelImpl(
     }
 
     private fun runModelTests(
-        promptExecutor: suspend (String) -> Result<String>,
         streamPromptExecutor: (String) -> Flow<String>,
         resetConversation: () -> Result<Unit>,
     ) = ToolCallingTest(
-        promptExecutor = { prompt ->
-            promptExecutor(prompt).getOrThrow()
-        },
         streamPromptExecutor = streamPromptExecutor,
         resetConversation = resetConversation,
     ).runAllTest()
