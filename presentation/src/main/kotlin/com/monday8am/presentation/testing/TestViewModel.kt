@@ -8,15 +8,12 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapConcat
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onStart
-import kotlinx.coroutines.flow.scan
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class TestUiState(
@@ -27,24 +24,6 @@ data class TestUiState(
 
 sealed class TestUiAction {
     data object RunTests : TestUiAction()
-
-    internal data object Initialize : TestUiAction()
-
-    internal data class TestFrameReceived(
-        val frame: TestResultFrame,
-    ) : TestUiAction()
-}
-
-internal sealed interface TestActionState {
-    data object Loading : TestActionState
-
-    data class Success(
-        val result: Any,
-    ) : TestActionState
-
-    data class Error(
-        val throwable: Throwable,
-    ) : TestActionState
 }
 
 interface TestViewModel {
@@ -63,52 +42,46 @@ class TestViewModelImpl(
 ) : TestViewModel {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
-    internal val userActions = MutableSharedFlow<TestUiAction>(replay = 0)
-
-    override val uiState =
-        userActions
-            .onStart { emit(TestUiAction.Initialize) }
-            .flatMapConcat { action ->
-                val actionFlow =
-                    when (action) {
-                        TestUiAction.Initialize -> {
-                            flowOf(value = Unit)
-                        }
-
-                        TestUiAction.RunTests -> {
-                            inferenceEngine
-                                .initializeAsFlow(
-                                    modelConfig = selectedModel,
-                                    modelPath = modelPath,
-                                ).flatMapConcat { engine ->
-                                    ToolCallingTest(
-                                        streamPromptExecutor = engine::promptStreaming,
-                                        resetConversation = engine::resetConversation,
-                                    ).runAllTest()
-                                }
-                        }
-
-                        is TestUiAction.TestFrameReceived -> {
-                            flowOf(value = action.frame)
-                        }
-                    }
-
-                actionFlow
-                    .map<Any, TestActionState> { result -> TestActionState.Success(result) }
-                    .onStart {
-                        if (action is TestUiAction.RunTests) {
-                            emit(TestActionState.Loading)
-                        }
-                    }.catch { throwable -> emit(TestActionState.Error(throwable)) }
-                    .map { actionState -> action to actionState }
-            }.flowOn(Dispatchers.IO)
-            .scan(TestUiState(selectedModel = selectedModel)) { previousState, (action, actionState) ->
-                reduce(state = previousState, action = action, actionState = actionState)
-            }.distinctUntilChanged()
+    private val _uiState = MutableStateFlow(TestUiState(selectedModel = selectedModel))
+    override val uiState: StateFlow<TestUiState> = _uiState.asStateFlow()
 
     override fun onUiAction(uiAction: TestUiAction) {
+        when (uiAction) {
+            TestUiAction.RunTests -> runTests()
+        }
+    }
+
+    private fun runTests() {
+        if (_uiState.value.isRunning) return
+
         scope.launch {
-            userActions.emit(uiAction)
+            _uiState.update { it.copy(isRunning = true, frames = emptyList()) }
+
+            inferenceEngine
+                .initializeAsFlow(
+                    modelConfig = selectedModel,
+                    modelPath = modelPath,
+                ).flatMapConcat { engine ->
+                    ToolCallingTest(
+                        streamPromptExecutor = engine::promptStreaming,
+                        resetConversation = engine::resetConversation,
+                    ).runAllTest()
+                }.catch { throwable ->
+                    val errorFrame = TestResultFrame.Validation(
+                        testName = "Error",
+                        result = ValidationResult.Fail("Error: ${throwable.message}"),
+                        duration = 0,
+                        fullContent = "",
+                    )
+                    emit(errorFrame)
+                }.collect { frame ->
+                    _uiState.update { currentState ->
+                        val updatedFrames = mergeFrame(currentState.frames, frame)
+                        currentState.copy(frames = updatedFrames)
+                    }
+                }
+
+            _uiState.update { it.copy(isRunning = false) }
         }
     }
 
@@ -116,61 +89,6 @@ class TestViewModelImpl(
         inferenceEngine.closeSession()
         scope.cancel()
     }
-
-    internal fun reduce(
-        state: TestUiState,
-        action: TestUiAction,
-        actionState: TestActionState,
-    ): TestUiState =
-        when (actionState) {
-            is TestActionState.Loading -> {
-                when (action) {
-                    TestUiAction.RunTests -> state.copy(
-                        isRunning = true,
-                        frames = emptyList(),
-                    )
-                    else -> state
-                }
-            }
-
-            is TestActionState.Success -> {
-                when (action) {
-                    is TestUiAction.RunTests -> {
-                        val frame = actionState.result as? TestResultFrame
-                        if (frame != null) {
-                            val updatedFrames = mergeFrame(state.frames, frame)
-                            val isCompleted = frame is TestResultFrame.Validation
-                            state.copy(
-                                frames = updatedFrames,
-                                isRunning = !isCompleted || state.isRunning,
-                            )
-                        } else {
-                            state.copy(isRunning = false)
-                        }
-                    }
-
-                    is TestUiAction.Initialize -> state
-
-                    is TestUiAction.TestFrameReceived -> {
-                        val updatedFrames = mergeFrame(state.frames, action.frame)
-                        state.copy(frames = updatedFrames)
-                    }
-                }
-            }
-
-            is TestActionState.Error -> {
-                val errorFrame = TestResultFrame.Validation(
-                    testName = "Error",
-                    result = ValidationResult.Fail("Error: ${actionState.throwable.message}"),
-                    duration = 0,
-                    fullContent = "",
-                )
-                state.copy(
-                    isRunning = false,
-                    frames = state.frames + errorFrame,
-                )
-            }
-        }
 
     /**
      * Merges a new frame into the frame list.
