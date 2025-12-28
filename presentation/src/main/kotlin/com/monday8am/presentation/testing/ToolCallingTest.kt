@@ -2,11 +2,10 @@ package com.monday8am.presentation.testing
 
 import co.touchlab.kermit.Logger
 import co.touchlab.kermit.Severity
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.flatMapConcat
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onCompletion
@@ -61,34 +60,8 @@ sealed interface TestResultFrame {
     ) : TestResultFrame
 }
 
-/**
- * Aggregated test result with metrics.
- */
-data class TestResult(
-    val name: String,
-    val result: List<Pair<ValidationResult, Long>> = listOf(),
-    val fullLog: String = String(),
-    val error: Throwable? = null,
-) {
-    fun toFormattedString(): String {
-        val output = StringBuilder()
-        output.appendLine(name)
-        result.forEach { (validationResult, duration) ->
-            when (validationResult) {
-                is ValidationResult.Pass -> {
-                    output.appendLine("PASS (duration: ${duration}ms): ${validationResult.message}")
-                }
-
-                is ValidationResult.Fail -> {
-                    output.appendLine("FAIL (duration: ${duration}ms): ${validationResult.message}")
-                    validationResult.details?.let { details ->
-                        output.appendLine(details)
-                    }
-                }
-            }
-        }
-        return output.toString()
-    }
+private enum class ParserState {
+    Content, Thinking, ToolCall
 }
 
 /**
@@ -133,8 +106,146 @@ class ToolCallingTest(
      */
     fun runAllTest(): Flow<TestResultFrame> {
         Logger.setMinSeverity(Severity.Debug)
+        return runAllTestsStreaming(REGRESSION_TEST_SUITE)
+    }
 
-        val regressionTestSuite = listOf(
+    private fun runAllTestsStreaming(testCases: List<TestCase>): Flow<TestResultFrame> = flow {
+        for (testCase in testCases) {
+            for (query in testCase.queries) {
+                emitAll(runSingleQueryStream(testCase = testCase, query = query))
+            }
+            resetConversation()
+        }
+    }.catch { e ->
+        logger.e(e) { "A failure occurred during the test suite execution" }
+        emit(
+            TestResultFrame.Validation(
+                result = ValidationResult.Fail("Test suite failed: ${e.message}"),
+                duration = 0,
+                fullContent = "",
+            ),
+        )
+    }
+
+    /**
+     * Executes a single query using streaming and returns result frames.
+     */
+    private fun runSingleQueryStream(
+        testCase: TestCase,
+        query: TestQuery,
+    ): Flow<TestResultFrame> {
+        val processor = TagProcessor(testCase.parseThinkingTags)
+        var startTime = 0L
+
+        val prompt = "${testCase.systemPrompt}\n\n${query.text}"
+
+        return streamPromptExecutor(prompt)
+            .map { chunk ->
+                processor.process(chunk)
+            }.onStart {
+                startTime = System.currentTimeMillis()
+            }.onCompletion { cause ->
+                if (cause == null) {
+                    val duration = System.currentTimeMillis() - startTime
+                    val finalContent = processor.resultContent
+                    val validationResult = testCase.validator(finalContent)
+                    emit(
+                        TestResultFrame.Validation(
+                            result = validationResult,
+                            duration = duration,
+                            fullContent = finalContent,
+                        ),
+                    )
+                }
+            }.catch { e ->
+                logger.e(e) { "Test failed: ${query.text}" }
+                val duration = System.currentTimeMillis() - startTime
+                emit(
+                    TestResultFrame.Validation(
+                        result = ValidationResult.Fail("Exception: ${e.message}"),
+                        duration = duration,
+                        fullContent = processor.resultContent,
+                    ),
+                )
+            }
+    }
+
+    /**
+     * Internal processor to handle tag-based streaming state.
+     */
+    private class TagProcessor(private val parseTags: Boolean) {
+        private val currentBlock = StringBuilder()
+        private var state = ParserState.Content
+
+        /** The content accumulated for validation (after stripping tags if enabled) */
+        val resultContent: String get() = currentBlock.toString()
+
+        fun process(chunk: String): TestResultFrame {
+            currentBlock.append(chunk)
+
+            if (!parseTags) {
+                return TestResultFrame.Content(chunk, currentBlock.toString())
+            }
+
+            // Simple state machine to detect tags. Using a window to handle split tokens.
+            // We check the tail of currentBlock for state transitions.
+            val lookBack = currentBlock.takeLast(20).toString()
+
+            when (state) {
+                ParserState.Content -> {
+                    if (lookBack.contains("<think>")) {
+                        state = ParserState.Thinking
+                        stripTag("<think>")
+                    } else if (lookBack.contains("<tool_call")) {
+                        state = ParserState.ToolCall
+                        stripTag("<tool_call")
+                    }
+                }
+
+                ParserState.Thinking -> {
+                    if (lookBack.contains("</think>")) {
+                        state = ParserState.Content
+                        stripTag("</think>", clearBefore = true)
+                    }
+                }
+
+                ParserState.ToolCall -> {
+                    if (lookBack.contains("</tool_call>")) {
+                        state = ParserState.Content
+                        stripTag("</tool_call>", clearBefore = true)
+                    }
+                }
+            }
+
+            return when (state) {
+                ParserState.Thinking -> TestResultFrame.Thinking(chunk, currentBlock.toString())
+                ParserState.ToolCall -> TestResultFrame.Tool(chunk, currentBlock.toString())
+                ParserState.Content -> TestResultFrame.Content(chunk, currentBlock.toString())
+            }
+        }
+
+        private fun stripTag(tag: String, clearBefore: Boolean = false) {
+            val content = currentBlock.toString()
+            val index = content.lastIndexOf(tag)
+            if (index != -1) {
+                if (clearBefore) {
+                    val remaining = content.substring(index + tag.length)
+                    currentBlock.clear()
+                    currentBlock.append(remaining)
+                } else {
+                    // Just remove the tag itself if we're starting a new block
+                    // Actually, if we're starting <think>, we might want to clear previous content
+                    // if it's just whitespace or if the contract is "one block at a time".
+                    // The original code cleared on END tags.
+                    // For start tags, let's just keep everything for now but remove the tag.
+                    currentBlock.delete(index, index + tag.length)
+                }
+            }
+        }
+    }
+
+    companion object {
+        private val REGRESSION_TEST_SUITE = listOf(
             TestCase(
                 name = "TEST 0: Basic Response",
                 queries = listOf(TestQuery("Hello, how are you?")),
@@ -202,181 +313,5 @@ class ToolCallingTest(
                 parseThinkingTags = false, // Raw output mode
             ),
         )
-
-        return runAllTestsStreaming(regressionTestSuite)
-    }
-
-    @OptIn(ExperimentalCoroutinesApi::class)
-    private fun runAllTestsStreaming(testCases: List<TestCase>): Flow<TestResultFrame> =
-        testCases
-            .asFlow()
-            .flatMapConcat { testCase ->
-                runTest(testCase)
-            }.catch { e ->
-                logger.e(e) { "A failure occurred during the test suite execution" }
-                emit(
-                    TestResultFrame.Validation(
-                        result = ValidationResult.Fail("Test suite failed: ${e.message}"),
-                        duration = 0,
-                        fullContent = "",
-                    ),
-                )
-            }
-
-    @OptIn(ExperimentalCoroutinesApi::class)
-    private fun runTest(testCase: TestCase): Flow<TestResultFrame> =
-        testCase.queries
-            .asFlow()
-            .flatMapConcat { query ->
-                runSingleQueryStream(testCase = testCase, query = query)
-            }.onCompletion {
-                resetConversation()
-            }
-
-    /**
-     * Executes a single query using streaming and returns result frames.
-     */
-    private fun runSingleQueryStream(
-        testCase: TestCase,
-        query: TestQuery,
-    ): Flow<TestResultFrame> {
-        val accumulatedContent = StringBuilder()
-        var isThinking = false
-        var isToolCall = false
-        var duration = 0L
-
-        // Simple string concatenation for prompt
-        val prompt = "${testCase.systemPrompt}\n\n${query.text}"
-
-        return streamPromptExecutor(prompt)
-            .map { chunk ->
-                processChunk(
-                    chunk = chunk,
-                    parseThinkingTags = testCase.parseThinkingTags,
-                    accumulatedContent = accumulatedContent,
-                    isThinking = isThinking,
-                    isToolCall = isToolCall,
-                    onThinkingStateChange = { isThinking = it },
-                    onToolCallStateChange = { isToolCall = it },
-                )
-            }.onStart {
-                duration = System.currentTimeMillis()
-            }.onCompletion { cause ->
-                if (cause == null) {
-                    val finalDuration = System.currentTimeMillis() - duration
-                    val finalContent = accumulatedContent.toString()
-                    val validationResult = testCase.validator(finalContent)
-                    emit(
-                        TestResultFrame.Validation(
-                            result = validationResult,
-                            duration = finalDuration,
-                            fullContent = finalContent,
-                        ),
-                    )
-                }
-            }.catch { e ->
-                logger.e(e) { "Test failed: ${query.text}" }
-                val finalDuration = System.currentTimeMillis() - duration
-                emit(
-                    TestResultFrame.Validation(
-                        result = ValidationResult.Fail("Exception: ${e.message}"),
-                        duration = finalDuration,
-                        fullContent = accumulatedContent.toString(),
-                    ),
-                )
-            }
-    }
-
-    /**
-     * Processes a streaming chunk with optional tag parsing.
-     */
-    private fun processChunk(
-        chunk: String,
-        parseThinkingTags: Boolean,
-        accumulatedContent: StringBuilder,
-        isThinking: Boolean,
-        isToolCall: Boolean,
-        onThinkingStateChange: (Boolean) -> Unit,
-        onToolCallStateChange: (Boolean) -> Unit,
-    ): TestResultFrame {
-        accumulatedContent.append(chunk)
-
-        // If tag parsing is disabled, return raw content
-        if (!parseThinkingTags) {
-            return TestResultFrame.Content(chunk, accumulatedContent.toString())
-        }
-
-        // Parse tags for thinking and tool calls
-        var currentThinking = isThinking
-        var currentToolCall = isToolCall
-
-        when {
-            chunk.contains("<think>") -> {
-                currentThinking = true
-                onThinkingStateChange(true)
-            }
-            chunk.contains("</think>") && currentThinking -> {
-                currentThinking = false
-                onThinkingStateChange(false)
-                accumulatedContent.clear()
-            }
-            chunk.contains("<tool_call") -> {
-                currentToolCall = true
-                onToolCallStateChange(true)
-            }
-            chunk.contains("</tool_call>") && currentToolCall -> {
-                currentToolCall = false
-                onToolCallStateChange(false)
-                accumulatedContent.clear()
-            }
-        }
-
-        return when {
-            currentThinking -> TestResultFrame.Thinking(chunk, accumulatedContent.toString())
-            currentToolCall -> TestResultFrame.Tool(chunk, accumulatedContent.toString())
-            else -> TestResultFrame.Content(chunk, accumulatedContent.toString())
-        }
-    }
-
-    /**
-     * Runs a single query using non-streaming execution.
-     */
-    private fun runSingleQueryExecute(
-        testCase: TestCase,
-        query: TestQuery,
-    ): Flow<TestResultFrame> {
-        val prompt = "${testCase.systemPrompt}\n\n${query.text}"
-
-        return flow {
-            val startTime = System.currentTimeMillis()
-
-            try {
-                val result = promptExecutor(prompt)
-                    ?: throw IllegalStateException("Executor returned null")
-
-                val duration = System.currentTimeMillis() - startTime
-
-                emit(TestResultFrame.Content(chunk = result, accumulator = result))
-
-                val validationResult = testCase.validator(result)
-                emit(
-                    TestResultFrame.Validation(
-                        result = validationResult,
-                        duration = duration,
-                        fullContent = result,
-                    ),
-                )
-            } catch (e: Exception) {
-                logger.e(e) { "Test failed: ${query.text}" }
-                val duration = System.currentTimeMillis() - startTime
-                emit(
-                    TestResultFrame.Validation(
-                        result = ValidationResult.Fail("Exception: ${e.message}"),
-                        duration = duration,
-                        fullContent = "",
-                    ),
-                )
-            }
-        }
     }
 }
