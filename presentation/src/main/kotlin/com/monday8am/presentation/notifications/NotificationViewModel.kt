@@ -259,7 +259,5 @@ class NotificationViewModelImpl(
         },
         streamPromptExecutor = streamPromptExecutor,
         resetConversation = resetConversation,
-        weatherProvider = weatherProvider,
-        locationProvider = locationProvider,
     ).runAllTest()
 }
