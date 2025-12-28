@@ -37,22 +37,28 @@ sealed class ValidationResult {
  * Used by UI to show real-time progress.
  */
 sealed interface TestResultFrame {
+    val testName: String
+
     data class Tool(
+        override val testName: String,
         val content: String,
         val accumulator: String,
     ) : TestResultFrame
 
     data class Content(
+        override val testName: String,
         val chunk: String,
         val accumulator: String,
     ) : TestResultFrame
 
     data class Thinking(
+        override val testName: String,
         val chunk: String,
         val accumulator: String,
     ) : TestResultFrame
 
     data class Validation(
+        override val testName: String,
         val result: ValidationResult,
         val duration: Long,
         val fullContent: String,
@@ -114,6 +120,7 @@ class ToolCallingTest(
             logger.e(e) { "A failure occurred during the test suite execution" }
             emit(
                 TestResultFrame.Validation(
+                    testName = "Test Suite",
                     result = ValidationResult.Fail("Test suite failed: ${e.message}"),
                     duration = 0,
                     fullContent = "",
@@ -128,7 +135,7 @@ class ToolCallingTest(
         testCase: TestCase,
         query: TestQuery,
     ): Flow<TestResultFrame> {
-        val processor = TagProcessor(testCase.parseThinkingTags)
+        val processor = TagProcessor(testCase.name, testCase.parseThinkingTags)
         var startTime = 0L
 
         val prompt = "${testCase.systemPrompt}\n\n${query.text}"
@@ -145,6 +152,7 @@ class ToolCallingTest(
                     val validationResult = testCase.validator(finalContent)
                     emit(
                         TestResultFrame.Validation(
+                            testName = testCase.name,
                             result = validationResult,
                             duration = duration,
                             fullContent = finalContent,
@@ -156,6 +164,7 @@ class ToolCallingTest(
                 val duration = System.currentTimeMillis() - startTime
                 emit(
                     TestResultFrame.Validation(
+                        testName = testCase.name,
                         result = ValidationResult.Fail("Exception: ${e.message}"),
                         duration = duration,
                         fullContent = processor.resultContent,

@@ -20,7 +20,7 @@ import kotlinx.coroutines.flow.scan
 import kotlinx.coroutines.launch
 
 data class TestUiState(
-    val logMessages: List<String> = listOf("Ready to run tests"),
+    val frames: List<TestResultFrame> = emptyList(),
     val selectedModel: ModelConfiguration,
     val isRunning: Boolean = false,
 )
@@ -127,7 +127,7 @@ class TestViewModelImpl(
                 when (action) {
                     TestUiAction.RunTests -> state.copy(
                         isRunning = true,
-                        logMessages = state.logMessages + "Initializing model...",
+                        frames = emptyList(),
                     )
                     else -> state
                 }
@@ -138,10 +138,10 @@ class TestViewModelImpl(
                     is TestUiAction.RunTests -> {
                         val frame = actionState.result as? TestResultFrame
                         if (frame != null) {
-                            val newMessage = frame.toLogMessage()
+                            val updatedFrames = mergeFrame(state.frames, frame)
                             val isCompleted = frame is TestResultFrame.Validation
                             state.copy(
-                                logMessages = state.logMessages + newMessage,
+                                frames = updatedFrames,
                                 isRunning = !isCompleted || state.isRunning,
                             )
                         } else {
@@ -149,36 +149,54 @@ class TestViewModelImpl(
                         }
                     }
 
-                    is TestUiAction.Initialize -> {
-                        state.copy(
-                            logMessages = listOf("Model: ${selectedModel.displayName}", "Ready to run tests"),
-                        )
-                    }
+                    is TestUiAction.Initialize -> state
 
                     is TestUiAction.TestFrameReceived -> {
-                        val newMessage = action.frame.toLogMessage()
-                        state.copy(logMessages = state.logMessages + newMessage)
+                        val updatedFrames = mergeFrame(state.frames, action.frame)
+                        state.copy(frames = updatedFrames)
                     }
                 }
             }
 
             is TestActionState.Error -> {
+                val errorFrame = TestResultFrame.Validation(
+                    testName = "Error",
+                    result = ValidationResult.Fail("Error: ${actionState.throwable.message}"),
+                    duration = 0,
+                    fullContent = "",
+                )
                 state.copy(
                     isRunning = false,
-                    logMessages = state.logMessages + "Error: ${actionState.throwable.message}",
+                    frames = state.frames + errorFrame,
                 )
             }
         }
-}
 
-private fun TestResultFrame.toLogMessage(): String =
-    when (this) {
-        is TestResultFrame.Content -> chunk
-        is TestResultFrame.Thinking -> "Thinking: $accumulator"
-        is TestResultFrame.Tool -> "Tool: $content"
-        is TestResultFrame.Validation ->
-            when (result) {
-                is ValidationResult.Pass -> "PASS (${duration}ms): ${result.message}"
-                is ValidationResult.Fail -> "FAIL (${duration}ms): ${result.message}"
-            }
+    /**
+     * Merges a new frame into the frame list.
+     * For streaming frames (Thinking, Content, Tool): replaces existing frame with same testName + type.
+     * For Validation frames or if no match found: appends to list.
+     */
+    private fun mergeFrame(
+        frames: List<TestResultFrame>,
+        newFrame: TestResultFrame,
+    ): List<TestResultFrame> {
+        // Validation frames are always appended (they mark test completion)
+        if (newFrame is TestResultFrame.Validation) {
+            return frames + newFrame
+        }
+
+        // Find existing frame with same testName and type
+        val existingIndex = frames.indexOfFirst { existing ->
+            existing.testName == newFrame.testName && existing::class == newFrame::class
+        }
+
+        return if (existingIndex >= 0) {
+            // Replace existing frame
+            frames.toMutableList().apply { set(existingIndex, newFrame) }
+        } else {
+            // Append new frame
+            frames + newFrame
+        }
     }
+}

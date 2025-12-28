@@ -11,6 +11,7 @@ internal enum class ParserState {
  * Internal processor to handle tag-based streaming state.
  */
 internal class TagProcessor(
+    private val testName: String,
     private val parseTags: Boolean,
 ) {
     private val currentBlock = StringBuilder()
@@ -23,7 +24,7 @@ internal class TagProcessor(
         currentBlock.append(chunk)
 
         if (!parseTags) {
-            return TestResultFrame.Content(chunk, currentBlock.toString())
+            return TestResultFrame.Content(testName, chunk, currentBlock.toString())
         }
 
         // Simple state machine to detect tags. Using a window to handle split tokens.
@@ -57,9 +58,9 @@ internal class TagProcessor(
         }
 
         return when (state) {
-            ParserState.Thinking -> TestResultFrame.Thinking(chunk, currentBlock.toString())
-            ParserState.ToolCall -> TestResultFrame.Tool(chunk, currentBlock.toString())
-            ParserState.Content -> TestResultFrame.Content(chunk, currentBlock.toString())
+            ParserState.Thinking -> TestResultFrame.Thinking(testName, chunk, currentBlock.toString())
+            ParserState.ToolCall -> TestResultFrame.Tool(testName, chunk, currentBlock.toString())
+            ParserState.Content -> TestResultFrame.Content(testName, chunk, currentBlock.toString())
         }
     }
 

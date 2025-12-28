@@ -4,15 +4,18 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement.spacedBy
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextFieldDefaults.contentPadding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -21,7 +24,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -31,8 +33,10 @@ import com.monday8am.koogagent.data.ModelConfiguration
 import com.monday8am.koogagent.download.ModelDownloadManagerImpl
 import com.monday8am.koogagent.inference.InferenceEngineFactory
 import com.monday8am.koogagent.ui.theme.KoogAgentTheme
+import com.monday8am.presentation.testing.TestResultFrame
 import com.monday8am.presentation.testing.TestUiAction
 import com.monday8am.presentation.testing.TestViewModelImpl
+import com.monday8am.presentation.testing.ValidationResult
 
 /**
  * Test Screen - Dedicated screen for running model regression tests.
@@ -68,7 +72,7 @@ fun TestScreen(modelId: String) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     TestContent(
-        logMessages = state.logMessages,
+        frames = state.frames,
         selectedModel = state.selectedModel,
         isRunning = state.isRunning,
         onRunTests = { viewModel.onUiAction(TestUiAction.RunTests) },
@@ -78,23 +82,24 @@ fun TestScreen(modelId: String) {
 
 @Composable
 private fun TestContent(
-    logMessages: List<String>,
+    frames: List<TestResultFrame>,
     selectedModel: ModelConfiguration,
     isRunning: Boolean,
     onRunTests: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
-        verticalArrangement = spacedBy(16.dp),
+        verticalArrangement = spacedBy(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier =
-            modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp),
+        modifier = modifier
+            .fillMaxSize()
+            .padding(16.dp),
     ) {
-        ModelInfoCard(model = selectedModel, modifier = Modifier.padding(top = 32.dp))
-
-        LogPanel(logMessages = logMessages)
+        ModelInfoCard(model = selectedModel)
+        TestResultsList(
+            frames = frames,
+            modifier = Modifier.weight(1f)
+        )
 
         Button(
             onClick = onRunTests,
@@ -131,43 +136,67 @@ private fun ModelInfoCard(
 }
 
 @Composable
-private fun LogPanel(
-    logMessages: List<String>,
+private fun TestResultsList(
+    frames: List<TestResultFrame>,
     modifier: Modifier = Modifier,
 ) {
-    val scrollState = rememberScrollState()
-    val textLog = logMessages.joinToString("\n")
+    val listState = rememberLazyListState()
 
-    LaunchedEffect(logMessages.size) {
-        scrollState.animateScrollTo(scrollState.maxValue)
+    // Auto-scroll to latest item
+    LaunchedEffect(frames.size) {
+        if (frames.isNotEmpty()) {
+            listState.animateScrollToItem(frames.lastIndex)
+        }
     }
 
-    Box(
+    LazyColumn(
+        state = listState,
         modifier =
-            modifier
-                .fillMaxWidth()
-                .height(350.dp)
-                .verticalScroll(scrollState)
-                .background(Color(0xFF000080)),
+            modifier.fillMaxWidth(),
+        verticalArrangement = spacedBy(8.dp),
     ) {
-        Text(
-            text = textLog,
-            color = Color(0xFF00FF00),
-            textAlign = TextAlign.Start,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(8.dp),
-        )
+        items(
+            items = frames,
+            key = { frame -> frame.toItemKey() },
+        ) { frame ->
+            when (frame) {
+                is TestResultFrame.Thinking -> ThinkingCell(frame)
+                is TestResultFrame.Tool -> ToolCell(frame)
+                is TestResultFrame.Content -> ContentCell(frame)
+                is TestResultFrame.Validation -> ValidationCell(frame)
+            }
+        }
     }
 }
+
+private fun TestResultFrame.toItemKey(): String =
+    when (this) {
+        is TestResultFrame.Thinking -> "$testName-thinking"
+        is TestResultFrame.Tool -> "$testName-tool"
+        is TestResultFrame.Content -> "$testName-content"
+        is TestResultFrame.Validation -> "$testName-validation"
+    }
+
 
 @Preview(showBackground = true)
 @Composable
 private fun TestContentPreview() {
     KoogAgentTheme {
         TestContent(
-            logMessages = listOf("Model: Test Model", "Ready to run tests"),
+            frames =
+                listOf(
+                    TestResultFrame.Content(
+                        testName = "TEST 0: Basic Response",
+                        chunk = "",
+                        accumulator = "Hello! I'm doing great, thanks for asking!",
+                    ),
+                    TestResultFrame.Validation(
+                        testName = "TEST 0: Basic Response",
+                        result = ValidationResult.Pass("Valid response received"),
+                        duration = 1234,
+                        fullContent = "Hello! I'm doing great, thanks for asking!",
+                    ),
+                ),
             selectedModel = ModelCatalog.DEFAULT,
             isRunning = false,
             onRunTests = { },
