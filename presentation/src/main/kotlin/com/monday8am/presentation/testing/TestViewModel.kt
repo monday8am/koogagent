@@ -17,7 +17,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class TestUiState(
-    val frames: List<TestResultFrame> = emptyList(),
+    val frames: Map<String, TestResultFrame> = emptyMap(),
     val selectedModel: ModelConfiguration,
     val isRunning: Boolean = false,
 )
@@ -55,7 +55,7 @@ class TestViewModelImpl(
         if (_uiState.value.isRunning) return
 
         scope.launch {
-            _uiState.update { it.copy(isRunning = true, frames = emptyList()) }
+            _uiState.update { it.copy(isRunning = true, frames = emptyMap()) }
 
             inferenceEngine
                 .initializeAsFlow(
@@ -76,7 +76,7 @@ class TestViewModelImpl(
                     emit(errorFrame)
                 }.collect { frame ->
                     _uiState.update { currentState ->
-                        val updatedFrames = mergeFrame(currentState.frames, frame)
+                        val updatedFrames = currentState.frames + (frame.id to frame)
                         currentState.copy(frames = updatedFrames)
                     }
                 }
@@ -88,33 +88,5 @@ class TestViewModelImpl(
     override fun dispose() {
         inferenceEngine.closeSession()
         scope.cancel()
-    }
-
-    /**
-     * Merges a new frame into the frame list.
-     * For streaming frames (Thinking, Content, Tool): replaces existing frame with same testName + type.
-     * For Validation frames or if no match found: appends to list.
-     */
-    private fun mergeFrame(
-        frames: List<TestResultFrame>,
-        newFrame: TestResultFrame,
-    ): List<TestResultFrame> {
-        // Validation frames are always appended (they mark test completion)
-        if (newFrame is TestResultFrame.Validation) {
-            return frames + newFrame
-        }
-
-        // Find existing frame with same testName and type
-        val existingIndex = frames.indexOfFirst { existing ->
-            existing.testName == newFrame.testName && existing::class == newFrame::class
-        }
-
-        return if (existingIndex >= 0) {
-            // Replace existing frame
-            frames.toMutableList().apply { set(existingIndex, newFrame) }
-        } else {
-            // Append new frame
-            frames + newFrame
-        }
     }
 }

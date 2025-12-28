@@ -38,31 +38,40 @@ sealed class ValidationResult {
  */
 sealed interface TestResultFrame {
     val testName: String
+    val id: String
 
     data class Tool(
         override val testName: String,
         val content: String,
         val accumulator: String,
-    ) : TestResultFrame
+    ) : TestResultFrame {
+        override val id: String = "$testName-tool"
+    }
 
     data class Content(
         override val testName: String,
         val chunk: String,
         val accumulator: String,
-    ) : TestResultFrame
+    ) : TestResultFrame {
+        override val id: String = "$testName-content"
+    }
 
     data class Thinking(
         override val testName: String,
         val chunk: String,
         val accumulator: String,
-    ) : TestResultFrame
+    ) : TestResultFrame {
+        override val id: String = "$testName-thinking"
+    }
 
     data class Validation(
         override val testName: String,
         val result: ValidationResult,
         val duration: Long,
         val fullContent: String,
-    ) : TestResultFrame
+    ) : TestResultFrame {
+        override val id: String = "$testName-validation"
+    }
 }
 
 /**
@@ -196,9 +205,9 @@ class ToolCallingTest(
                     validator = { result ->
                         val hasCoordinates =
                             result.contains("40.4") ||
-                                result.contains("latitude", ignoreCase = true) ||
-                                result.contains("longitude", ignoreCase = true) ||
-                                result.contains("location", ignoreCase = true)
+                                    result.contains("latitude", ignoreCase = true) ||
+                                    result.contains("longitude", ignoreCase = true) ||
+                                    result.contains("location", ignoreCase = true)
                         if (hasCoordinates) {
                             ValidationResult.Pass("Location data returned")
                         } else {
@@ -215,10 +224,10 @@ class ToolCallingTest(
                     validator = { result ->
                         val hasWeather =
                             result.contains("weather", ignoreCase = true) ||
-                                result.contains("temperature", ignoreCase = true) ||
-                                result.contains("sunny", ignoreCase = true) ||
-                                result.contains("cloudy", ignoreCase = true) ||
-                                result.contains("degrees", ignoreCase = true)
+                                    result.contains("temperature", ignoreCase = true) ||
+                                    result.contains("sunny", ignoreCase = true) ||
+                                    result.contains("cloudy", ignoreCase = true) ||
+                                    result.contains("degrees", ignoreCase = true)
                         if (hasWeather) {
                             ValidationResult.Pass("Weather data returned")
                         } else {

@@ -66,7 +66,7 @@ fun TestScreen(modelId: String) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     TestContent(
-        frames = state.frames,
+        frames = state.frames.values,
         selectedModel = state.selectedModel,
         isRunning = state.isRunning,
         onRunTests = { viewModel.onUiAction(TestUiAction.RunTests) },
@@ -76,7 +76,7 @@ fun TestScreen(modelId: String) {
 
 @Composable
 private fun TestContent(
-    frames: List<TestResultFrame>,
+    frames: Collection<TestResultFrame>,
     selectedModel: ModelConfiguration,
     isRunning: Boolean,
     onRunTests: () -> Unit,
@@ -131,7 +131,7 @@ private fun ModelInfoCard(
 
 @Composable
 private fun TestResultsList(
-    frames: List<TestResultFrame>,
+    frames: Collection<TestResultFrame>,
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
@@ -139,7 +139,7 @@ private fun TestResultsList(
     // Auto-scroll to latest item
     LaunchedEffect(frames.size) {
         if (frames.isNotEmpty()) {
-            listState.animateScrollToItem(frames.lastIndex)
+            listState.animateScrollToItem(frames.size - 1)
         }
     }
 
@@ -150,8 +150,8 @@ private fun TestResultsList(
         verticalArrangement = spacedBy(8.dp),
     ) {
         items(
-            items = frames,
-            key = { frame -> frame.toItemKey() },
+            items = frames.toList(),
+            key = { frame -> frame.id },
         ) { frame ->
             when (frame) {
                 is TestResultFrame.Thinking -> ThinkingCell(frame)
@@ -162,14 +162,6 @@ private fun TestResultsList(
         }
     }
 }
-
-private fun TestResultFrame.toItemKey(): String =
-    when (this) {
-        is TestResultFrame.Thinking -> "$testName-thinking"
-        is TestResultFrame.Tool -> "$testName-tool"
-        is TestResultFrame.Content -> "$testName-content"
-        is TestResultFrame.Validation -> "$testName-validation"
-    }
 
 
 @Preview(showBackground = true)
