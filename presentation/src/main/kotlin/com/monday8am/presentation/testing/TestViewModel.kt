@@ -13,6 +13,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flatMapConcat
+import kotlinx.coroutines.flow.onCompletion
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -20,6 +22,7 @@ data class TestUiState(
     val frames: Map<String, TestResultFrame> = emptyMap(),
     val selectedModel: ModelConfiguration,
     val isRunning: Boolean = false,
+    val isInitializing: Boolean = false,
 )
 
 sealed class TestUiAction {
@@ -53,15 +56,18 @@ class TestViewModelImpl(
 
     private fun runTests() {
         if (_uiState.value.isRunning) return
+        if (_uiState.value.isInitializing) return
 
         scope.launch {
-            _uiState.update { it.copy(isRunning = true, frames = emptyMap()) }
+            _uiState.update { it.copy(isRunning = true, isInitializing = true, frames = emptyMap()) }
 
             inferenceEngine
                 .initializeAsFlow(
                     modelConfig = selectedModel,
                     modelPath = modelPath,
-                ).flatMapConcat { engine ->
+                ).onEach {
+                    _uiState.update { it.copy(isInitializing = false) }
+                }.flatMapConcat { engine ->
                     ToolCallingTest(
                         streamPromptExecutor = engine::promptStreaming,
                         resetConversation = engine::resetConversation,

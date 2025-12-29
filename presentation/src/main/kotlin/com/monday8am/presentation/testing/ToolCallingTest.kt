@@ -214,7 +214,6 @@ class ToolCallingTest(
                             ValidationResult.Fail("No location data in response")
                         }
                     },
-                    parseThinkingTags = true,
                 ),
                 TestCase(
                     name = "TEST 2: Weather Query",
@@ -234,7 +233,6 @@ class ToolCallingTest(
                             ValidationResult.Fail("No weather data in response")
                         }
                     },
-                    parseThinkingTags = true,
                 ),
                 TestCase(
                     name = "TEST 3: Math Reasoning (raw output)",
@@ -251,7 +249,6 @@ class ToolCallingTest(
                             )
                         }
                     },
-                    parseThinkingTags = false, // Raw output mode
                 ),
             )
     }

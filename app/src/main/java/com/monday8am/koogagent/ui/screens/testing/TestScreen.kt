@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -69,6 +70,7 @@ fun TestScreen(modelId: String) {
         frames = state.frames.values,
         selectedModel = state.selectedModel,
         isRunning = state.isRunning,
+        isInitializing = state.isInitializing,
         onRunTests = { viewModel.onUiAction(TestUiAction.RunTests) },
         modifier = Modifier,
     )
@@ -79,6 +81,7 @@ private fun TestContent(
     frames: Collection<TestResultFrame>,
     selectedModel: ModelConfiguration,
     isRunning: Boolean,
+    isInitializing: Boolean,
     onRunTests: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -90,6 +93,11 @@ private fun TestContent(
             .padding(16.dp),
     ) {
         ModelInfoCard(model = selectedModel)
+
+        if (isInitializing) {
+            InitializationIndicator()
+        }
+
         TestResultsList(
             frames = frames,
             modifier = Modifier.weight(1f)
@@ -97,7 +105,7 @@ private fun TestContent(
 
         Button(
             onClick = onRunTests,
-            enabled = !isRunning,
+            enabled = !isRunning && !isInitializing,
         ) {
             Text(
                 text = if (isRunning) "Running..." else "Run Tests",
@@ -163,6 +171,26 @@ private fun TestResultsList(
     }
 }
 
+@Composable
+private fun InitializationIndicator() {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = spacedBy(8.dp)
+    ) {
+        LinearProgressIndicator(
+            modifier = Modifier.fillMaxWidth(0.8f)
+        )
+        Text(
+            text = "Initializing model...",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.secondary
+        )
+    }
+}
+
 
 @Preview(showBackground = true)
 @Composable
@@ -185,6 +213,7 @@ private fun TestContentPreview() {
                 ),
             selectedModel = ModelCatalog.DEFAULT,
             isRunning = false,
+            isInitializing = true,
             onRunTests = { },
         )
     }
