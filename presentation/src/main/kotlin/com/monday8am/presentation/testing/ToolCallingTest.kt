@@ -99,7 +99,7 @@ sealed interface TestResultFrame {
  * @property validator Function to validate model output
  * @property parseThinkingTags Whether to parse <think> and <tool_call> tags (default: true)
  */
-internal data class TestCase(
+data class TestCase(
     val name: String,
     val description: List<String> = emptyList(),
     val queries: List<TestQuery>,
@@ -207,7 +207,7 @@ class ToolCallingTest(
     }
 
     companion object {
-        private val REGRESSION_TEST_SUITE =
+        val REGRESSION_TEST_SUITE =
             listOf(
                 TestCase(
                     name = "TEST 0: Basic Response",
