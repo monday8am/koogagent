@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -29,6 +30,7 @@ import com.monday8am.koogagent.download.ModelDownloadManagerImpl
 import com.monday8am.koogagent.inference.InferenceEngineFactory
 import com.monday8am.koogagent.ui.theme.KoogAgentTheme
 import com.monday8am.presentation.testing.TestResultFrame
+import com.monday8am.presentation.testing.TestStatus
 import com.monday8am.presentation.testing.TestUiAction
 import com.monday8am.presentation.testing.TestViewModelImpl
 import com.monday8am.presentation.testing.ValidationResult
@@ -68,10 +70,12 @@ fun TestScreen(modelId: String) {
 
     TestContent(
         frames = state.frames.values,
+        testStatuses = state.testStatuses,
         selectedModel = state.selectedModel,
         isRunning = state.isRunning,
         isInitializing = state.isInitializing,
         onRunTests = { viewModel.onUiAction(TestUiAction.RunTests) },
+        onCancelTests = { viewModel.onUiAction(TestUiAction.CancelTests) },
         modifier = Modifier,
     )
 }
@@ -79,10 +83,12 @@ fun TestScreen(modelId: String) {
 @Composable
 private fun TestContent(
     frames: Collection<TestResultFrame>,
+    testStatuses: List<TestStatus>,
     selectedModel: ModelConfiguration,
     isRunning: Boolean,
     isInitializing: Boolean,
     onRunTests: () -> Unit,
+    onCancelTests: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -92,23 +98,34 @@ private fun TestContent(
             .fillMaxSize()
             .padding(16.dp),
     ) {
+        // 1. Top Card with Model Info
         ModelInfoCard(model = selectedModel)
 
         if (isInitializing) {
             InitializationIndicator()
         }
 
+        // 2. LazyColumn with cells (70% weight)
         TestResultsList(
             frames = frames,
-            modifier = Modifier.weight(1f)
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1.0f)
         )
 
+        TestStatusList(
+            testStatuses = testStatuses,
+            modifier = Modifier
+                .fillMaxWidth()
+        )
+
+        // 4. Run/Cancel Button
         Button(
-            onClick = onRunTests,
-            enabled = !isRunning && !isInitializing,
+            onClick = if (isRunning) onCancelTests else onRunTests,
+            enabled = !isInitializing,
         ) {
             Text(
-                text = if (isRunning) "Running..." else "Run Tests",
+                text = if (isRunning) "Cancel Tests" else "Run Tests",
             )
         }
     }
@@ -156,6 +173,8 @@ private fun TestResultsList(frames: Collection<TestResultFrame>, modifier: Modif
             key = { frame -> frame.id },
         ) { frame ->
             when (frame) {
+                is TestResultFrame.Description -> DescriptionCell(frame)
+                is TestResultFrame.Query -> QueryCell(frame)
                 is TestResultFrame.Thinking -> ThinkingCell(frame)
                 is TestResultFrame.Tool -> ToolCell(frame)
                 is TestResultFrame.Content -> ContentCell(frame)
@@ -204,10 +223,17 @@ private fun TestContentPreview() {
                     fullContent = "Hello! I'm doing great, thanks for asking!",
                 ),
             ),
+            testStatuses = listOf(
+                TestStatus(
+                    name = "TEST 0: Basic Response",
+                    state = TestStatus.State.PASS,
+                )
+            ),
             selectedModel = ModelCatalog.DEFAULT,
             isRunning = false,
             isInitializing = true,
             onRunTests = { },
+            onCancelTests = { },
         )
     }
 }

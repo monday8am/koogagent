@@ -5,6 +5,7 @@ import com.monday8am.koogagent.data.ModelConfiguration
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
@@ -22,10 +23,24 @@ data class TestUiState(
     val selectedModel: ModelConfiguration,
     val isRunning: Boolean = false,
     val isInitializing: Boolean = false,
+    val testStatuses: List<TestStatus> = emptyList(),
 )
+
+data class TestStatus(
+    val name: String,
+    val state: State,
+) {
+    enum class State {
+        IDLE,
+        RUNNING,
+        PASS,
+        FAIL,
+    }
+}
 
 sealed class TestUiAction {
     data object RunTests : TestUiAction()
+    data object CancelTests : TestUiAction()
 }
 
 interface TestViewModel {
@@ -44,12 +59,23 @@ class TestViewModelImpl(
 ) : TestViewModel {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
-    private val _uiState = MutableStateFlow(TestUiState(selectedModel = selectedModel))
+    private val _uiState = MutableStateFlow(
+        TestUiState(
+            selectedModel = selectedModel,
+            testStatuses =
+            ToolCallingTest.REGRESSION_TEST_SUITE.map {
+                TestStatus(it.name, TestStatus.State.IDLE)
+            },
+        ),
+    )
     override val uiState: StateFlow<TestUiState> = _uiState.asStateFlow()
+
+    private var testJob: Job? = null
 
     override fun onUiAction(uiAction: TestUiAction) {
         when (uiAction) {
             TestUiAction.RunTests -> runTests()
+            TestUiAction.CancelTests -> cancelTests()
         }
     }
 
@@ -57,8 +83,18 @@ class TestViewModelImpl(
         if (_uiState.value.isRunning) return
         if (_uiState.value.isInitializing) return
 
-        scope.launch {
-            _uiState.update { it.copy(isRunning = true, isInitializing = true, frames = emptyMap()) }
+        testJob = scope.launch {
+            _uiState.update {
+                it.copy(
+                    isRunning = true,
+                    isInitializing = true,
+                    frames = emptyMap(),
+                    testStatuses =
+                    it.testStatuses.map { status ->
+                        status.copy(state = TestStatus.State.IDLE)
+                    },
+                )
+            }
 
             inferenceEngine
                 .initializeAsFlow(
@@ -82,11 +118,48 @@ class TestViewModelImpl(
                 }.collect { frame ->
                     _uiState.update { currentState ->
                         val updatedFrames = currentState.frames + (frame.id to frame)
-                        currentState.copy(frames = updatedFrames)
+                        val updatedStatuses = updateTestStatuses(currentState.testStatuses, frame)
+                        currentState.copy(frames = updatedFrames, testStatuses = updatedStatuses)
                     }
                 }
 
             _uiState.update { it.copy(isRunning = false) }
+        }
+    }
+
+    private fun cancelTests() {
+        testJob?.cancel()
+        _uiState.update { it.copy(isRunning = false, isInitializing = false) }
+    }
+
+    private fun updateTestStatuses(
+        currentStatuses: List<TestStatus>,
+        frame: TestResultFrame,
+    ): List<TestStatus> {
+        return when (frame) {
+            is TestResultFrame.Description -> {
+                currentStatuses.map {
+                    if (it.name == frame.testName) it.copy(state = TestStatus.State.RUNNING) else it
+                }
+            }
+
+            is TestResultFrame.Validation -> {
+                currentStatuses.map {
+                    if (it.name == frame.testName) {
+                        val state =
+                            if (frame.result is ValidationResult.Pass) {
+                                TestStatus.State.PASS
+                            } else {
+                                TestStatus.State.FAIL
+                            }
+                        it.copy(state = state)
+                    } else {
+                        it
+                    }
+                }
+            }
+
+            else -> currentStatuses
         }
     }
 
