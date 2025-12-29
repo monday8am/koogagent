@@ -274,7 +274,7 @@ class ModelSelectorViewModelTest {
         // Completed model should remain unchanged
         val completedModel = newState.models.find { it.config.modelId == model2.modelId }
         assertEquals(DownloadStatus.Completed, completedModel?.downloadStatus)
-        assertTrue(completedModel?.isDownloaded == true)
+        assertEquals(completedModel?.isDownloaded, true)
     }
 
     // endregion

@@ -88,20 +88,6 @@ class NotificationViewModelTest {
     }
 
     @Test
-    fun `reduce with RunModelTests Loading should set InitTests message`() {
-        val viewModel = createViewModel()
-
-        val newState =
-            viewModel.reduce(
-                state = initialState,
-                action = UiAction.RunModelTests,
-                actionState = ActionState.Loading,
-            )
-
-        assertEquals(LogMessage.InitTests, newState.statusMessage)
-    }
-
-    @Test
     fun `reduce with ShowNotification Success should set PromptingWithContext message`() {
         val viewModel = createViewModel()
         val stateWithContext = initialState.copy(context = testContext)

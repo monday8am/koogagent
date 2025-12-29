@@ -9,6 +9,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.monday8am.koogagent.ui.screens.modelselector.ModelSelectorScreen
 import com.monday8am.koogagent.ui.screens.notification.NotificationScreen
+import com.monday8am.koogagent.ui.screens.testing.TestScreen
 
 @Composable
 fun AppNavigation(
@@ -25,11 +26,18 @@ fun AppNavigation(
                 onNavigateToNotification = { modelId ->
                     navController.navigate(Route.Notification(modelId))
                 },
+                onNavigateToTesting = { modelId ->
+                    navController.navigate(Route.Testing(modelId))
+                },
             )
         }
         composable<Route.Notification> { backStackEntry ->
             val args = backStackEntry.toRoute<Route.Notification>()
             NotificationScreen(modelId = args.modelId)
+        }
+        composable<Route.Testing> { backStackEntry ->
+            val args = backStackEntry.toRoute<Route.Testing>()
+            TestScreen(modelId = args.modelId)
         }
     }
 }

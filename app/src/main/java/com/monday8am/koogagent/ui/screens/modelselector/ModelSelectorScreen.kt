@@ -17,6 +17,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -39,7 +40,10 @@ import com.monday8am.presentation.modelselector.UiState
  * Model Selector Screen - Entry point for model selection.
  */
 @Composable
-fun ModelSelectorScreen(onNavigateToNotification: (String) -> Unit) {
+fun ModelSelectorScreen(
+    onNavigateToNotification: (String) -> Unit,
+    onNavigateToTesting: (String) -> Unit,
+) {
     val viewModel =
         remember {
             AndroidModelSelectorViewModel(
@@ -57,6 +61,7 @@ fun ModelSelectorScreen(onNavigateToNotification: (String) -> Unit) {
         modifier = Modifier,
         onAction = viewModel::onUiAction,
         onNavigateToNotification = onNavigateToNotification,
+        onNavigateToTesting = onNavigateToTesting,
     )
 }
 
@@ -66,6 +71,7 @@ private fun ModelSelectorScreenContent(
     modifier: Modifier = Modifier,
     onAction: (UiAction) -> Unit = {},
     onNavigateToNotification: (String) -> Unit = {},
+    onNavigateToTesting: (String) -> Unit = {},
 ) {
     Column(
         modifier =
@@ -161,13 +167,22 @@ private fun ModelSelectorScreenContent(
 
             Spacer(modifier = Modifier.weight(1f))
 
+            OutlinedButton(
+                onClick = {
+                    uiState.selectedModelId?.let(onNavigateToTesting)
+                },
+                enabled = downloadStatus == DownloadStatus.Completed,
+            ) {
+                Text("Model Tests")
+            }
+
             Button(
                 onClick = {
                     uiState.selectedModelId?.let(onNavigateToNotification)
                 },
                 enabled = downloadStatus == DownloadStatus.Completed,
             ) {
-                Text("Try model")
+                Text("Agentic Test")
                 Icon(
                     imageVector = Icons.AutoMirrored.Default.ArrowForward,
                     contentDescription = "Go forward",

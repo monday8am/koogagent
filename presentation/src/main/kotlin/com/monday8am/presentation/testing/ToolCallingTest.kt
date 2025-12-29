@@ -3,7 +3,6 @@ package com.monday8am.presentation.testing
 import co.touchlab.kermit.Logger
 import co.touchlab.kermit.Severity
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
@@ -38,32 +37,41 @@ sealed class ValidationResult {
  * Used by UI to show real-time progress.
  */
 sealed interface TestResultFrame {
+    val testName: String
+    val id: String
+
     data class Tool(
+        override val testName: String,
         val content: String,
         val accumulator: String,
-    ) : TestResultFrame
+    ) : TestResultFrame {
+        override val id: String = "$testName-tool"
+    }
 
     data class Content(
+        override val testName: String,
         val chunk: String,
         val accumulator: String,
-    ) : TestResultFrame
+    ) : TestResultFrame {
+        override val id: String = "$testName-content"
+    }
 
     data class Thinking(
+        override val testName: String,
         val chunk: String,
         val accumulator: String,
-    ) : TestResultFrame
+    ) : TestResultFrame {
+        override val id: String = "$testName-thinking"
+    }
 
     data class Validation(
+        override val testName: String,
         val result: ValidationResult,
         val duration: Long,
         val fullContent: String,
-    ) : TestResultFrame
-}
-
-private enum class ParserState {
-    Content,
-    Thinking,
-    ToolCall,
+    ) : TestResultFrame {
+        override val id: String = "$testName-validation"
+    }
 }
 
 /**
@@ -92,7 +100,6 @@ internal data class TestCase(
  * framework layers. Tools are configured at the platform layer (LiteRT-LM/MediaPipe),
  * tests just validate output.
  *
- * @param promptExecutor Executes a prompt and returns the response
  * @param streamPromptExecutor Executes a prompt and streams the response
  * @param resetConversation Resets conversation state between tests
  */
@@ -122,6 +129,7 @@ class ToolCallingTest(
             logger.e(e) { "A failure occurred during the test suite execution" }
             emit(
                 TestResultFrame.Validation(
+                    testName = "Test Suite",
                     result = ValidationResult.Fail("Test suite failed: ${e.message}"),
                     duration = 0,
                     fullContent = "",
@@ -136,7 +144,7 @@ class ToolCallingTest(
         testCase: TestCase,
         query: TestQuery,
     ): Flow<TestResultFrame> {
-        val processor = TagProcessor(testCase.parseThinkingTags)
+        val processor = TagProcessor(testCase.name, testCase.parseThinkingTags)
         var startTime = 0L
 
         val prompt = "${testCase.systemPrompt}\n\n${query.text}"
@@ -153,6 +161,7 @@ class ToolCallingTest(
                     val validationResult = testCase.validator(finalContent)
                     emit(
                         TestResultFrame.Validation(
+                            testName = testCase.name,
                             result = validationResult,
                             duration = duration,
                             fullContent = finalContent,
@@ -164,91 +173,13 @@ class ToolCallingTest(
                 val duration = System.currentTimeMillis() - startTime
                 emit(
                     TestResultFrame.Validation(
+                        testName = testCase.name,
                         result = ValidationResult.Fail("Exception: ${e.message}"),
                         duration = duration,
                         fullContent = processor.resultContent,
                     ),
                 )
             }
-    }
-
-    /**
-     * Internal processor to handle tag-based streaming state.
-     */
-    private class TagProcessor(
-        private val parseTags: Boolean,
-    ) {
-        private val currentBlock = StringBuilder()
-        private var state = ParserState.Content
-
-        /** The content accumulated for validation (after stripping tags if enabled) */
-        val resultContent: String get() = currentBlock.toString()
-
-        fun process(chunk: String): TestResultFrame {
-            currentBlock.append(chunk)
-
-            if (!parseTags) {
-                return TestResultFrame.Content(chunk, currentBlock.toString())
-            }
-
-            // Simple state machine to detect tags. Using a window to handle split tokens.
-            // We check the tail of currentBlock for state transitions.
-            val lookBack = currentBlock.takeLast(20).toString()
-
-            when (state) {
-                ParserState.Content -> {
-                    if (lookBack.contains("<think>")) {
-                        state = ParserState.Thinking
-                        stripTag("<think>")
-                    } else if (lookBack.contains("<tool_call")) {
-                        state = ParserState.ToolCall
-                        stripTag("<tool_call")
-                    }
-                }
-
-                ParserState.Thinking -> {
-                    if (lookBack.contains("</think>")) {
-                        state = ParserState.Content
-                        stripTag("</think>", clearBefore = true)
-                    }
-                }
-
-                ParserState.ToolCall -> {
-                    if (lookBack.contains("</tool_call>")) {
-                        state = ParserState.Content
-                        stripTag("</tool_call>", clearBefore = true)
-                    }
-                }
-            }
-
-            return when (state) {
-                ParserState.Thinking -> TestResultFrame.Thinking(chunk, currentBlock.toString())
-                ParserState.ToolCall -> TestResultFrame.Tool(chunk, currentBlock.toString())
-                ParserState.Content -> TestResultFrame.Content(chunk, currentBlock.toString())
-            }
-        }
-
-        private fun stripTag(
-            tag: String,
-            clearBefore: Boolean = false,
-        ) {
-            val content = currentBlock.toString()
-            val index = content.lastIndexOf(tag)
-            if (index != -1) {
-                if (clearBefore) {
-                    val remaining = content.substring(index + tag.length)
-                    currentBlock.clear()
-                    currentBlock.append(remaining)
-                } else {
-                    // Just remove the tag itself if we're starting a new block
-                    // Actually, if we're starting <think>, we might want to clear previous content
-                    // if it's just whitespace or if the contract is "one block at a time".
-                    // The original code cleared on END tags.
-                    // For start tags, let's just keep everything for now but remove the tag.
-                    currentBlock.delete(index, index + tag.length)
-                }
-            }
-        }
     }
 
     companion object {
@@ -274,16 +205,15 @@ class ToolCallingTest(
                     validator = { result ->
                         val hasCoordinates =
                             result.contains("40.4") ||
-                                result.contains("latitude", ignoreCase = true) ||
-                                result.contains("longitude", ignoreCase = true) ||
-                                result.contains("location", ignoreCase = true)
+                                    result.contains("latitude", ignoreCase = true) ||
+                                    result.contains("longitude", ignoreCase = true) ||
+                                    result.contains("location", ignoreCase = true)
                         if (hasCoordinates) {
                             ValidationResult.Pass("Location data returned")
                         } else {
                             ValidationResult.Fail("No location data in response")
                         }
                     },
-                    parseThinkingTags = true,
                 ),
                 TestCase(
                     name = "TEST 2: Weather Query",
@@ -293,17 +223,16 @@ class ToolCallingTest(
                     validator = { result ->
                         val hasWeather =
                             result.contains("weather", ignoreCase = true) ||
-                                result.contains("temperature", ignoreCase = true) ||
-                                result.contains("sunny", ignoreCase = true) ||
-                                result.contains("cloudy", ignoreCase = true) ||
-                                result.contains("degrees", ignoreCase = true)
+                                    result.contains("temperature", ignoreCase = true) ||
+                                    result.contains("sunny", ignoreCase = true) ||
+                                    result.contains("cloudy", ignoreCase = true) ||
+                                    result.contains("degrees", ignoreCase = true)
                         if (hasWeather) {
                             ValidationResult.Pass("Weather data returned")
                         } else {
                             ValidationResult.Fail("No weather data in response")
                         }
                     },
-                    parseThinkingTags = true,
                 ),
                 TestCase(
                     name = "TEST 3: Math Reasoning (raw output)",
@@ -320,7 +249,6 @@ class ToolCallingTest(
                             )
                         }
                     },
-                    parseThinkingTags = false, // Raw output mode
                 ),
             )
     }
