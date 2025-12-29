@@ -156,11 +156,59 @@ private fun TestResultsList(frames: Collection<TestResultFrame>, modifier: Modif
             key = { frame -> frame.id },
         ) { frame ->
             when (frame) {
+                is TestResultFrame.Description -> DescriptionCell(frame)
+                is TestResultFrame.Query -> QueryCell(frame)
                 is TestResultFrame.Thinking -> ThinkingCell(frame)
                 is TestResultFrame.Tool -> ToolCell(frame)
                 is TestResultFrame.Content -> ContentCell(frame)
                 is TestResultFrame.Validation -> ValidationCell(frame)
             }
+        }
+    }
+}
+
+@Composable
+private fun DescriptionCell(frame: TestResultFrame.Description) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(
+                text = frame.testName,
+                style = MaterialTheme.typography.titleSmall,
+            )
+            if (frame.description.isNotEmpty()) {
+                Text(
+                    text = frame.description,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+            Text(
+                text = "System Prompt: ${frame.systemPrompt}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun QueryCell(frame: TestResultFrame.Query) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 24.dp),
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(
+                text = "User",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Text(
+                text = frame.query,
+                style = MaterialTheme.typography.bodyMedium,
+            )
         }
     }
 }

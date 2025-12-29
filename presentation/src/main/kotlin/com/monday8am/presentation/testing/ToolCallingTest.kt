@@ -40,6 +40,21 @@ sealed interface TestResultFrame {
     val testName: String
     val id: String
 
+    data class Description(
+        override val testName: String,
+        val description: String,
+        val systemPrompt: String,
+    ) : TestResultFrame {
+        override val id: String = "$testName-description"
+    }
+
+    data class Query(
+        override val testName: String,
+        val query: String,
+    ) : TestResultFrame {
+        override val id: String = "$testName-query"
+    }
+
     data class Tool(
         override val testName: String,
         val content: String,
@@ -119,6 +134,13 @@ class ToolCallingTest(
 
     private fun runAllTestsStreaming(testCases: List<TestCase>): Flow<TestResultFrame> = flow {
         for (testCase in testCases) {
+            emit(
+                TestResultFrame.Description(
+                    testName = testCase.name,
+                    description = testCase.description.joinToString("\n"),
+                    systemPrompt = testCase.systemPrompt,
+                ),
+            )
             for (query in testCase.queries) {
                 emitAll(runSingleQueryStream(testCase = testCase, query = query))
             }
@@ -140,42 +162,48 @@ class ToolCallingTest(
      * Executes a single query using streaming and returns result frames.
      */
     private fun runSingleQueryStream(testCase: TestCase, query: TestQuery): Flow<TestResultFrame> {
-        val processor = TagProcessor(testCase.name, testCase.parseThinkingTags)
-        var startTime = 0L
+        return flow {
+            emit(TestResultFrame.Query(testName = testCase.name, query = query.text))
 
-        val prompt = "${testCase.systemPrompt}\n\n${query.text}"
+            val processor = TagProcessor(testCase.name, testCase.parseThinkingTags)
+            var startTime = 0L
 
-        return streamPromptExecutor(prompt)
-            .map { chunk ->
-                processor.process(chunk)
-            }.onStart {
-                startTime = System.currentTimeMillis()
-            }.onCompletion { cause ->
-                if (cause == null) {
+            val prompt = "${testCase.systemPrompt}\n\n${query.text}"
+
+            streamPromptExecutor(prompt)
+                .map { chunk ->
+                    processor.process(chunk)
+                }.onStart {
+                    startTime = System.currentTimeMillis()
+                }.onCompletion { cause ->
+                    if (cause == null) {
+                        val duration = System.currentTimeMillis() - startTime
+                        val finalContent = processor.resultContent
+                        val validationResult = testCase.validator(finalContent)
+                        emit(
+                            TestResultFrame.Validation(
+                                testName = testCase.name,
+                                result = validationResult,
+                                duration = duration,
+                                fullContent = finalContent,
+                            ),
+                        )
+                    }
+                }.catch { e ->
+                    logger.e(e) { "Test failed: ${query.text}" }
                     val duration = System.currentTimeMillis() - startTime
-                    val finalContent = processor.resultContent
-                    val validationResult = testCase.validator(finalContent)
                     emit(
                         TestResultFrame.Validation(
                             testName = testCase.name,
-                            result = validationResult,
+                            result = ValidationResult.Fail("Exception: ${e.message}"),
                             duration = duration,
-                            fullContent = finalContent,
+                            fullContent = processor.resultContent,
                         ),
                     )
+                }.collect {
+                    emit(it)
                 }
-            }.catch { e ->
-                logger.e(e) { "Test failed: ${query.text}" }
-                val duration = System.currentTimeMillis() - startTime
-                emit(
-                    TestResultFrame.Validation(
-                        testName = testCase.name,
-                        result = ValidationResult.Fail("Exception: ${e.message}"),
-                        duration = duration,
-                        fullContent = processor.resultContent,
-                    ),
-                )
-            }
+        }
     }
 
     companion object {
