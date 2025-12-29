@@ -1,6 +1,5 @@
 package com.monday8am.presentation.testing
 
-
 internal enum class ParserState {
     Content,
     Thinking,
@@ -64,10 +63,7 @@ internal class TagProcessor(
         }
     }
 
-    private fun stripTag(
-        tag: String,
-        clearBefore: Boolean = false,
-    ) {
+    private fun stripTag(tag: String, clearBefore: Boolean = false) {
         val content = currentBlock.toString()
         val index = content.lastIndexOf(tag)
         if (index != -1) {

@@ -208,33 +208,22 @@ class ModelSelectorViewModelImpl(
         scope.cancel()
     }
 
-    internal fun reduce(
-        state: UiState,
-        action: UiAction,
-        actionState: ActionState,
-    ): UiState =
-        when (actionState) {
-            is ActionState.Loading -> reduceLoading(state, action)
-            is ActionState.Success -> reduceSuccess(state, action, actionState)
-            is ActionState.Error -> state.copy(statusMessage = "Error: ${actionState.throwable.message ?: "Unknown error"}")
-        }
+    internal fun reduce(state: UiState, action: UiAction, actionState: ActionState): UiState = when (actionState) {
+        is ActionState.Loading -> reduceLoading(state, action)
+        is ActionState.Success -> reduceSuccess(state, action, actionState)
+        is ActionState.Error -> state.copy(
+            statusMessage = "Error: ${actionState.throwable.message ?: "Unknown error"}"
+        )
+    }
 
-    private fun reduceLoading(
-        state: UiState,
-        action: UiAction,
-    ): UiState =
-        when (action) {
-            is UiAction.ProcessNextDownload -> state.copy(statusMessage = "Starting download...")
-            is UiAction.CancelCurrentDownload -> state.copy(statusMessage = "Cancelling downloads...")
-            is UiAction.DeleteModel -> state.copy(statusMessage = "Deleting model...")
-            else -> state
-        }
+    private fun reduceLoading(state: UiState, action: UiAction): UiState = when (action) {
+        is UiAction.ProcessNextDownload -> state.copy(statusMessage = "Starting download...")
+        is UiAction.CancelCurrentDownload -> state.copy(statusMessage = "Cancelling downloads...")
+        is UiAction.DeleteModel -> state.copy(statusMessage = "Deleting model...")
+        else -> state
+    }
 
-    private fun reduceSuccess(
-        state: UiState,
-        action: UiAction,
-        actionState: ActionState.Success,
-    ): UiState =
+    private fun reduceSuccess(state: UiState, action: UiAction, actionState: ActionState.Success): UiState =
         when (action) {
             is UiAction.Initialize -> {
                 @Suppress("UNCHECKED_CAST")
@@ -315,11 +304,7 @@ class ModelSelectorViewModelImpl(
         }
 
     @Suppress("DefaultLocale")
-    private fun reduceDownloadProgress(
-        state: UiState,
-        modelId: String,
-        status: ModelDownloadManager.Status,
-    ): UiState =
+    private fun reduceDownloadProgress(state: UiState, modelId: String, status: ModelDownloadManager.Status): UiState =
         when (status) {
             is ModelDownloadManager.Status.InProgress -> {
                 val progress = status.progress ?: 0f
@@ -350,13 +335,13 @@ class ModelSelectorViewModelImpl(
             is ModelDownloadManager.Status.Cancelled -> {
                 state.copy(
                     models =
-                        state.models.map {
-                            if (it.downloadStatus is DownloadStatus.Downloading || it.downloadStatus == DownloadStatus.Queued) {
-                                it.copy(downloadStatus = DownloadStatus.NotStarted)
-                            } else {
-                                it
-                            }
-                        },
+                    state.models.map {
+                        if (it.downloadStatus is DownloadStatus.Downloading || it.downloadStatus == DownloadStatus.Queued) {
+                            it.copy(downloadStatus = DownloadStatus.NotStarted)
+                        } else {
+                            it
+                        }
+                    },
                     currentDownload = null,
                     queuedDownloads = emptyList(), // Clear queue on cancel
                     statusMessage = "Download cancelled",
@@ -368,10 +353,7 @@ class ModelSelectorViewModelImpl(
             }
         }
 
-    private fun processNextInQueue(
-        state: UiState,
-        baseStatusMessage: String,
-    ): UiState {
+    private fun processNextInQueue(state: UiState, baseStatusMessage: String): UiState {
         val nextInQueue = state.queuedDownloads.firstOrNull()
         if (nextInQueue != null) {
             onUiAction(UiAction.ProcessNextDownload(nextInQueue))
@@ -383,10 +365,7 @@ class ModelSelectorViewModelImpl(
         )
     }
 
-    private fun UiState.updateModelStatus(
-        modelId: String,
-        downloadStatus: DownloadStatus,
-    ): List<ModelInfo> =
+    private fun UiState.updateModelStatus(modelId: String, downloadStatus: DownloadStatus): List<ModelInfo> =
         this.models.map { modelInfo ->
             if (modelInfo.config.modelId == modelId) {
                 modelInfo.copy(downloadStatus = downloadStatus)

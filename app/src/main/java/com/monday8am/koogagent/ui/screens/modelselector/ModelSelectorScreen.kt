@@ -40,10 +40,7 @@ import com.monday8am.presentation.modelselector.UiState
  * Model Selector Screen - Entry point for model selection.
  */
 @Composable
-fun ModelSelectorScreen(
-    onNavigateToNotification: (String) -> Unit,
-    onNavigateToTesting: (String) -> Unit,
-) {
+fun ModelSelectorScreen(onNavigateToNotification: (String) -> Unit, onNavigateToTesting: (String) -> Unit) {
     val viewModel =
         remember {
             AndroidModelSelectorViewModel(
@@ -75,9 +72,9 @@ private fun ModelSelectorScreenContent(
 ) {
     Column(
         modifier =
-            modifier
-                .fillMaxSize()
-                .padding(16.dp),
+        modifier
+            .fillMaxSize()
+            .padding(16.dp),
     ) {
         Text(
             text = "Select a Model",
@@ -116,9 +113,9 @@ private fun ModelSelectorScreenContent(
 
         Row(
             modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(top = 16.dp),
+            Modifier
+                .fillMaxWidth()
+                .padding(top = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             // Delete button - visible only when downloaded model is selected
@@ -149,10 +146,10 @@ private fun ModelSelectorScreenContent(
                             }
                         },
                         colors =
-                            ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.error,
-                                contentColor = MaterialTheme.colorScheme.onError,
-                            ),
+                        ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error,
+                            contentColor = MaterialTheme.colorScheme.onError,
+                        ),
                     ) {
                         Icon(
                             imageVector = Icons.Default.Delete,
@@ -198,26 +195,26 @@ private fun ModelSelectorScreenPreview() {
     KoogAgentTheme {
         ModelSelectorScreenContent(
             uiState =
-                UiState(
-                    models =
-                        ModelCatalog.ALL_MODELS.map {
-                            ModelInfo(
-                                config = it,
-                                isDownloaded = it.modelId != ModelCatalog.GEMMA3_1B.modelId,
-                                downloadStatus =
-                                    if (it.modelId ==
-                                        ModelCatalog.GEMMA3_1B.modelId
-                                    ) {
-                                        DownloadStatus.Downloading(10f)
-                                    } else {
-                                        DownloadStatus.Completed
-                                    },
-                            )
+            UiState(
+                models =
+                ModelCatalog.ALL_MODELS.map {
+                    ModelInfo(
+                        config = it,
+                        isDownloaded = it.modelId != ModelCatalog.GEMMA3_1B.modelId,
+                        downloadStatus =
+                        if (it.modelId ==
+                            ModelCatalog.GEMMA3_1B.modelId
+                        ) {
+                            DownloadStatus.Downloading(10f)
+                        } else {
+                            DownloadStatus.Completed
                         },
-                    selectedModelId = ModelCatalog.GEMMA3_1B.modelId,
-                    currentDownload = DownloadInfo(ModelCatalog.GEMMA3_1B.modelId, 10f),
-                    statusMessage = "Downloading model: GEMMA3_1B",
-                ),
+                    )
+                },
+                selectedModelId = ModelCatalog.GEMMA3_1B.modelId,
+                currentDownload = DownloadInfo(ModelCatalog.GEMMA3_1B.modelId, 10f),
+                statusMessage = "Downloading model: GEMMA3_1B",
+            ),
         )
     }
 }

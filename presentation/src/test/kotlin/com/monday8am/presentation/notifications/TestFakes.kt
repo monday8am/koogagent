@@ -9,26 +9,20 @@ import com.monday8am.koogagent.data.NotificationResult
 import com.monday8am.koogagent.data.WeatherCondition
 import com.monday8am.koogagent.data.WeatherProvider
 import com.monday8am.presentation.modelselector.ModelDownloadManager
+import java.io.File
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
-import java.io.File
 
 internal class FakeLocalInferenceEngine : LocalInferenceEngine {
     var initializeCalled = false
 
-    override suspend fun initialize(
-        modelConfig: ModelConfiguration,
-        modelPath: String,
-    ): Result<Unit> {
+    override suspend fun initialize(modelConfig: ModelConfiguration, modelPath: String): Result<Unit> {
         initializeCalled = true
         return Result.success(Unit)
     }
 
-    override fun initializeAsFlow(
-        modelConfig: ModelConfiguration,
-        modelPath: String,
-    ): Flow<LocalInferenceEngine> {
+    override fun initializeAsFlow(modelConfig: ModelConfiguration, modelPath: String): Flow<LocalInferenceEngine> {
         initializeCalled = true
         return flowOf(this)
     }
@@ -53,10 +47,7 @@ internal class FakeNotificationEngine : NotificationEngine {
 }
 
 internal class FakeWeatherProvider : WeatherProvider {
-    override suspend fun getCurrentWeather(
-        latitude: Double,
-        longitude: Double,
-    ) = WeatherCondition.SUNNY
+    override suspend fun getCurrentWeather(latitude: Double, longitude: Double) = WeatherCondition.SUNNY
 }
 
 internal class FakeLocationProvider : LocationProvider {
@@ -76,17 +67,16 @@ internal class FakeModelDownloadManager(
         modelId: String,
         downloadUrl: String,
         bundleFilename: String,
-    ): Flow<ModelDownloadManager.Status> =
-        flow {
-            if (shouldFail) {
-                throw Exception("Download failed") // Throw inside flow builder to be caught by .catch { }
-            }
-
-            progressSteps.forEach { progress ->
-                emit(ModelDownloadManager.Status.InProgress(progress))
-            }
-            emit(ModelDownloadManager.Status.Completed(File("/fake/path/$bundleFilename")))
+    ): Flow<ModelDownloadManager.Status> = flow {
+        if (shouldFail) {
+            throw Exception("Download failed") // Throw inside flow builder to be caught by .catch { }
         }
+
+        progressSteps.forEach { progress ->
+            emit(ModelDownloadManager.Status.InProgress(progress))
+        }
+        emit(ModelDownloadManager.Status.Completed(File("/fake/path/$bundleFilename")))
+    }
 
     override fun cancelDownload() {
     }

@@ -38,8 +38,7 @@ class NotificationGenerator(
     // Consider weather when suggesting meals (e.g., hot soup on cold days, refreshing salads when hot, comfort food when rainy).
     // If weather information is relevant for this meal type, use the WeatherTool tool first to get current conditions, then tailor your suggestion accordingly.
 
-    private fun buildPrompt(context: NotificationContext): String =
-        """
+    private fun buildPrompt(context: NotificationContext): String = """
         Context:
         - Meal type: ${context.mealType}
         - Motivation level: ${context.motivationLevel}
@@ -56,7 +55,7 @@ class NotificationGenerator(
         Use the language and suggest a meal or drink based on the country provided and the weather information obtained before.
         ${if (context.alreadyLogged) "The user has already logged something today - encourage them to continue." else "The user has not logged anything today - motivate them to start."}
         Say to user if you used the WeatherTool or not and why
-        """.trimIndent()
+    """.trimIndent()
 
     private fun parseResponse(response: String): NotificationResult {
         val cleanJson = response.removePrefix("```json\n").removeSuffix("\n```")

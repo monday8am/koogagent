@@ -4,19 +4,13 @@ import com.monday8am.koogagent.data.ModelConfiguration
 import kotlinx.coroutines.flow.Flow
 
 interface LocalInferenceEngine {
-    suspend fun initialize(
-        modelConfig: ModelConfiguration,
-        modelPath: String,
-    ): Result<Unit>
+    suspend fun initialize(modelConfig: ModelConfiguration, modelPath: String): Result<Unit>
 
     suspend fun prompt(prompt: String): Result<String>
 
     fun promptStreaming(prompt: String): Flow<String>
 
-    fun initializeAsFlow(
-        modelConfig: ModelConfiguration,
-        modelPath: String,
-    ): Flow<LocalInferenceEngine>
+    fun initializeAsFlow(modelConfig: ModelConfiguration, modelPath: String): Flow<LocalInferenceEngine>
 
     fun resetConversation(): Result<Unit>
 

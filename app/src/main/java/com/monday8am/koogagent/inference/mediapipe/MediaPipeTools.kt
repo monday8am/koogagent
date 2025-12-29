@@ -84,13 +84,12 @@ object MediaPipeTools {
     /**
      * Creates all available tools in a single Tool object.
      */
-    fun createAllTools(): Tool =
-        Tool
-            .newBuilder()
-            .addAllFunctionDeclarations(
-                listOf(
-                    createGetLocationTool().getFunctionDeclarations(0),
-                    createGetWeatherTool().getFunctionDeclarations(0),
-                ),
-            ).build()
+    fun createAllTools(): Tool = Tool
+        .newBuilder()
+        .addAllFunctionDeclarations(
+            listOf(
+                createGetLocationTool().getFunctionDeclarations(0),
+                createGetWeatherTool().getFunctionDeclarations(0),
+            ),
+        ).build()
 }

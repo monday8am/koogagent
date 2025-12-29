@@ -15,10 +15,7 @@ class WeatherProviderImpl(
     private val client: OkHttpClient = OkHttpClient(),
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : WeatherProvider {
-    override suspend fun getCurrentWeather(
-        latitude: Double,
-        longitude: Double,
-    ): WeatherCondition? =
+    override suspend fun getCurrentWeather(latitude: Double, longitude: Double): WeatherCondition? =
         withContext(dispatcher) {
             try {
                 val url =
@@ -52,33 +49,29 @@ class WeatherProviderImpl(
      * Maps WMO Weather interpretation codes to WeatherCondition enum.
      * See: https://open-meteo.com/en/docs
      */
-    private fun mapWeatherCodeToCondition(
-        weatherCode: Int,
-        temperature: Double,
-    ): WeatherCondition =
-        when {
-            // Temperature-based conditions
-            temperature > 30 -> WeatherCondition.HOT
+    private fun mapWeatherCodeToCondition(weatherCode: Int, temperature: Double): WeatherCondition = when {
+        // Temperature-based conditions
+        temperature > 30 -> WeatherCondition.HOT
 
-            temperature < 5 -> WeatherCondition.COLD
+        temperature < 5 -> WeatherCondition.COLD
 
-            // Weather code based
-            weatherCode == 0 -> WeatherCondition.SUNNY
+        // Weather code based
+        weatherCode == 0 -> WeatherCondition.SUNNY
 
-            // Clear sky
-            weatherCode in 1..3 -> WeatherCondition.CLOUDY
+        // Clear sky
+        weatherCode in 1..3 -> WeatherCondition.CLOUDY
 
-            // Mainly clear, partly cloudy, overcast
-            weatherCode in 51..67 || weatherCode in 80..82 -> WeatherCondition.RAINY
+        // Mainly clear, partly cloudy, overcast
+        weatherCode in 51..67 || weatherCode in 80..82 -> WeatherCondition.RAINY
 
-            // Drizzle, rain, showers
-            weatherCode in 71..77 || weatherCode in 85..86 -> WeatherCondition.RAINY
+        // Drizzle, rain, showers
+        weatherCode in 71..77 || weatherCode in 85..86 -> WeatherCondition.RAINY
 
-            // Snow (treat as rainy for notification purposes)
-            weatherCode in 95..99 -> WeatherCondition.RAINY
+        // Snow (treat as rainy for notification purposes)
+        weatherCode in 95..99 -> WeatherCondition.RAINY
 
-            // Thunderstorm
+        // Thunderstorm
 
-            else -> WeatherCondition.CLOUDY
-        }
+        else -> WeatherCondition.CLOUDY
+    }
 }

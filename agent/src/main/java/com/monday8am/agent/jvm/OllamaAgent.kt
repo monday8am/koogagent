@@ -17,52 +17,51 @@ import kotlinx.coroutines.runBlocking
 
 private val logger = Logger.withTag("KoogAgentApp")
 
-fun main() =
-    runBlocking {
-        logger.i { "Starting KoogAgent local test application" }
+fun main() = runBlocking {
+    logger.i { "Starting KoogAgent local test application" }
 
-        val weatherProvider = WeatherProviderImpl()
-        val locationProvider = MockLocationProvider()
-        val toolRegistry =
-            ToolRegistry {
-                tool(tool = GetWeather(weatherProvider = weatherProvider, locationProvider = locationProvider))
-                tool(tool = GetLocation(locationProvider))
+    val weatherProvider = WeatherProviderImpl()
+    val locationProvider = MockLocationProvider()
+    val toolRegistry =
+        ToolRegistry {
+            tool(tool = GetWeather(weatherProvider = weatherProvider, locationProvider = locationProvider))
+            tool(tool = GetLocation(locationProvider))
+        }
+
+    // Get first available Ollama model dynamically
+    val client = OllamaClient()
+    val llModel = client.getModels().firstOrNull()?.toLLModel()
+    if (llModel == null) {
+        logger.e { "No Ollama models found" }
+        throw Exception("No models found")
+    }
+    logger.i { "Using Ollama model: ${llModel.id}" }
+
+    val agent =
+        NotificationAgent
+            .koog(
+                model = llModel,
+            ).apply {
+                initializeWithTools(toolRegistry)
             }
 
-        // Get first available Ollama model dynamically
-        val client = OllamaClient()
-        val llModel = client.getModels().firstOrNull()?.toLLModel()
-        if (llModel == null) {
-            logger.e { "No Ollama models found" }
-            throw Exception("No models found")
-        }
-        logger.i { "Using Ollama model: ${llModel.id}" }
+    val message =
+        NotificationGenerator(agent = agent).generate(
+            NotificationContext(
+                mealType = MealType.LUNCH,
+                motivationLevel = MotivationLevel.HIGH,
+                alreadyLogged = true,
+                userLocale = "en-US",
+                country = "ES",
+            ),
+        )
 
-        val agent =
-            NotificationAgent
-                .koog(
-                    model = llModel,
-                ).apply {
-                    initializeWithTools(toolRegistry)
-                }
+    logger.i { "Generated notification:" }
+    logger.i { "  Title: ${message.title}" }
+    logger.i { "  Body: ${message.body}" }
+    logger.i { "  Language: ${message.language}" }
+    logger.i { "  Confidence: ${message.confidence}" }
+    logger.i { "  Is Fallback: ${message.isFallback}" }
 
-        val message =
-            NotificationGenerator(agent = agent).generate(
-                NotificationContext(
-                    mealType = MealType.LUNCH,
-                    motivationLevel = MotivationLevel.HIGH,
-                    alreadyLogged = true,
-                    userLocale = "en-US",
-                    country = "ES",
-                ),
-            )
-
-        logger.i { "Generated notification:" }
-        logger.i { "  Title: ${message.title}" }
-        logger.i { "  Body: ${message.body}" }
-        logger.i { "  Language: ${message.language}" }
-        logger.i { "  Confidence: ${message.confidence}" }
-        logger.i { "  Is Fallback: ${message.isFallback}" }
-
-        logger.i { "Application completed successfully" }
-    }
+    logger.i { "Application completed successfully" }
+}

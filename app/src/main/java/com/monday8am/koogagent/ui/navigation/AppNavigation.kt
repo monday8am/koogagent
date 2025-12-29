@@ -12,10 +12,7 @@ import com.monday8am.koogagent.ui.screens.notification.NotificationScreen
 import com.monday8am.koogagent.ui.screens.testing.TestScreen
 
 @Composable
-fun AppNavigation(
-    modifier: Modifier = Modifier,
-    navController: NavHostController = rememberNavController(),
-) {
+fun AppNavigation(modifier: Modifier = Modifier, navController: NavHostController = rememberNavController()) {
     NavHost(
         navController = navController,
         startDestination = Route.ModelSelector,

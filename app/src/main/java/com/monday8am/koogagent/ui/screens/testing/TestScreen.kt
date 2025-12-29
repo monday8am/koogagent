@@ -115,10 +115,7 @@ private fun TestContent(
 }
 
 @Composable
-private fun ModelInfoCard(
-    model: ModelConfiguration,
-    modifier: Modifier = Modifier,
-) {
+private fun ModelInfoCard(model: ModelConfiguration, modifier: Modifier = Modifier) {
     Card(modifier = modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
@@ -138,10 +135,7 @@ private fun ModelInfoCard(
 }
 
 @Composable
-private fun TestResultsList(
-    frames: Collection<TestResultFrame>,
-    modifier: Modifier = Modifier,
-) {
+private fun TestResultsList(frames: Collection<TestResultFrame>, modifier: Modifier = Modifier) {
     val listState = rememberLazyListState()
 
     // Auto-scroll to latest item
@@ -154,7 +148,7 @@ private fun TestResultsList(
     LazyColumn(
         state = listState,
         modifier =
-            modifier.fillMaxWidth(),
+        modifier.fillMaxWidth(),
         verticalArrangement = spacedBy(8.dp),
     ) {
         items(
@@ -191,26 +185,25 @@ private fun InitializationIndicator() {
     }
 }
 
-
 @Preview(showBackground = true)
 @Composable
 private fun TestContentPreview() {
     KoogAgentTheme {
         TestContent(
             frames =
-                listOf(
-                    TestResultFrame.Content(
-                        testName = "TEST 0: Basic Response",
-                        chunk = "",
-                        accumulator = "Hello! I'm doing great, thanks for asking!",
-                    ),
-                    TestResultFrame.Validation(
-                        testName = "TEST 0: Basic Response",
-                        result = ValidationResult.Pass("Valid response received"),
-                        duration = 1234,
-                        fullContent = "Hello! I'm doing great, thanks for asking!",
-                    ),
+            listOf(
+                TestResultFrame.Content(
+                    testName = "TEST 0: Basic Response",
+                    chunk = "",
+                    accumulator = "Hello! I'm doing great, thanks for asking!",
                 ),
+                TestResultFrame.Validation(
+                    testName = "TEST 0: Basic Response",
+                    result = ValidationResult.Pass("Valid response received"),
+                    duration = 1234,
+                    fullContent = "Hello! I'm doing great, thanks for asking!",
+                ),
+            ),
             selectedModel = ModelCatalog.DEFAULT,
             isRunning = false,
             isInitializing = true,

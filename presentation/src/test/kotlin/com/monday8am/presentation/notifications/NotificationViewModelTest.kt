@@ -5,16 +5,16 @@ import com.monday8am.koogagent.data.ModelCatalog
 import com.monday8am.koogagent.data.MotivationLevel
 import com.monday8am.koogagent.data.NotificationContext
 import com.monday8am.koogagent.data.NotificationResult
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.setMain
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
 
 /**
  * Unit tests for NotificationViewModelImpl, focusing on the reduce function.
@@ -62,16 +62,15 @@ class NotificationViewModelTest {
         weatherProvider: FakeWeatherProvider = FakeWeatherProvider(),
         locationProvider: FakeLocationProvider = FakeLocationProvider(),
         deviceContextProvider: FakeDeviceContextProvider = FakeDeviceContextProvider(),
-    ): NotificationViewModelImpl =
-        NotificationViewModelImpl(
-            selectedModel = testModel,
-            modelPath = testModelPath,
-            inferenceEngine = inferenceEngine,
-            notificationEngine = notificationEngine,
-            weatherProvider = weatherProvider,
-            locationProvider = locationProvider,
-            deviceContextProvider = deviceContextProvider,
-        )
+    ): NotificationViewModelImpl = NotificationViewModelImpl(
+        selectedModel = testModel,
+        modelPath = testModelPath,
+        inferenceEngine = inferenceEngine,
+        notificationEngine = notificationEngine,
+        weatherProvider = weatherProvider,
+        locationProvider = locationProvider,
+        deviceContextProvider = deviceContextProvider,
+    )
 
     @Test
     fun `reduce with ShowNotification Loading should set InitializingModel message`() {

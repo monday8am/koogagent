@@ -17,17 +17,16 @@ object InferenceEngineFactory {
         inferenceLibrary: InferenceLibrary,
         liteRtTools: List<Any> = emptyList(),
         mediaPipeTools: List<Tool> = emptyList(),
-    ): LocalInferenceEngine =
-        when (inferenceLibrary) {
-            InferenceLibrary.LITERT -> {
-                LiteRTLmInferenceEngineImpl(tools = liteRtTools)
-            }
-
-            InferenceLibrary.MEDIAPIPE -> {
-                MediaPipeInferenceEngineImpl(
-                    context = context,
-                    tools = mediaPipeTools,
-                )
-            }
+    ): LocalInferenceEngine = when (inferenceLibrary) {
+        InferenceLibrary.LITERT -> {
+            LiteRTLmInferenceEngineImpl(tools = liteRtTools)
         }
+
+        InferenceLibrary.MEDIAPIPE -> {
+            MediaPipeInferenceEngineImpl(
+                context = context,
+                tools = mediaPipeTools,
+            )
+        }
+    }
 }

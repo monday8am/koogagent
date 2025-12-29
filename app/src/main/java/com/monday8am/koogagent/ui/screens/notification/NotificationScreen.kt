@@ -108,9 +108,9 @@ private fun NotificationContent(
         verticalArrangement = spacedBy(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier =
-            modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp),
+        modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp),
     ) {
         ModelInfoCard(model = selectedModel, modifier = Modifier.padding(top = 32.dp))
 
@@ -132,10 +132,7 @@ private fun NotificationContent(
 }
 
 @Composable
-private fun ModelInfoCard(
-    model: ModelConfiguration,
-    modifier: Modifier = Modifier,
-) {
+private fun ModelInfoCard(model: ModelConfiguration, modifier: Modifier = Modifier) {
     Card(modifier = modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
@@ -155,23 +152,25 @@ private fun ModelInfoCard(
 }
 
 @Composable
-private fun LogPanel(
-    textLog: String,
-    modifier: Modifier = Modifier,
-) {
+private fun LogPanel(textLog: String, modifier: Modifier = Modifier) {
     val scrollState = rememberScrollState()
     LaunchedEffect(textLog) {
         scrollState.animateScrollTo(scrollState.maxValue)
     }
     Box(
         modifier =
-            modifier
-                .fillMaxWidth()
-                .height(290.dp)
-                .verticalScroll(scrollState)
-                .background(Color(0xFF000080)),
+        modifier
+            .fillMaxWidth()
+            .height(290.dp)
+            .verticalScroll(scrollState)
+            .background(Color(0xFF000080)),
     ) {
-        Text(text = textLog, color = Color(0xFF00FF00), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+        Text(
+            text = textLog,
+            color = Color(0xFF00FF00),
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }
 
@@ -231,9 +230,9 @@ private fun <T : Enum<T>> EnumDropdown(
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             readOnly = true,
             modifier =
-                Modifier
-                    .menuAnchor()
-                    .fillMaxWidth(),
+            Modifier
+                .menuAnchor()
+                .fillMaxWidth(),
         )
         ExposedDropdownMenu(
             expanded = expanded,
@@ -255,10 +254,7 @@ private fun <T : Enum<T>> EnumDropdown(
 }
 
 @Composable
-private fun RowWithSwitch(
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-) {
+private fun RowWithSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = spacedBy(16.dp),

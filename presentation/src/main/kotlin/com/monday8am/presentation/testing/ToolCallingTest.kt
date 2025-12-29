@@ -117,33 +117,29 @@ class ToolCallingTest(
         return runAllTestsStreaming(REGRESSION_TEST_SUITE)
     }
 
-    private fun runAllTestsStreaming(testCases: List<TestCase>): Flow<TestResultFrame> =
-        flow {
-            for (testCase in testCases) {
-                for (query in testCase.queries) {
-                    emitAll(runSingleQueryStream(testCase = testCase, query = query))
-                }
-                resetConversation()
+    private fun runAllTestsStreaming(testCases: List<TestCase>): Flow<TestResultFrame> = flow {
+        for (testCase in testCases) {
+            for (query in testCase.queries) {
+                emitAll(runSingleQueryStream(testCase = testCase, query = query))
             }
-        }.catch { e ->
-            logger.e(e) { "A failure occurred during the test suite execution" }
-            emit(
-                TestResultFrame.Validation(
-                    testName = "Test Suite",
-                    result = ValidationResult.Fail("Test suite failed: ${e.message}"),
-                    duration = 0,
-                    fullContent = "",
-                ),
-            )
+            resetConversation()
         }
+    }.catch { e ->
+        logger.e(e) { "A failure occurred during the test suite execution" }
+        emit(
+            TestResultFrame.Validation(
+                testName = "Test Suite",
+                result = ValidationResult.Fail("Test suite failed: ${e.message}"),
+                duration = 0,
+                fullContent = "",
+            ),
+        )
+    }
 
     /**
      * Executes a single query using streaming and returns result frames.
      */
-    private fun runSingleQueryStream(
-        testCase: TestCase,
-        query: TestQuery,
-    ): Flow<TestResultFrame> {
+    private fun runSingleQueryStream(testCase: TestCase, query: TestQuery): Flow<TestResultFrame> {
         val processor = TagProcessor(testCase.name, testCase.parseThinkingTags)
         var startTime = 0L
 
@@ -205,9 +201,9 @@ class ToolCallingTest(
                     validator = { result ->
                         val hasCoordinates =
                             result.contains("40.4") ||
-                                    result.contains("latitude", ignoreCase = true) ||
-                                    result.contains("longitude", ignoreCase = true) ||
-                                    result.contains("location", ignoreCase = true)
+                                result.contains("latitude", ignoreCase = true) ||
+                                result.contains("longitude", ignoreCase = true) ||
+                                result.contains("location", ignoreCase = true)
                         if (hasCoordinates) {
                             ValidationResult.Pass("Location data returned")
                         } else {
@@ -223,10 +219,10 @@ class ToolCallingTest(
                     validator = { result ->
                         val hasWeather =
                             result.contains("weather", ignoreCase = true) ||
-                                    result.contains("temperature", ignoreCase = true) ||
-                                    result.contains("sunny", ignoreCase = true) ||
-                                    result.contains("cloudy", ignoreCase = true) ||
-                                    result.contains("degrees", ignoreCase = true)
+                                result.contains("temperature", ignoreCase = true) ||
+                                result.contains("sunny", ignoreCase = true) ||
+                                result.contains("cloudy", ignoreCase = true) ||
+                                result.contains("degrees", ignoreCase = true)
                         if (hasWeather) {
                             ValidationResult.Pass("Weather data returned")
                         } else {

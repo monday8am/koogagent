@@ -20,23 +20,22 @@ class LiteRTLmTools {
         latitude: Double,
         @ToolParam(description = "Longitude coordinate (between -180 and 180)")
         longitude: Double,
-    ): String =
-        runBlocking {
-            try {
-                val weatherCondition = weatherProvider.getCurrentWeather(latitude, longitude)
+    ): String = runBlocking {
+        try {
+            val weatherCondition = weatherProvider.getCurrentWeather(latitude, longitude)
 
-                if (weatherCondition != null) {
-                    logger.d { "Weather fetched: condition=${weatherCondition.name}" }
-                    "The weather is ${weatherCondition.name.lowercase()}"
-                } else {
-                    logger.w { "Weather fetch returned null" }
-                    "Weather data unavailable"
-                }
-            } catch (e: Exception) {
-                logger.e(e) { "Failed to fetch weather" }
-                "Failed to fetch weather: ${e.message}"
+            if (weatherCondition != null) {
+                logger.d { "Weather fetched: condition=${weatherCondition.name}" }
+                "The weather is ${weatherCondition.name.lowercase()}"
+            } else {
+                logger.w { "Weather fetch returned null" }
+                "Weather data unavailable"
             }
+        } catch (e: Exception) {
+            logger.e(e) { "Failed to fetch weather" }
+            "Failed to fetch weather: ${e.message}"
         }
+    }
 }
 
 class NativeLocationTools {

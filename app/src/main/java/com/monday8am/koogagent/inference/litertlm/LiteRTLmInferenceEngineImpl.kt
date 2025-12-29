@@ -13,6 +13,9 @@ import com.google.ai.edge.litertlm.SamplerConfig
 import com.monday8am.agent.core.LocalInferenceEngine
 import com.monday8am.koogagent.data.HardwareBackend
 import com.monday8am.koogagent.data.ModelConfiguration
+import java.io.File
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.InternalCoroutinesApi
@@ -26,9 +29,6 @@ import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
-import java.io.File
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 
 private data class LlmModelInstance(
     val engine: Engine,
@@ -45,10 +45,7 @@ class LiteRTLmInferenceEngineImpl(
 ) : LocalInferenceEngine {
     private var currentInstance: LlmModelInstance? = null
 
-    override suspend fun initialize(
-        modelConfig: ModelConfiguration,
-        modelPath: String,
-    ): Result<Unit> =
+    override suspend fun initialize(modelConfig: ModelConfiguration, modelPath: String): Result<Unit> =
         withContext(dispatcher) {
             if (currentInstance != null) {
                 return@withContext Result.success(Unit)
@@ -74,14 +71,16 @@ class LiteRTLmInferenceEngineImpl(
                 // Configure conversation with tools for native tool calling
                 val conversationConfig =
                     ConversationConfig(
-                        systemMessage = Message.of("You are Qwen, created by Alibaba Cloud. You are a helpful assistant."),
+                        systemMessage = Message.of(
+                            "You are Qwen, created by Alibaba Cloud. You are a helpful assistant."
+                        ),
                         tools = tools, // Native LiteRT-LM tools with @Tool annotations
                         samplerConfig =
-                            SamplerConfig(
-                                topK = modelConfig.defaultTopK,
-                                topP = modelConfig.defaultTopP.toDouble(),
-                                temperature = modelConfig.defaultTemperature.toDouble(),
-                            ),
+                        SamplerConfig(
+                            topK = modelConfig.defaultTopK,
+                            topP = modelConfig.defaultTopP.toDouble(),
+                            temperature = modelConfig.defaultTemperature.toDouble(),
+                        ),
                     )
                 val conversation = engine.createConversation(conversationConfig)
 
@@ -144,10 +143,7 @@ class LiteRTLmInferenceEngineImpl(
             }.flowOn(dispatcher)
     }
 
-    override fun initializeAsFlow(
-        modelConfig: ModelConfiguration,
-        modelPath: String,
-    ): Flow<LocalInferenceEngine> =
+    override fun initializeAsFlow(modelConfig: ModelConfiguration, modelPath: String): Flow<LocalInferenceEngine> =
         flow {
             initialize(modelConfig = modelConfig, modelPath = modelPath)
                 .onSuccess {
@@ -165,11 +161,11 @@ class LiteRTLmInferenceEngineImpl(
                 ConversationConfig(
                     tools = tools, // Maintain tools across conversation resets
                     samplerConfig =
-                        SamplerConfig(
-                            topK = instance.modelConfig.defaultTopK,
-                            topP = instance.modelConfig.defaultTopP.toDouble(),
-                            temperature = instance.modelConfig.defaultTemperature.toDouble(),
-                        ),
+                    SamplerConfig(
+                        topK = instance.modelConfig.defaultTopK,
+                        topP = instance.modelConfig.defaultTopP.toDouble(),
+                        temperature = instance.modelConfig.defaultTemperature.toDouble(),
+                    ),
                 )
             Logger.i("LocalInferenceEngine") { "\uD83D\uDCAC Reset conversation!" }
             instance.conversation = instance.engine.createConversation(conversationConfig)

@@ -28,7 +28,9 @@ object ModelCatalog {
             parameterCount = 0.6f,
             quantization = "int8",
             contextLength = 4096,
-            downloadUrl = "https://huggingface.co/litert-community/Qwen2.5-1.5B-Instruct/resolve/main/Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv4096.litertlm",
+            downloadUrl =
+            "https://huggingface.co/litert-community/Qwen2.5-1.5B-Instruct/resolve/main/" +
+                "Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv4096.litertlm",
             bundleFilename = "Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv4096.litertlm",
             inferenceLibrary = InferenceLibrary.LITERT,
             hardwareAcceleration = HardwareBackend.GPU_SUPPORTED,
@@ -50,7 +52,8 @@ object ModelCatalog {
             hardwareAcceleration = HardwareBackend.GPU_SUPPORTED,
             defaultTopK = 40,
             defaultTopP = 0.85f,
-            defaultTemperature = 0.7f, // Gemma benefits from higher temp
+            // Gemma benefits from higher temp
+            defaultTemperature = 0.7f,
         )
 
     val HAMMER2_1_0_5B =
@@ -79,7 +82,9 @@ object ModelCatalog {
             quantization = "int8",
             contextLength = 1280,
             // TODO: Update with actual download URL when available
-            downloadUrl = "https://huggingface.co/litert-community/SmolLM-135M-Instruct/resolve/main/SmolLM-135M-Instruct_multi-prefill-seq_f32_ekv1280.task",
+            downloadUrl =
+            "https://huggingface.co/litert-community/SmolLM-135M-Instruct/resolve/main/" +
+                "SmolLM-135M-Instruct_multi-prefill-seq_f32_ekv1280.task",
             bundleFilename = "SmolLM-135M-Instruct_multi-prefill-seq_f32_ekv1280.task",
             inferenceLibrary = InferenceLibrary.MEDIAPIPE,
             hardwareAcceleration = HardwareBackend.GPU_SUPPORTED,

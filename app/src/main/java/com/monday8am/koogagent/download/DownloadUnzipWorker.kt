@@ -4,10 +4,6 @@ import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
-import okhttp3.Request
 import java.io.BufferedInputStream
 import java.io.File
 import java.io.FileInputStream
@@ -17,6 +13,10 @@ import java.io.InputStream
 import java.io.OutputStream
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import okhttp3.Request
 
 class DownloadUnzipWorker(
     appContext: Context,
@@ -31,55 +31,52 @@ class DownloadUnzipWorker(
             .followSslRedirects(true)
             .build()
 
-    override suspend fun doWork(): Result =
-        withContext(Dispatchers.IO) {
-            try {
-                val url =
-                    inputData.getString(KEY_URL)
-                        ?: return@withContext Result.failure(workDataOf(KEY_ERROR_MESSAGE to "URL not provided"))
-                val destinationPath =
-                    inputData.getString(KEY_DESTINATION_PATH)
-                        ?: return@withContext Result.failure(workDataOf(KEY_ERROR_MESSAGE to "Destination path not provided"))
-                val requiresUnzip = inputData.getBoolean(KEY_REQUIRES_UNZIP, true)
+    override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
+        try {
+            val url =
+                inputData.getString(KEY_URL)
+                    ?: return@withContext Result.failure(workDataOf(KEY_ERROR_MESSAGE to "URL not provided"))
+            val destinationPath =
+                inputData.getString(KEY_DESTINATION_PATH)
+                    ?: return@withContext Result.failure(workDataOf(KEY_ERROR_MESSAGE to "Destination path not provided"))
+            val requiresUnzip = inputData.getBoolean(KEY_REQUIRES_UNZIP, true)
 
-                val destinationFile = File(destinationPath)
-                val parentDir =
-                    destinationFile.parentFile ?: return@withContext Result.failure(
-                        workDataOf(KEY_ERROR_MESSAGE to "Could not create destination directory: $destinationFile"),
+            val destinationFile = File(destinationPath)
+            val parentDir =
+                destinationFile.parentFile ?: return@withContext Result.failure(
+                    workDataOf(KEY_ERROR_MESSAGE to "Could not create destination directory: $destinationFile"),
+                )
+            if (!parentDir.exists()) {
+                if (!parentDir.mkdirs()) {
+                    return@withContext Result.failure(
+                        workDataOf(
+                            KEY_ERROR_MESSAGE to "Could not create destination directory: ${parentDir.absolutePath}"
+                        ),
                     )
-                if (!parentDir.exists()) {
-                    if (!parentDir.mkdirs()) {
-                        return@withContext Result.failure(
-                            workDataOf(KEY_ERROR_MESSAGE to "Could not create destination directory: ${parentDir.absolutePath}"),
-                        )
-                    }
                 }
-
-                if (requiresUnzip) {
-                    // ZIP download flow: download to temp file, extract, delete temp
-                    // Download uses 0-85% of progress, extraction uses 85-100%
-                    val zipFile = File(applicationContext.cacheDir, "model-download.zip")
-                    downloadFile(url, zipFile, scaleForUnzip = true)
-                    unzipWithProgress(zipFile, parentDir)
-                    zipFile.delete()
-                } else {
-                    // Direct download flow: download directly to destination (full 0-100%)
-                    downloadFile(url, destinationFile, scaleForUnzip = false)
-                }
-
-                setProgress(workDataOf(KEY_PROGRESS to 100))
-                Result.success()
-            } catch (e: Exception) {
-                e.printStackTrace()
-                Result.failure()
             }
-        }
 
-    private suspend fun downloadFile(
-        url: String,
-        destFile: File,
-        scaleForUnzip: Boolean = false,
-    ) {
+            if (requiresUnzip) {
+                // ZIP download flow: download to temp file, extract, delete temp
+                // Download uses 0-85% of progress, extraction uses 85-100%
+                val zipFile = File(applicationContext.cacheDir, "model-download.zip")
+                downloadFile(url, zipFile, scaleForUnzip = true)
+                unzipWithProgress(zipFile, parentDir)
+                zipFile.delete()
+            } else {
+                // Direct download flow: download directly to destination (full 0-100%)
+                downloadFile(url, destinationFile, scaleForUnzip = false)
+            }
+
+            setProgress(workDataOf(KEY_PROGRESS to 100))
+            Result.success()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Result.failure()
+        }
+    }
+
+    private suspend fun downloadFile(url: String, destFile: File, scaleForUnzip: Boolean = false) {
         val request = Request.Builder().url(url).build()
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) throw IOException("HTTP error ${response.code}")
@@ -104,10 +101,7 @@ class DownloadUnzipWorker(
         }
     }
 
-    private suspend fun unzipWithProgress(
-        zipFile: File,
-        targetDir: File,
-    ) {
+    private suspend fun unzipWithProgress(zipFile: File, targetDir: File) {
         // Calculate total uncompressed size for byte-based progress (more accurate than entry count)
         val totalUncompressedSize = calculateTotalUncompressedSize(zipFile)
         var bytesExtracted = 0L

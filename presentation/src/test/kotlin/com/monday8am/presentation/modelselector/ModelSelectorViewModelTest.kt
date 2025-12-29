@@ -2,11 +2,6 @@ package com.monday8am.presentation.modelselector
 
 import com.monday8am.koogagent.data.ModelCatalog
 import com.monday8am.presentation.notifications.FakeModelDownloadManager
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.setMain
 import java.io.File
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -16,6 +11,11 @@ import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ModelSelectorViewModelTest {
@@ -86,10 +86,10 @@ class ModelSelectorViewModelTest {
         val stateWithDownloadedModel =
             givenState(
                 models =
-                    listOf(
-                        ModelInfo(config = model1, isDownloaded = true, downloadStatus = DownloadStatus.Completed),
-                        ModelInfo(config = model2, isDownloaded = false),
-                    ),
+                listOf(
+                    ModelInfo(config = model1, isDownloaded = true, downloadStatus = DownloadStatus.Completed),
+                    ModelInfo(config = model2, isDownloaded = false),
+                ),
             )
 
         val newState =
@@ -185,8 +185,14 @@ class ModelSelectorViewModelTest {
         val newState =
             reduce(
                 state = stateWithModels,
-                action = UiAction.DownloadProgress(model1.modelId, ModelDownloadManager.Status.Completed(File("dummy"))),
-                result = UiAction.DownloadProgress(model1.modelId, ModelDownloadManager.Status.Completed(File("dummy"))),
+                action = UiAction.DownloadProgress(
+                    model1.modelId,
+                    ModelDownloadManager.Status.Completed(File("dummy"))
+                ),
+                result = UiAction.DownloadProgress(
+                    model1.modelId,
+                    ModelDownloadManager.Status.Completed(File("dummy"))
+                ),
             )
 
         assertNull(newState.currentDownload)
@@ -223,10 +229,10 @@ class ModelSelectorViewModelTest {
                 currentDownload = DownloadInfo(modelId = model1.modelId, progress = 50f),
                 queuedDownloads = listOf(model2.modelId),
                 models =
-                    listOf(
-                        ModelInfo(config = model1, downloadStatus = DownloadStatus.Downloading(50f)),
-                        ModelInfo(config = model2, downloadStatus = DownloadStatus.Queued),
-                    ),
+                listOf(
+                    ModelInfo(config = model1, downloadStatus = DownloadStatus.Downloading(50f)),
+                    ModelInfo(config = model2, downloadStatus = DownloadStatus.Queued),
+                ),
             )
 
         val newState =
@@ -254,10 +260,10 @@ class ModelSelectorViewModelTest {
             givenState(
                 currentDownload = DownloadInfo(modelId = model1.modelId, progress = 50f),
                 models =
-                    listOf(
-                        ModelInfo(config = model1, downloadStatus = DownloadStatus.Downloading(50f)),
-                        ModelInfo(config = model2, isDownloaded = true, downloadStatus = DownloadStatus.Completed),
-                    ),
+                listOf(
+                    ModelInfo(config = model1, downloadStatus = DownloadStatus.Downloading(50f)),
+                    ModelInfo(config = model2, isDownloaded = true, downloadStatus = DownloadStatus.Completed),
+                ),
             )
 
         val newState =
@@ -289,31 +295,24 @@ class ModelSelectorViewModelTest {
         selectedModelId: String? = null,
         currentDownload: DownloadInfo? = null,
         queuedDownloads: List<String> = emptyList(),
-    ): UiState =
-        initialState.copy(
-            models = models,
-            selectedModelId = selectedModelId,
-            currentDownload = currentDownload,
-            queuedDownloads = queuedDownloads,
-        )
+    ): UiState = initialState.copy(
+        models = models,
+        selectedModelId = selectedModelId,
+        currentDownload = currentDownload,
+        queuedDownloads = queuedDownloads,
+    )
 
     /**
      * A helper to execute the reduce function with a simplified signature.
      * It defaults to using the initial state and a Success ActionState.
      */
-    private fun <T : Any> reduce(
-        state: UiState = this.initialState,
-        action: UiAction,
-        result: T,
-    ): UiState = viewModel.reduce(state, action, ActionState.Success(result))
+    private fun <T : Any> reduce(state: UiState = this.initialState, action: UiAction, result: T): UiState =
+        viewModel.reduce(state, action, ActionState.Success(result))
 
     /**
      * A custom assertion to check if the status message contains all given substrings.
      */
-    private fun assertStatusMessageContains(
-        state: UiState,
-        vararg expected: String,
-    ) {
+    private fun assertStatusMessageContains(state: UiState, vararg expected: String) {
         assertTrue(
             expected.all { state.statusMessage.contains(it, ignoreCase = true) },
             "Expected status message '${state.statusMessage}' to contain all of: ${expected.joinToString()}",

@@ -16,10 +16,8 @@ val keystoreProperties =
         }
     }
 
-fun getKeystoreProperty(
-    key: String,
-    envVar: String,
-): String? = keystoreProperties.getProperty(key) ?: System.getenv(envVar)
+fun getKeystoreProperty(key: String, envVar: String): String? =
+    keystoreProperties.getProperty(key) ?: System.getenv(envVar)
 
 android {
     namespace = "com.monday8am.koogagent"

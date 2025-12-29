@@ -25,11 +25,7 @@ class LocalInferenceLLMClient(
 ) : LLMClient {
     private val logger = Logger.withTag("LiteRTLLMClient")
 
-    override suspend fun execute(
-        prompt: Prompt,
-        model: LLModel,
-        tools: List<ToolDescriptor>,
-    ): List<Message.Response> {
+    override suspend fun execute(prompt: Prompt, model: LLModel, tools: List<ToolDescriptor>): List<Message.Response> {
         val lastUserMessage =
             if (prompt.messages.first() is Message.System &&
                 prompt.messages.last() is Message.User && prompt.messages.size == 2
@@ -58,11 +54,7 @@ class LocalInferenceLLMClient(
         )
     }
 
-    override fun executeStreaming(
-        prompt: Prompt,
-        model: LLModel,
-        tools: List<ToolDescriptor>,
-    ): Flow<StreamFrame> {
+    override fun executeStreaming(prompt: Prompt, model: LLModel, tools: List<ToolDescriptor>): Flow<StreamFrame> {
         val executor =
             streamPromptExecutor
                 ?: throw UnsupportedOperationException(
@@ -97,10 +89,7 @@ class LocalInferenceLLMClient(
             }
     }
 
-    override suspend fun moderate(
-        prompt: Prompt,
-        model: LLModel,
-    ): ModerationResult =
+    override suspend fun moderate(prompt: Prompt, model: LLModel): ModerationResult =
         throw UnsupportedOperationException(
             "Local Inference client does not support moderation. " +
                 "Implement content filtering in your application layer if needed.",

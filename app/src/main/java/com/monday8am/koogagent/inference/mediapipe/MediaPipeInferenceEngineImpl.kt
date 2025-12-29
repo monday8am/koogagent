@@ -14,6 +14,9 @@ import com.google.mediapipe.tasks.genai.llminference.LlmInference.Backend
 import com.monday8am.agent.core.LocalInferenceEngine
 import com.monday8am.koogagent.data.HardwareBackend
 import com.monday8am.koogagent.data.ModelConfiguration
+import java.io.File
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -22,9 +25,6 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
-import java.io.File
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 
 private const val SYSTEM_PROMPT = "You are Hammer, a helpful AI assistant."
 private const val SYSTEM_ROLE = "system"
@@ -44,10 +44,7 @@ class MediaPipeInferenceEngineImpl(
     private var chatSession: ChatSession? = null
     private var modelConfig: ModelConfiguration? = null
 
-    override suspend fun initialize(
-        modelConfig: ModelConfiguration,
-        modelPath: String,
-    ): Result<Unit> =
+    override suspend fun initialize(modelConfig: ModelConfiguration, modelPath: String): Result<Unit> =
         withContext(dispatcher) {
             if (generativeModel != null) {
                 return@withContext Result.success(Unit)
@@ -113,10 +110,7 @@ class MediaPipeInferenceEngineImpl(
         }.flowOn(dispatcher)
     }
 
-    override fun initializeAsFlow(
-        modelConfig: ModelConfiguration,
-        modelPath: String,
-    ): Flow<LocalInferenceEngine> =
+    override fun initializeAsFlow(modelConfig: ModelConfiguration, modelPath: String): Flow<LocalInferenceEngine> =
         flow {
             initialize(modelConfig = modelConfig, modelPath = modelPath)
                 .onSuccess {
@@ -145,50 +139,45 @@ class MediaPipeInferenceEngineImpl(
     }
 }
 
-private suspend fun ChatSession.sendMessageBlocking(message: String): String =
-    suspendCancellableCoroutine { cont ->
-        try {
-            val userContent =
-                Content
-                    .newBuilder()
-                    .setRole(USER_ROLE)
-                    .addParts(Part.newBuilder().setText(message))
-                    .build()
+private suspend fun ChatSession.sendMessageBlocking(message: String): String = suspendCancellableCoroutine { cont ->
+    try {
+        val userContent =
+            Content
+                .newBuilder()
+                .setRole(USER_ROLE)
+                .addParts(Part.newBuilder().setText(message))
+                .build()
 
-            val response = this.sendMessage(userContent)
-            val part =
-                response.candidatesList
-                    .firstOrNull()
-                    ?.content
-                    ?.partsList
-                    ?.firstOrNull()
-            val resultText =
-                when {
-                    part?.hasText() == true -> {
-                        part.text
-                    }
-
-                    part?.hasFunctionCall() == true -> {
-                        // In a full implementation, this would execute the tool and send back results
-                        val functionCall = part.functionCall
-                        "Function call detected: ${functionCall.name} with args: ${functionCall.args}"
-                    }
-
-                    else -> {
-                        ""
-                    }
+        val response = this.sendMessage(userContent)
+        val part =
+            response.candidatesList
+                .firstOrNull()
+                ?.content
+                ?.partsList
+                ?.firstOrNull()
+        val resultText =
+            when {
+                part?.hasText() == true -> {
+                    part.text
                 }
-            cont.resume(resultText)
-        } catch (e: Exception) {
-            cont.resumeWithException(e)
-        }
-    }
 
-private fun createLlmInference(
-    context: Context,
-    modelPath: String,
-    modelConfig: ModelConfiguration,
-): LlmInference {
+                part?.hasFunctionCall() == true -> {
+                    // In a full implementation, this would execute the tool and send back results
+                    val functionCall = part.functionCall
+                    "Function call detected: ${functionCall.name} with args: ${functionCall.args}"
+                }
+
+                else -> {
+                    ""
+                }
+            }
+        cont.resume(resultText)
+    } catch (e: Exception) {
+        cont.resumeWithException(e)
+    }
+}
+
+private fun createLlmInference(context: Context, modelPath: String, modelConfig: ModelConfiguration): LlmInference {
     if (!File(modelPath).exists()) {
         throw IllegalStateException("Model file not found at path: $modelPath")
     }
@@ -208,12 +197,11 @@ private fun createLlmInference(
     return LlmInference.createFromOptions(context, llmInferenceOptions)
 }
 
-private fun createSystemInstruction(): Content =
-    Content
-        .newBuilder()
-        .setRole(SYSTEM_ROLE)
-        .addParts(
-            Part
-                .newBuilder()
-                .setText(SYSTEM_PROMPT),
-        ).build()
+private fun createSystemInstruction(): Content = Content
+    .newBuilder()
+    .setRole(SYSTEM_ROLE)
+    .addParts(
+        Part
+            .newBuilder()
+            .setText(SYSTEM_PROMPT),
+    ).build()

@@ -16,7 +16,6 @@ import androidx.compose.ui.unit.dp
 import com.monday8am.presentation.testing.TestResultFrame
 import com.monday8am.presentation.testing.ValidationResult
 
-
 @Composable
 internal fun ThinkingCell(frame: TestResultFrame.Thinking) {
     Card(

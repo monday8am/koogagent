@@ -31,11 +31,11 @@ suspend fun main() {
                 systemMessage = Message.of("You are Qwen, created by Alibaba Cloud. You are a helpful assistant."),
                 tools = listOf(NativeLocationTools()), // Native LiteRT-LM tools with @Tool annotations
                 samplerConfig =
-                    SamplerConfig(
-                        topK = 40,
-                        topP = 0.85,
-                        temperature = 0.2,
-                    ),
+                SamplerConfig(
+                    topK = 40,
+                    topP = 0.85,
+                    temperature = 0.2,
+                ),
             )
 
         engine.createConversation(conversationConfig = conversationConfig).use { conversation ->

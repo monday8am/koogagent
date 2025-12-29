@@ -157,54 +157,46 @@ class NotificationViewModelImpl(
         scope.cancel()
     }
 
-    internal fun reduce(
-        state: UiState,
-        action: UiAction,
-        actionState: ActionState,
-    ): UiState =
-        when (actionState) {
-            is ActionState.Loading -> {
-                when (action) {
-                    UiAction.ShowNotification -> state.copy(statusMessage = LogMessage.InitializingModel)
-                    else -> state
-                }
-            }
-
-            is ActionState.Success -> {
-                when (action) {
-                    is UiAction.ShowNotification -> {
-                        createNotification(promptExecutor = inferenceEngine::prompt, context = state.context)
-                        state.copy(statusMessage = LogMessage.PromptingWithContext(state.context.formatted))
-                    }
-
-                    is UiAction.NotificationReady -> {
-                        state.copy(
-                            statusMessage = LogMessage.NotificationGenerated(action.content.formatted),
-                            notification = action.content,
-                        )
-                    }
-
-                    is UiAction.UpdateContext -> {
-                        state.copy(context = action.context)
-                    }
-
-                    is UiAction.Initialize -> {
-                        state.copy(
-                            statusMessage = LogMessage.WelcomeModelReady(selectedModel.displayName),
-                        )
-                    }
-                }
-            }
-
-            is ActionState.Error -> {
-                state.copy(statusMessage = LogMessage.Error(actionState.throwable.message ?: "Unknown error"))
+    internal fun reduce(state: UiState, action: UiAction, actionState: ActionState): UiState = when (actionState) {
+        is ActionState.Loading -> {
+            when (action) {
+                UiAction.ShowNotification -> state.copy(statusMessage = LogMessage.InitializingModel)
+                else -> state
             }
         }
 
-    private fun createNotification(
-        promptExecutor: suspend (String) -> Result<String>,
-        context: NotificationContext,
-    ) {
+        is ActionState.Success -> {
+            when (action) {
+                is UiAction.ShowNotification -> {
+                    createNotification(promptExecutor = inferenceEngine::prompt, context = state.context)
+                    state.copy(statusMessage = LogMessage.PromptingWithContext(state.context.formatted))
+                }
+
+                is UiAction.NotificationReady -> {
+                    state.copy(
+                        statusMessage = LogMessage.NotificationGenerated(action.content.formatted),
+                        notification = action.content,
+                    )
+                }
+
+                is UiAction.UpdateContext -> {
+                    state.copy(context = action.context)
+                }
+
+                is UiAction.Initialize -> {
+                    state.copy(
+                        statusMessage = LogMessage.WelcomeModelReady(selectedModel.displayName),
+                    )
+                }
+            }
+        }
+
+        is ActionState.Error -> {
+            state.copy(statusMessage = LogMessage.Error(actionState.throwable.message ?: "Unknown error"))
+        }
+    }
+
+    private fun createNotification(promptExecutor: suspend (String) -> Result<String>, context: NotificationContext) {
         scope.launch {
             val deviceContext = deviceContextProvider.getDeviceContext()
             val notificationContext =

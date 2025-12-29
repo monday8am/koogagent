@@ -58,18 +58,18 @@ class NotificationAgent private constructor(
             backend = AgentBackend.LOCAL,
             promptExecutor = promptExecutor,
             model =
-                LLModel(
-                    provider = modelProvider,
-                    id = modelId,
-                    capabilities =
-                        listOf(
-                            LLMCapability.Temperature,
-                            LLMCapability.Tools,
-                            LLMCapability.Schema.JSON.Standard,
-                        ),
-                    maxOutputTokens = 1024L, // Metadata only, actual value from ModelConfiguration
-                    contextLength = 4096L, // Metadata only, actual value from ModelConfiguration
+            LLModel(
+                provider = modelProvider,
+                id = modelId,
+                capabilities =
+                listOf(
+                    LLMCapability.Temperature,
+                    LLMCapability.Tools,
+                    LLMCapability.Schema.JSON.Standard,
                 ),
+                maxOutputTokens = 1024L, // Metadata only, actual value from ModelConfiguration
+                contextLength = 4096L, // Metadata only, actual value from ModelConfiguration
+            ),
         )
 
         /**
@@ -80,12 +80,11 @@ class NotificationAgent private constructor(
          *
          * @param model LLModel instance (typically from OllamaClient.getModels().toLLModel())
          */
-        fun koog(model: LLModel) =
-            NotificationAgent(
-                backend = AgentBackend.KOOG,
-                promptExecutor = null,
-                model = model,
-            )
+        fun koog(model: LLModel) = NotificationAgent(
+            backend = AgentBackend.KOOG,
+            promptExecutor = null,
+            model = model,
+        )
     }
 
     private var registry: ToolRegistry? = null
@@ -107,18 +106,14 @@ class NotificationAgent private constructor(
      * @param userPrompt User's input message
      * @return Generated response text
      */
-    suspend fun generateMessage(
-        systemPrompt: String,
-        userPrompt: String,
-    ): String =
-        try {
-            getAIAgent(systemPrompt = systemPrompt).run(
-                agentInput = userPrompt,
-            )
-        } catch (e: Exception) {
-            logger.e("Error generating message", e)
-            "Error generating message"
-        }
+    suspend fun generateMessage(systemPrompt: String, userPrompt: String): String = try {
+        getAIAgent(systemPrompt = systemPrompt).run(
+            agentInput = userPrompt,
+        )
+    } catch (e: Exception) {
+        logger.e("Error generating message", e)
+        "Error generating message"
+    }
 
     private fun getAIAgent(systemPrompt: String): AIAgent<String, String> {
         logger.d { "Using backend: $backend, model: ${model.id}" }
