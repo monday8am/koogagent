@@ -10,14 +10,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Memory
+import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -164,13 +164,17 @@ private fun ModelSelectorScreenContent(
 
             Spacer(modifier = Modifier.weight(1f))
 
-            OutlinedButton(
+            Button(
                 onClick = {
                     uiState.selectedModelId?.let(onNavigateToTesting)
                 },
                 enabled = downloadStatus == DownloadStatus.Completed,
             ) {
-                Text("Model Tests")
+                Text("Function")
+                Icon(
+                    imageVector = Icons.Default.Memory,
+                    contentDescription = "Go forward",
+                )
             }
 
             Button(
@@ -179,9 +183,9 @@ private fun ModelSelectorScreenContent(
                 },
                 enabled = downloadStatus == DownloadStatus.Completed,
             ) {
-                Text("Agentic Test")
+                Text("Agentic")
                 Icon(
-                    imageVector = Icons.AutoMirrored.Default.ArrowForward,
+                    imageVector = Icons.Filled.Psychology,
                     contentDescription = "Go forward",
                 )
             }
