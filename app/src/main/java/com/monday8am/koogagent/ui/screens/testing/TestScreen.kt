@@ -102,7 +102,7 @@ private fun TestContent(
         ModelInfoCard(model = selectedModel)
 
         if (isInitializing) {
-            InitializationIndicator()
+            InitializationIndicator(message = "Initializing model...")
         }
 
         // 2. LazyColumn with cells (70% weight)
@@ -185,9 +185,12 @@ private fun TestResultsList(frames: Collection<TestResultFrame>, modifier: Modif
 }
 
 @Composable
-private fun InitializationIndicator() {
+fun InitializationIndicator(
+    message: String,
+    modifier: Modifier = Modifier,
+) {
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -197,7 +200,7 @@ private fun InitializationIndicator() {
             modifier = Modifier.fillMaxWidth(0.8f)
         )
         Text(
-            text = "Initializing model...",
+            text = message,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.secondary
         )

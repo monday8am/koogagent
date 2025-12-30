@@ -1,30 +1,13 @@
 package com.monday8am.koogagent.ui.screens.modelselector
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Cancel
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Memory
-import androidx.compose.material.icons.filled.Psychology
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
@@ -32,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.monday8am.koogagent.Dependencies
 import com.monday8am.koogagent.data.ModelCatalog
+import com.monday8am.koogagent.ui.screens.testing.InitializationIndicator
 import com.monday8am.koogagent.ui.theme.KoogAgentTheme
 import com.monday8am.presentation.modelselector.DownloadInfo
 import com.monday8am.presentation.modelselector.DownloadStatus
@@ -93,7 +77,6 @@ private fun ModelSelectorScreenContent(
             modifier = Modifier.padding(bottom = 8.dp),
         )
 
-        // Show error message if catalog load failed
         uiState.catalogError?.let { error ->
             Text(
                 text = "Using cached models: $error",
@@ -103,125 +86,27 @@ private fun ModelSelectorScreenContent(
             )
         }
 
-        // Model list or loading indicator
         if (uiState.isLoadingCatalog) {
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-                contentAlignment = Alignment.Center,
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    CircularProgressIndicator()
-                    Text(
-                        text = "Loading models from Hugging Face...",
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(top = 16.dp),
-                    )
-                }
-            }
-        } else {
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+            InitializationIndicator(
+                message = "Loading models from Hugging Face...",
                 modifier = Modifier.weight(1f),
-            ) {
-                items(
-                    items = uiState.models,
-                    key = { it.config.modelId },
-                ) { modelInfo ->
-                    ModelCard(
-                        modelInfo = modelInfo,
-                        isSelected = modelInfo.config.modelId == uiState.selectedModelId,
-                        onDownloadClick = {
-                            onAction(UiAction.DownloadModel(modelInfo.config.modelId))
-                        },
-                        onSelectClick = {
-                            onAction(UiAction.SelectModel(modelInfo.config.modelId))
-                        },
-                    )
-                }
-            }
+            )
+        } else {
+            ModelList(
+                models = uiState.models,
+                selectedModelId = uiState.selectedModelId,
+                onAction = onAction,
+                modifier = Modifier.weight(1f),
+            )
         }
 
-        Row(
-            modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(top = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            // Delete button - visible only when downloaded model is selected
-            val downloadStatus =
-                uiState.models.find { it.config.modelId == uiState.selectedModelId }?.downloadStatus ?: DownloadStatus.NotStarted
-
-            when (downloadStatus) {
-                is DownloadStatus.Downloading,
-                is DownloadStatus.Queued,
-                -> {
-                    Button(
-                        onClick = {
-                            onAction(UiAction.CancelCurrentDownload)
-                        },
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Cancel,
-                            contentDescription = "Cancel download",
-                        )
-                    }
-                }
-
-                is DownloadStatus.Completed -> {
-                    Button(
-                        onClick = {
-                            uiState.selectedModelId?.let { modelId ->
-                                onAction(UiAction.DeleteModel(modelId))
-                            }
-                        },
-                        colors =
-                        ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.error,
-                            contentColor = MaterialTheme.colorScheme.onError,
-                        ),
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = "Delete",
-                        )
-                    }
-                }
-
-                else -> {
-                }
-            }
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            Button(
-                onClick = {
-                    uiState.selectedModelId?.let(onNavigateToTesting)
-                },
-                enabled = downloadStatus == DownloadStatus.Completed,
-            ) {
-                Text("Function")
-                Icon(
-                    imageVector = Icons.Default.Memory,
-                    contentDescription = "Go forward",
-                )
-            }
-
-            Button(
-                onClick = {
-                    uiState.selectedModelId?.let(onNavigateToNotification)
-                },
-                enabled = downloadStatus == DownloadStatus.Completed,
-            ) {
-                Text("Agentic")
-                Icon(
-                    imageVector = Icons.Filled.Psychology,
-                    contentDescription = "Go forward",
-                )
-            }
-        }
+        ToolBar(
+            models = uiState.models,
+            selectedModelId = uiState.selectedModelId,
+            onAction = onAction,
+            onNavigateToTesting = onNavigateToTesting,
+            onNavigateToNotification = onNavigateToNotification,
+        )
     }
 }
 
