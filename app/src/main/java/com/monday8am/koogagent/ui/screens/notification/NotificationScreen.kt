@@ -49,14 +49,11 @@ import com.monday8am.presentation.notifications.NotificationViewModelImpl
 import com.monday8am.presentation.notifications.UiAction
 import com.monday8am.presentation.notifications.defaultNotificationContext
 
-/**
- * Notification Screen - Main screen for generating notifications.
- */
 @Composable
 fun NotificationScreen(modelId: String) {
     val viewModel: AndroidNotificationViewModel =
         viewModel(key = modelId) {
-            val selectedModel = ModelCatalog.findById(modelId) ?: ModelCatalog.DEFAULT
+            val selectedModel = Dependencies.modelRepository.findById(modelId) ?: ModelCatalog.DEFAULT
 
             val inferenceEngine =
                 InferenceEngineFactory.create(
@@ -70,7 +67,7 @@ fun NotificationScreen(modelId: String) {
                 (Dependencies.modelDownloadManager as ModelDownloadManagerImpl)
                     .getModelPath(selectedModel.bundleFilename)
 
-            val impl =
+            AndroidNotificationViewModel(
                 NotificationViewModelImpl(
                     selectedModel = selectedModel,
                     modelPath = modelPath,
@@ -79,9 +76,9 @@ fun NotificationScreen(modelId: String) {
                     weatherProvider = Dependencies.weatherProvider,
                     locationProvider = Dependencies.locationProvider,
                     deviceContextProvider = Dependencies.deviceContextProvider,
-                )
-
-            AndroidNotificationViewModel(impl, selectedModel)
+                ),
+                selectedModel
+            )
         }
 
     val state by viewModel.uiState.collectAsStateWithLifecycle()

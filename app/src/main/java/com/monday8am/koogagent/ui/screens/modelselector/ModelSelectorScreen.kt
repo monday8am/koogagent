@@ -35,6 +35,7 @@ fun ModelSelectorScreen(onNavigateToNotification: (String) -> Unit, onNavigateTo
                 ModelSelectorViewModelImpl(
                     modelCatalogProvider = Dependencies.modelCatalogProvider,
                     modelDownloadManager = Dependencies.modelDownloadManager,
+                    modelRepository = Dependencies.modelRepository,
                 ),
             )
         }

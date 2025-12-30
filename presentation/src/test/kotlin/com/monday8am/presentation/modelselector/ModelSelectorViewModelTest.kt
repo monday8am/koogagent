@@ -11,6 +11,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.Dispatchers
@@ -45,15 +46,18 @@ class ModelSelectorViewModelTest {
 
     private val initialState = UiState()
     private lateinit var viewModel: ModelSelectorViewModelImpl
+    private lateinit var fakeRepository: com.monday8am.koogagent.data.ModelRepository
 
     @BeforeTest
     fun setup() {
         Dispatchers.setMain(testDispatcher)
+        fakeRepository = com.monday8am.koogagent.data.ModelRepository()
         // Create a fresh ViewModel for each test
         viewModel =
             ModelSelectorViewModelImpl(
                 modelCatalogProvider = FakeModelCatalogProvider(models = testModels),
                 modelDownloadManager = FakeModelDownloadManager(),
+                modelRepository = fakeRepository,
             )
     }
 
@@ -108,6 +112,18 @@ class ModelSelectorViewModelTest {
         assertFalse(newState.isLoadingCatalog)
         assertEquals(errorMessage, newState.catalogError)
         assertStatusMessageContains(newState, "Failed to load catalog")
+    }
+
+    @Test
+    fun `CatalogLoaded should populate repository with models`() {
+        val modelInfoList = testModels.map { ModelInfo(config = it, isDownloaded = false) }
+
+        val newState = reduce(action = UiAction.CatalogLoaded(testModels), result = modelInfoList)
+
+        // Verify repository was populated
+        assertEquals(2, fakeRepository.getAllModels().size)
+        assertNotNull(fakeRepository.findById(model1.modelId))
+        assertNotNull(fakeRepository.findById(model2.modelId))
     }
 
     // endregion

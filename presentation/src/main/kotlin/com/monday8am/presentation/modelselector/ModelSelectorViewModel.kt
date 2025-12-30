@@ -125,11 +125,9 @@ interface ModelSelectorViewModel {
 class ModelSelectorViewModelImpl(
     private val modelCatalogProvider: ModelCatalogProvider,
     private val modelDownloadManager: ModelDownloadManager,
+    private val modelRepository: com.monday8am.koogagent.data.ModelRepository,
 ) : ModelSelectorViewModel {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-
-    // Loaded models - populated after catalog is fetched
-    private var loadedModels: List<ModelConfiguration> = emptyList()
 
     internal val userActions = MutableSharedFlow<UiAction>(replay = 0)
     private val _uiState = MutableStateFlow(UiState())
@@ -157,13 +155,12 @@ class ModelSelectorViewModelImpl(
         val actionFlow: Flow<Any> =
             when (action) {
                 is UiAction.Initialize -> {
-                    if (loadedModels.isEmpty() && _uiState.value.catalogError == null) {
+                    if (modelRepository.getAllModels().isEmpty() && _uiState.value.catalogError == null) {
                         // Launch catalog fetch in background and return immediately
                         scope.launch {
                             val result = modelCatalogProvider.fetchModels()
                             if (result.isSuccess) {
                                 val models = result.getOrThrow()
-                                loadedModels = models
                                 userActions.emit(UiAction.CatalogLoaded(models))
                             } else {
                                 val error = result.exceptionOrNull()?.message ?: "Unknown error"
@@ -206,7 +203,9 @@ class ModelSelectorViewModelImpl(
                     // Launch download in separate coroutine to avoid blocking action flow.
                     // The coroutine will terminate naturally when the download completes or is cancelled.
                     scope.launch {
-                        val model = loadedModels.first { it.modelId == action.modelId }
+                        val model = modelRepository.findById(action.modelId)
+                            ?: loadedModelsInUiState().first { it.config.modelId == action.modelId }.config
+
                         modelDownloadManager
                             .downloadModel(model.modelId, model.downloadUrl, model.bundleFilename)
                             .collect { status ->
@@ -228,7 +227,8 @@ class ModelSelectorViewModelImpl(
 
                 is UiAction.DeleteModel -> {
                     flow {
-                        val model = loadedModels.first { it.modelId == action.modelId }
+                        val model = modelRepository.findById(action.modelId)
+                            ?: loadedModelsInUiState().first { it.config.modelId == action.modelId }.config
                         val success = modelDownloadManager.deleteModel(model.bundleFilename)
                         emit(success to action.modelId)
                     }
@@ -270,7 +270,12 @@ class ModelSelectorViewModelImpl(
         is UiAction.ProcessNextDownload -> state.copy(statusMessage = "Starting download...")
         is UiAction.CancelCurrentDownload -> state.copy(statusMessage = "Cancelling downloads...")
         is UiAction.DeleteModel -> state.copy(statusMessage = "Deleting model...")
-        else -> state
+        is UiAction.SelectModel,
+        is UiAction.DownloadModel,
+        is UiAction.Initialize,
+        is UiAction.DownloadProgress,
+        is UiAction.CatalogLoaded,
+        is UiAction.CatalogLoadFailed -> state
     }
 
     private fun reduceSuccess(state: UiState, action: UiAction, actionState: ActionState.Success): UiState =
@@ -286,6 +291,10 @@ class ModelSelectorViewModelImpl(
             is UiAction.CatalogLoaded -> {
                 @Suppress("UNCHECKED_CAST")
                 val models = actionState.result as List<ModelInfo>
+
+                // Populate repository with fetched models
+                modelRepository.setModels(models.map { it.config })
+
                 state.copy(
                     models = models,
                     isLoadingCatalog = false,
@@ -417,9 +426,7 @@ class ModelSelectorViewModelImpl(
                 )
             }
 
-            else -> {
-                state
-            }
+            is ModelDownloadManager.Status.Pending -> state
         }
 
     private fun processNextInQueue(state: UiState, baseStatusMessage: String): UiState {
@@ -442,4 +449,6 @@ class ModelSelectorViewModelImpl(
                 modelInfo
             }
         }
+
+    private fun loadedModelsInUiState(): List<ModelInfo> = _uiState.value.models
 }

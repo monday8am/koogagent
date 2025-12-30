@@ -6,6 +6,7 @@ import com.monday8am.koogagent.data.LocationProvider
 import com.monday8am.koogagent.data.MockLocationProvider
 import com.monday8am.koogagent.data.ModelCatalog
 import com.monday8am.koogagent.data.ModelCatalogProvider
+import com.monday8am.koogagent.data.ModelRepository
 import com.monday8am.koogagent.data.WeatherProvider
 import com.monday8am.koogagent.data.WeatherProviderImpl
 import com.monday8am.koogagent.data.huggingface.FallbackModelCatalogProvider
@@ -52,6 +53,10 @@ object Dependencies {
             primary = HuggingFaceModelCatalogProvider(),
             fallback = ModelCatalog.ALL_MODELS,
         )
+    }
+
+    val modelRepository: ModelRepository by lazy {
+        ModelRepository()
     }
 
     val nativeTools: List<Any> by lazy {

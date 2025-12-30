@@ -34,14 +34,11 @@ import com.monday8am.presentation.testing.TestUiAction
 import com.monday8am.presentation.testing.TestViewModelImpl
 import com.monday8am.presentation.testing.ValidationResult
 
-/**
- * Test Screen - Dedicated screen for running model regression tests.
- */
 @Composable
 fun TestScreen(modelId: String) {
     val viewModel: AndroidTestViewModel =
         viewModel(key = modelId) {
-            val selectedModel = ModelCatalog.findById(modelId) ?: ModelCatalog.DEFAULT
+            val selectedModel = Dependencies.modelRepository.findById(modelId) ?: ModelCatalog.DEFAULT
 
             val inferenceEngine =
                 InferenceEngineFactory.create(
@@ -55,14 +52,14 @@ fun TestScreen(modelId: String) {
                 (Dependencies.modelDownloadManager as ModelDownloadManagerImpl)
                     .getModelPath(selectedModel.bundleFilename)
 
-            val impl =
+            AndroidTestViewModel(
                 TestViewModelImpl(
                     selectedModel = selectedModel,
                     modelPath = modelPath,
                     inferenceEngine = inferenceEngine,
-                )
-
-            AndroidTestViewModel(impl, selectedModel)
+                ),
+                selectedModel
+            )
         }
 
     val state by viewModel.uiState.collectAsStateWithLifecycle()
