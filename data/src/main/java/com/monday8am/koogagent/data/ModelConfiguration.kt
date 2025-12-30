@@ -49,8 +49,8 @@ data class ModelConfiguration(
 ) {
     /**
      * Model identifier without file extension (used by NotificationAgent).
-     * Examples: "qwen3_0.6b_q8_ekv4096" or "gemma3-1b-it-int4"
+     * Examples: "qwen3_0.6b_q8_ekv4096-litert", "gemma3-1b-it-int4-mediapipe" or "gemma3-1b-it-int4-litert"
      */
     val modelId: String
-        get() = bundleFilename.substringBeforeLast(".") + "_" + inferenceLibrary
+        get() = bundleFilename.substringBeforeLast(".") + "-" + inferenceLibrary.toString()
 }

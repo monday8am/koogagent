@@ -28,6 +28,8 @@ interface ModelDownloadManager {
 
     fun downloadModel(modelId: String, downloadUrl: String, bundleFilename: String): Flow<Status>
 
+    val activeDownloads: Flow<Map<String, Status>>
+
     fun cancelDownload()
 
     suspend fun deleteModel(bundleFilename: String): Boolean

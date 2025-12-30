@@ -17,6 +17,7 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -60,7 +61,7 @@ class ModelDownloadManagerImpl(
         var workInfo = findRunningWork(workName)
 
         if (workInfo == null) {
-            val workRequest = createDownloadWorkRequest(downloadUrl, destinationFile)
+            val workRequest = createDownloadWorkRequest(modelId, downloadUrl, destinationFile)
             workManager.enqueueUniqueWork(workName, ExistingWorkPolicy.KEEP, workRequest)
             workInfo = findRunningWork(workName)
         }
@@ -75,7 +76,11 @@ class ModelDownloadManagerImpl(
         }
     }
 
-    private fun createDownloadWorkRequest(downloadUrl: String, destinationFile: File): OneTimeWorkRequest {
+    private fun createDownloadWorkRequest(
+        modelId: String,
+        downloadUrl: String,
+        destinationFile: File,
+    ): OneTimeWorkRequest {
         // Detect download type: ZIP files need extraction, others are downloaded directly
         val requiresUnzip = downloadUrl.endsWith(".zip", ignoreCase = true)
 
@@ -86,7 +91,9 @@ class ModelDownloadManagerImpl(
                     DownloadUnzipWorker.KEY_DESTINATION_PATH to destinationFile.absolutePath,
                     DownloadUnzipWorker.KEY_REQUIRES_UNZIP to requiresUnzip,
                 ),
-            ).addTag(WORK_TAG)
+            )
+            .addTag(WORK_TAG)
+            .addTag("$MODEL_ID_PREFIX$modelId")
             .build()
     }
 
@@ -119,39 +126,53 @@ class ModelDownloadManagerImpl(
         }
     }
 
+    override val activeDownloads: Flow<Map<String, ModelDownloadManager.Status>> =
+        workManager.getWorkInfosByTagFlow(WORK_TAG).map { workInfos ->
+            workInfos
+                .filter { !it.state.isFinished }
+                .associate { info ->
+                    val modelId =
+                        info.tags
+                            .firstOrNull { it.startsWith(MODEL_ID_PREFIX) }
+                            ?.removePrefix(MODEL_ID_PREFIX) ?: "unknown"
+                    modelId to info.toModelDownloadManagerStatus(null)
+                }
+        }
+
     override fun cancelDownload() {
         // This function correctly cancels all work tagged as "model-download".
         workManager.cancelAllWorkByTag(WORK_TAG)
     }
 
-    private fun WorkInfo.toModelDownloadManagerStatus(file: File): ModelDownloadManager.Status = when (state) {
-        WorkInfo.State.ENQUEUED, WorkInfo.State.BLOCKED -> {
-            ModelDownloadManager.Status.Pending
-        }
-
-        WorkInfo.State.RUNNING -> {
-            val progress = progress.getFloat(DownloadUnzipWorker.KEY_PROGRESS, 0f)
-            // Ensure progress is within a valid range.
-            ModelDownloadManager.Status.InProgress(progress.coerceIn(0f, 100f))
-        }
-
-        WorkInfo.State.SUCCEEDED -> {
-            ModelDownloadManager.Status.Completed(file)
-        }
-
-        WorkInfo.State.FAILED -> {
-            val errorMessage =
-                outputData.getString(DownloadUnzipWorker.KEY_ERROR_MESSAGE)
-                    ?: "Download failed due to an unknown error."
-            ModelDownloadManager.Status.Failed(errorMessage)
-        }
-
-        WorkInfo.State.CANCELLED -> {
-            ModelDownloadManager.Status.Cancelled
-        }
-    }
-
     companion object {
         private const val WORK_TAG = "model-download"
+        private const val MODEL_ID_PREFIX = "model-id:"
+    }
+}
+
+private fun WorkInfo.toModelDownloadManagerStatus(file: File?): ModelDownloadManager.Status = when (state) {
+    WorkInfo.State.ENQUEUED, WorkInfo.State.BLOCKED -> {
+        ModelDownloadManager.Status.Pending
+    }
+
+    WorkInfo.State.RUNNING -> {
+        val progress = progress.getFloat(DownloadUnzipWorker.KEY_PROGRESS, 0f)
+        // Ensure progress is within a valid range.
+        ModelDownloadManager.Status.InProgress(progress.coerceIn(0f, 100f))
+    }
+
+    WorkInfo.State.SUCCEEDED -> {
+        ModelDownloadManager.Status.Completed(file ?: File(""))
+    }
+
+    WorkInfo.State.FAILED -> {
+        val errorMessage =
+            outputData.getString(DownloadUnzipWorker.KEY_ERROR_MESSAGE)
+                ?: "Download failed due to an unknown error."
+        ModelDownloadManager.Status.Failed(errorMessage)
+    }
+
+    WorkInfo.State.CANCELLED -> {
+        ModelDownloadManager.Status.Cancelled
     }
 }

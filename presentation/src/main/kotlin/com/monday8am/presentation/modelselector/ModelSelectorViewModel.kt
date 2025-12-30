@@ -17,8 +17,10 @@ import kotlinx.coroutines.flow.flatMapConcat
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.last
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -168,13 +170,39 @@ class ModelSelectorViewModelImpl(
 
                 is UiAction.CatalogLoaded -> {
                     flow {
+                        val activeDownloads = modelDownloadManager.activeDownloads.take(1).last()
                         val modelsWithStatus =
                             action.models.map { config ->
                                 val isDownloaded = modelDownloadManager.modelExists(config.bundleFilename)
+                                val activeStatus = activeDownloads[config.modelId]
+
+                                // If there's an active background download, re-attach to it
+                                if (activeStatus != null) {
+                                    scope.launch {
+                                        modelDownloadManager.downloadModel(
+                                            config.modelId,
+                                            config.downloadUrl,
+                                            config.bundleFilename
+                                        )
+                                            .collect { status ->
+                                                userActions.emit(UiAction.DownloadProgress(config.modelId, status))
+                                            }
+                                    }
+                                }
+
                                 ModelInfo(
                                     config = config,
                                     isDownloaded = isDownloaded,
-                                    downloadStatus = if (isDownloaded) DownloadStatus.Completed else DownloadStatus.NotStarted,
+                                    downloadStatus = when {
+                                        isDownloaded -> DownloadStatus.Completed
+                                        activeStatus is ModelDownloadManager.Status.InProgress ->
+                                            DownloadStatus.Downloading(activeStatus.progress ?: 0f)
+
+                                        activeStatus is ModelDownloadManager.Status.Pending ->
+                                            DownloadStatus.Queued
+
+                                        else -> DownloadStatus.NotStarted
+                                    },
                                     isGated = config.isGated,
                                 )
                             }
