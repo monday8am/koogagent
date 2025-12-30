@@ -3,6 +3,7 @@ package com.monday8am.presentation.modelselector
 import com.monday8am.koogagent.data.ModelCatalog
 import com.monday8am.koogagent.data.ModelCatalogProvider
 import com.monday8am.koogagent.data.ModelConfiguration
+import com.monday8am.koogagent.data.ModelRepository
 import com.monday8am.presentation.notifications.FakeModelDownloadManager
 import java.io.File
 import kotlin.test.AfterTest
@@ -46,12 +47,12 @@ class ModelSelectorViewModelTest {
 
     private val initialState = UiState()
     private lateinit var viewModel: ModelSelectorViewModelImpl
-    private lateinit var fakeRepository: com.monday8am.koogagent.data.ModelRepository
+    private lateinit var fakeRepository: ModelRepository
 
     @BeforeTest
     fun setup() {
         Dispatchers.setMain(testDispatcher)
-        fakeRepository = com.monday8am.koogagent.data.ModelRepository()
+        fakeRepository = ModelRepository()
         // Create a fresh ViewModel for each test
         viewModel =
             ModelSelectorViewModelImpl(

@@ -17,7 +17,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.monday8am.koogagent.data.ModelCatalog
+import com.monday8am.koogagent.ui.theme.KoogAgentTheme
 import com.monday8am.presentation.modelselector.DownloadStatus
 import com.monday8am.presentation.modelselector.ModelInfo
 import com.monday8am.presentation.modelselector.UiAction
@@ -109,5 +112,68 @@ internal fun ToolBar(
                 contentDescription = "Go forward",
             )
         }
+    }
+}
+
+@Preview(name = "Not Downloaded", showBackground = true)
+@Composable
+private fun ToolBarPreview_NotDownloaded() {
+    KoogAgentTheme {
+        ToolBar(
+            models =
+            listOf(
+                ModelInfo(
+                    config = ModelCatalog.QWEN3_0_6B,
+                    isDownloaded = false,
+                    downloadStatus = DownloadStatus.NotStarted,
+                ),
+            ),
+            selectedModelId = ModelCatalog.QWEN3_0_6B.modelId,
+            onAction = {},
+            onNavigateToTesting = {},
+            onNavigateToNotification = {},
+        )
+    }
+}
+
+@Preview(name = "Downloaded & Selected", showBackground = true)
+@Composable
+private fun ToolBarPreview_DownloadedSelected() {
+    KoogAgentTheme {
+        ToolBar(
+            models =
+            listOf(
+                ModelInfo(
+                    config = ModelCatalog.HAMMER2_1_0_5B,
+                    isDownloaded = true,
+                    downloadStatus = DownloadStatus.Completed,
+                ),
+            ),
+            selectedModelId = ModelCatalog.HAMMER2_1_0_5B.modelId,
+            onAction = {},
+            onNavigateToTesting = {},
+            onNavigateToNotification = {},
+        )
+    }
+}
+
+@Preview(name = "Downloading", showBackground = true)
+@Composable
+private fun ToolBarPreview_Downloading() {
+    KoogAgentTheme {
+        ToolBar(
+            models =
+            listOf(
+                ModelInfo(
+                    config = ModelCatalog.GEMMA3_1B,
+                    isDownloaded = false,
+                    downloadStatus = DownloadStatus.Downloading(42f),
+                ),
+            ),
+            selectedModelId = ModelCatalog.GEMMA3_1B.modelId,
+            onAction = {},
+            onNavigateToTesting = {},
+            onNavigateToNotification = {},
+        )
     }
 }

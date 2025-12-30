@@ -11,8 +11,10 @@ import com.monday8am.koogagent.data.WeatherProvider
 import com.monday8am.presentation.modelselector.ModelDownloadManager
 import java.io.File
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.update
 
 internal class FakeLocalInferenceEngine : LocalInferenceEngine {
     var initializeCalled = false
@@ -62,6 +64,7 @@ internal class FakeModelDownloadManager(
     private val modelExists: Boolean = true,
     private val progressSteps: List<Float> = emptyList(),
     private val shouldFail: Boolean = false,
+    private val activeDownloadFlow: MutableStateFlow<Map<String, ModelDownloadManager.Status>> = MutableStateFlow(emptyMap())
 ) : ModelDownloadManager {
     override fun downloadModel(
         modelId: String,
@@ -73,10 +76,15 @@ internal class FakeModelDownloadManager(
         }
 
         progressSteps.forEach { progress ->
+            activeDownloadFlow.update { mutableMapOf(modelId to ModelDownloadManager.Status.InProgress(progress)) }
             emit(ModelDownloadManager.Status.InProgress(progress))
         }
+        activeDownloadFlow.update { mutableMapOf(modelId to ModelDownloadManager.Status.Completed(File("/fake/path/$bundleFilename"))) }
         emit(ModelDownloadManager.Status.Completed(File("/fake/path/$bundleFilename")))
     }
+
+    override val activeDownloads: Flow<Map<String, ModelDownloadManager.Status>>
+        get() = activeDownloadFlow
 
     override fun cancelDownload() {
     }
