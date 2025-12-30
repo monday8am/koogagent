@@ -1,6 +1,5 @@
 package com.monday8am.presentation.modelselector
 
-import co.touchlab.kermit.Logger
 import com.monday8am.koogagent.data.ModelCatalogProvider
 import com.monday8am.koogagent.data.ModelConfiguration
 import kotlinx.coroutines.CoroutineScope
@@ -19,7 +18,6 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -138,9 +136,6 @@ class ModelSelectorViewModelImpl(
             userActions
                 .onStart { emit(UiAction.Initialize) }
                 .flatMapConcat { action -> processAction(action) }
-                .onEach { pair: Pair<UiAction, ActionState> ->
-                    if (pair.first !is UiAction.ProcessNextDownload) Logger.d { "Action: $pair" }
-                }
                 .flowOn(Dispatchers.IO)
                 .collect { result: Pair<UiAction, ActionState> ->
                     val (action, actionState) = result

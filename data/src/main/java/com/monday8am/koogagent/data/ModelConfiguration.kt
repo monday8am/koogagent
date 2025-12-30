@@ -52,5 +52,5 @@ data class ModelConfiguration(
      * Examples: "qwen3_0.6b_q8_ekv4096" or "gemma3-1b-it-int4"
      */
     val modelId: String
-        get() = bundleFilename.substringBeforeLast(".") + "_" + hashCode()
+        get() = bundleFilename.substringBeforeLast(".") + "_" + inferenceLibrary
 }

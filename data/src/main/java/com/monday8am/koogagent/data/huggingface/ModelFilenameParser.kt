@@ -128,28 +128,21 @@ object ModelFilenameParser {
         return CONTEXT_REGEX.find(baseName)?.groupValues?.get(1)?.toIntOrNull()
     }
 
+    private val FAMILY_PREFIXES = listOf(
+        "qwen3", "qwen2.5", "qwen2",
+        "gemma3", "gemma2", "gemma",
+        "smollm", "smolvlm", "hammer",
+        "tinyllama", "phi", "deepseek",
+        "fastvlm", "functiongemma"
+    )
+
     /**
      * Extracts model family from the Hugging Face model ID.
      */
     private fun extractFamily(modelId: String): String {
         val name = modelId.substringAfter("/").lowercase()
-        return when {
-            name.startsWith("qwen3") -> "qwen3"
-            name.startsWith("qwen2.5") -> "qwen2.5"
-            name.startsWith("qwen2") -> "qwen2"
-            name.startsWith("gemma3") -> "gemma3"
-            name.startsWith("gemma2") -> "gemma2"
-            name.startsWith("gemma") -> "gemma"
-            name.startsWith("smollm") -> "smollm"
-            name.startsWith("smolvlm") -> "smolvlm"
-            name.startsWith("hammer") -> "hammer"
-            name.startsWith("tinyllama") -> "tinyllama"
-            name.startsWith("phi") -> "phi"
-            name.startsWith("deepseek") -> "deepseek"
-            name.startsWith("fastvlm") -> "fastvlm"
-            name.startsWith("functiongemma") -> "functiongemma"
-            else -> name.substringBefore("-").substringBefore("_")
-        }
+        return FAMILY_PREFIXES.find { name.startsWith(it) }
+            ?: name.substringBefore("-").substringBefore("_")
     }
 
     /**
@@ -163,7 +156,7 @@ object ModelFilenameParser {
         library: InferenceLibrary,
     ): String {
         val familyDisplay = family.replaceFirstChar { it.uppercase() }
-        val paramsDisplay = params?.let { "${formatParams(it)}" } ?: ""
+        val paramsDisplay = params?.let { formatParams(it) } ?: ""
         val quantDisplay = quant.uppercase()
         val contextDisplay = context?.let { formatContext(it) } ?: ""
         val libraryDisplay = when (library) {

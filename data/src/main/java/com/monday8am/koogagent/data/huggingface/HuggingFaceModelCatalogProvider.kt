@@ -1,15 +1,25 @@
 package com.monday8am.koogagent.data.huggingface
 
+import co.touchlab.kermit.Logger
 import com.monday8am.koogagent.data.HardwareBackend
 import com.monday8am.koogagent.data.InferenceLibrary
 import com.monday8am.koogagent.data.ModelCatalogProvider
 import com.monday8am.koogagent.data.ModelConfiguration
+import java.io.IOException
 import java.util.concurrent.TimeUnit
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import okhttp3.Call
+import okhttp3.Callback
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.Response
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -28,6 +38,8 @@ class HuggingFaceModelCatalogProvider(
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : ModelCatalogProvider {
 
+    private val logger = Logger.withTag("HuggingFaceModelCatalogProvider")
+
     companion object {
         private const val BASE_URL = "https://huggingface.co/api/models"
         private const val AUTHOR = "litert-community"
@@ -41,40 +53,44 @@ class HuggingFaceModelCatalogProvider(
 
     override suspend fun fetchModels(): Result<List<ModelConfiguration>> = withContext(dispatcher) {
         runCatching {
+            logger.d { "Fetching model list from $LIST_URL" }
             val summaries = fetchModelList()
                 .filter { it.pipelineTag == "text-generation" }
 
-            summaries.flatMap { summary ->
-                try {
-                    val details = fetchModelDetails(summary.id)
-                    if (details != null) {
-                        convertToConfigurations(details)
-                    } else {
-                        emptyList()
+            logger.d { "Found ${summaries.size} text-generation models. Fetching details in parallel..." }
+
+            // Fetch details in parallel to speed up catalog loading
+            val detailsResults = summaries.map { summary ->
+                async {
+                    try {
+                        fetchModelDetails(summary.id)
+                    } catch (e: Exception) {
+                        logger.e(e) { "Failed to fetch details for ${summary.id}" }
+                        null
                     }
-                } catch (e: Exception) {
-                    println("HuggingFaceModelCatalogProvider: Failed to fetch details for ${summary.id}: ${e.message}")
-                    emptyList()
                 }
-            }.sortedByDescending { it.parameterCount }
+            }.awaitAll()
+
+            detailsResults
+                .filterNotNull()
+                .flatMap { convertToConfigurations(it) }
+                .sortedByDescending { it.parameterCount }
+                .also { logger.d { "Successfully loaded ${it.size} model configurations" } }
         }
     }
 
     /**
      * Fetches the list of models from the organization.
      */
-    private fun fetchModelList(): List<HuggingFaceModelSummary> {
+    private suspend fun fetchModelList(): List<HuggingFaceModelSummary> {
         val request = Request.Builder()
             .url(LIST_URL)
             .build()
 
-        client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) {
-                throw Exception("Failed to fetch model list: ${response.code}")
-            }
-
-            val jsonArray = JSONArray(response.body.string())
-            return (0 until jsonArray.length()).mapNotNull { i ->
+        return executeRequest(request) { response ->
+            val body = response.body.string()
+            val jsonArray = JSONArray(body)
+            (0 until jsonArray.length()).mapNotNull { i ->
                 parseModelSummary(jsonArray.getJSONObject(i))
             }
         }
@@ -83,18 +99,49 @@ class HuggingFaceModelCatalogProvider(
     /**
      * Fetches detailed information for a specific model.
      */
-    private fun fetchModelDetails(modelId: String): HuggingFaceModelDetails? {
+    private suspend fun fetchModelDetails(modelId: String): HuggingFaceModelDetails? {
         val url = "$BASE_URL/$modelId"
         val request = Request.Builder()
             .url(url)
             .build()
 
-        client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) {
-                return null
+        return try {
+            executeRequest(request) { response ->
+                parseModelDetails(JSONObject(response.body.string()))
             }
+        } catch (e: Exception) {
+            logger.w { "Failed to fetch details for $modelId: ${e.message}" }
+            null
+        }
+    }
 
-            return parseModelDetails(JSONObject(response.body.string()))
+    /**
+     * Helper to execute OkHttp requests as suspending functions with cancellation support.
+     */
+    private suspend fun <T> executeRequest(request: Request, parser: (Response) -> T): T {
+        return suspendCancellableCoroutine { continuation ->
+            val call = client.newCall(request)
+            continuation.invokeOnCancellation { call.cancel() }
+
+            call.enqueue(object : Callback {
+                override fun onResponse(call: Call, response: Response) {
+                    response.use {
+                        if (!response.isSuccessful) {
+                            continuation.resumeWithException(IOException("Unexpected code $response"))
+                            return
+                        }
+                        try {
+                            continuation.resume(parser(response))
+                        } catch (e: Exception) {
+                            continuation.resumeWithException(e)
+                        }
+                    }
+                }
+
+                override fun onFailure(call: Call, e: IOException) {
+                    continuation.resumeWithException(e)
+                }
+            })
         }
     }
 

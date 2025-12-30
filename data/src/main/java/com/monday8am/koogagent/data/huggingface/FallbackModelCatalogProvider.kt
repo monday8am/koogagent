@@ -1,5 +1,6 @@
 package com.monday8am.koogagent.data.huggingface
 
+import co.touchlab.kermit.Logger
 import com.monday8am.koogagent.data.ModelCatalog
 import com.monday8am.koogagent.data.ModelCatalogProvider
 import com.monday8am.koogagent.data.ModelConfiguration
@@ -15,6 +16,8 @@ class FallbackModelCatalogProvider(
     private val fallback: List<ModelConfiguration> = ModelCatalog.ALL_MODELS,
 ) : ModelCatalogProvider {
 
+    private val logger = Logger.withTag("FallbackModelCatalogProvider")
+
     override suspend fun fetchModels(): Result<List<ModelConfiguration>> {
         val primaryResult = primary.fetchModels()
 
@@ -23,8 +26,8 @@ class FallbackModelCatalogProvider(
         } else {
             // Log the original failure for debugging
             primaryResult.exceptionOrNull()?.let { error ->
-                println("FallbackModelCatalogProvider: Primary provider failed: ${error.message}")
-                println("FallbackModelCatalogProvider: Using fallback catalog with ${fallback.size} models")
+                logger.w { "Primary provider failed: ${error.message}" }
+                logger.w { "Using fallback catalog with ${fallback.size} models" }
             }
             Result.success(fallback)
         }
