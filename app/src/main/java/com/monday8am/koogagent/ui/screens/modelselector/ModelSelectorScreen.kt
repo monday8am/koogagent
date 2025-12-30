@@ -1,6 +1,7 @@
 package com.monday8am.koogagent.ui.screens.modelselector
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,13 +17,16 @@ import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -45,7 +49,7 @@ fun ModelSelectorScreen(onNavigateToNotification: (String) -> Unit, onNavigateTo
         remember {
             AndroidModelSelectorViewModel(
                 ModelSelectorViewModelImpl(
-                    availableModels = ModelCatalog.ALL_MODELS,
+                    modelCatalogProvider = Dependencies.modelCatalogProvider,
                     modelDownloadManager = Dependencies.modelDownloadManager,
                 ),
             )
@@ -86,28 +90,56 @@ private fun ModelSelectorScreenContent(
             text = uiState.statusMessage,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(bottom = 16.dp),
+            modifier = Modifier.padding(bottom = 8.dp),
         )
 
-        // Model list
-        LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.weight(1f),
-        ) {
-            items(
-                items = uiState.models,
-                key = { it.config.modelId },
-            ) { modelInfo ->
-                ModelCard(
-                    modelInfo = modelInfo,
-                    isSelected = modelInfo.config.modelId == uiState.selectedModelId,
-                    onDownloadClick = {
-                        onAction(UiAction.DownloadModel(modelInfo.config.modelId))
-                    },
-                    onSelectClick = {
-                        onAction(UiAction.SelectModel(modelInfo.config.modelId))
-                    },
-                )
+        // Show error message if catalog load failed
+        uiState.catalogError?.let { error ->
+            Text(
+                text = "Using cached models: $error",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color(0xFFFF9800), // Orange warning color
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+        }
+
+        // Model list or loading indicator
+        if (uiState.isLoadingCatalog) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                contentAlignment = Alignment.Center,
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CircularProgressIndicator()
+                    Text(
+                        text = "Loading models from Hugging Face...",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(top = 16.dp),
+                    )
+                }
+            }
+        } else {
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.weight(1f),
+            ) {
+                items(
+                    items = uiState.models,
+                    key = { it.config.modelId },
+                ) { modelInfo ->
+                    ModelCard(
+                        modelInfo = modelInfo,
+                        isSelected = modelInfo.config.modelId == uiState.selectedModelId,
+                        onDownloadClick = {
+                            onAction(UiAction.DownloadModel(modelInfo.config.modelId))
+                        },
+                        onSelectClick = {
+                            onAction(UiAction.SelectModel(modelInfo.config.modelId))
+                        },
+                    )
+                }
             }
         }
 
@@ -218,6 +250,21 @@ private fun ModelSelectorScreenPreview() {
                 selectedModelId = ModelCatalog.GEMMA3_1B.modelId,
                 currentDownload = DownloadInfo(ModelCatalog.GEMMA3_1B.modelId, 10f),
                 statusMessage = "Downloading model: GEMMA3_1B",
+                isLoadingCatalog = false,
+            ),
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun ModelSelectorScreenPreview_Loading() {
+    KoogAgentTheme {
+        ModelSelectorScreenContent(
+            uiState =
+            UiState(
+                isLoadingCatalog = true,
+                statusMessage = "Loading models from Hugging Face...",
             ),
         )
     }

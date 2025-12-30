@@ -29,6 +29,7 @@ enum class HardwareBackend {
  * @property defaultTopP Default top-P sampling parameter
  * @property defaultTemperature Default temperature for generation
  * @property defaultMaxOutputTokens Default max tokens to generate
+ * @property isGated Whether the model requires Hugging Face authentication
  */
 data class ModelConfiguration(
     val displayName: String,
@@ -44,11 +45,12 @@ data class ModelConfiguration(
     val defaultTopP: Float = 0.85f,
     val defaultTemperature: Float = 0.2f,
     val defaultMaxOutputTokens: Int = (contextLength * 0.25).toInt(),
+    val isGated: Boolean = false,
 ) {
     /**
      * Model identifier without file extension (used by NotificationAgent).
      * Examples: "qwen3_0.6b_q8_ekv4096" or "gemma3-1b-it-int4"
      */
     val modelId: String
-        get() = bundleFilename.substringBeforeLast(".")
+        get() = bundleFilename.substringBeforeLast(".") + "_" + hashCode()
 }

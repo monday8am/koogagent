@@ -1,6 +1,8 @@
 package com.monday8am.presentation.modelselector
 
 import com.monday8am.koogagent.data.ModelCatalog
+import com.monday8am.koogagent.data.ModelCatalogProvider
+import com.monday8am.koogagent.data.ModelConfiguration
 import com.monday8am.presentation.notifications.FakeModelDownloadManager
 import java.io.File
 import kotlin.test.AfterTest
@@ -16,6 +18,23 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
+
+/**
+ * Fake implementation of ModelCatalogProvider for testing.
+ */
+internal class FakeModelCatalogProvider(
+    private val models: List<ModelConfiguration> = emptyList(),
+    private val shouldFail: Boolean = false,
+    private val failureMessage: String = "Test failure",
+) : ModelCatalogProvider {
+    override suspend fun fetchModels(): Result<List<ModelConfiguration>> {
+        return if (shouldFail) {
+            Result.failure(Exception(failureMessage))
+        } else {
+            Result.success(models)
+        }
+    }
+}
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ModelSelectorViewModelTest {
@@ -33,7 +52,7 @@ class ModelSelectorViewModelTest {
         // Create a fresh ViewModel for each test
         viewModel =
             ModelSelectorViewModelImpl(
-                availableModels = testModels,
+                modelCatalogProvider = FakeModelCatalogProvider(models = testModels),
                 modelDownloadManager = FakeModelDownloadManager(),
             )
     }
@@ -46,27 +65,49 @@ class ModelSelectorViewModelTest {
     // region Initialization Tests
 
     @Test
-    fun `Initialize should populate models and show correct count`() {
+    fun `Initialize should show loading state`() {
+        val newState = reduce(action = UiAction.Initialize, result = Unit)
+
+        assertTrue(newState.isLoadingCatalog)
+        assertStatusMessageContains(newState, "Loading models")
+    }
+
+    @Test
+    fun `CatalogLoaded should populate models and show correct count`() {
         val modelInfoList = testModels.map { ModelInfo(config = it, isDownloaded = false) }
 
-        val newState = reduce(action = UiAction.Initialize, result = modelInfoList)
+        val newState = reduce(action = UiAction.CatalogLoaded(testModels), result = modelInfoList)
 
         assertEquals(2, newState.models.size)
         assertEquals(model1.modelId, newState.models[0].config.modelId)
+        assertFalse(newState.isLoadingCatalog)
+        assertNull(newState.catalogError)
         assertStatusMessageContains(newState, "0 of 2")
     }
 
     @Test
-    fun `Initialize should correctly count downloaded models`() {
+    fun `CatalogLoaded should correctly count downloaded models`() {
         val modelInfoList =
             listOf(
                 ModelInfo(config = model1, isDownloaded = true),
                 ModelInfo(config = model2, isDownloaded = false),
             )
 
-        val newState = reduce(action = UiAction.Initialize, result = modelInfoList)
+        val newState = reduce(action = UiAction.CatalogLoaded(testModels), result = modelInfoList)
 
+        assertFalse(newState.isLoadingCatalog)
         assertStatusMessageContains(newState, "1 of 2")
+    }
+
+    @Test
+    fun `CatalogLoadFailed should set error and stop loading`() {
+        val errorMessage = "Network error"
+
+        val newState = reduce(action = UiAction.CatalogLoadFailed(errorMessage), result = errorMessage)
+
+        assertFalse(newState.isLoadingCatalog)
+        assertEquals(errorMessage, newState.catalogError)
+        assertStatusMessageContains(newState, "Failed to load catalog")
     }
 
     // endregion
@@ -75,7 +116,13 @@ class ModelSelectorViewModelTest {
 
     @Test
     fun `SelectModel should update selectedModelId and status message`() {
-        val newState = reduce(action = UiAction.SelectModel(model1.modelId), result = model1.modelId)
+        val stateWithModels = givenState(models = testModels.map { ModelInfo(config = it) })
+
+        val newState = reduce(
+            state = stateWithModels,
+            action = UiAction.SelectModel(model1.modelId),
+            result = model1.modelId,
+        )
 
         assertEquals(model1.modelId, newState.selectedModelId)
         assertStatusMessageContains(newState, "Selected", model1.displayName)

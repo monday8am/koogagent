@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -72,11 +73,24 @@ internal fun ModelCard(
         ) {
             // Left: Model info
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = modelInfo.config.displayName,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Color.White,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = modelInfo.config.displayName,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Color.White,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    if (modelInfo.isGated) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = "Gated model - may require Hugging Face authentication",
+                            tint = Color.Yellow,
+                            modifier = Modifier
+                                .padding(start = 6.dp)
+                                .size(18.dp),
+                        )
+                    }
+                }
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "${modelInfo.config.parameterCount}B params • ${modelInfo.config.contextLength} tokens",
@@ -240,6 +254,25 @@ private fun ModelCardPreview_Failed() {
                 config = ModelCatalog.HAMMER2_1_0_5B,
                 isDownloaded = false,
                 downloadStatus = DownloadStatus.Failed("Network error"),
+            ),
+            isSelected = false,
+            onDownloadClick = {},
+            onSelectClick = {},
+        )
+    }
+}
+
+@Preview(name = "Gated Model", showBackground = true, widthDp = 380)
+@Composable
+private fun ModelCardPreview_Gated() {
+    KoogAgentTheme {
+        ModelCard(
+            modelInfo =
+            ModelInfo(
+                config = ModelCatalog.GEMMA3_1B,
+                isDownloaded = false,
+                downloadStatus = DownloadStatus.NotStarted,
+                isGated = true,
             ),
             isSelected = false,
             onDownloadClick = {},

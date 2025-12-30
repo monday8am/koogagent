@@ -17,4 +17,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     api(libs.okhttp)
     api(libs.json)
+
+    // Testing
+    testImplementation(kotlin("test"))
 }

@@ -1,6 +1,7 @@
 package com.monday8am.presentation.modelselector
 
 import co.touchlab.kermit.Logger
+import com.monday8am.koogagent.data.ModelCatalogProvider
 import com.monday8am.koogagent.data.ModelConfiguration
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -30,12 +31,15 @@ data class UiState(
     val currentDownload: DownloadInfo? = null,
     val queuedDownloads: List<String> = emptyList(), // modelIds waiting to download
     val statusMessage: String = "Select a model to get started",
+    val isLoadingCatalog: Boolean = true,
+    val catalogError: String? = null,
 )
 
 data class ModelInfo(
     val config: ModelConfiguration,
     val isDownloaded: Boolean = false,
     val downloadStatus: DownloadStatus = DownloadStatus.NotStarted,
+    val isGated: Boolean = false,
 )
 
 data class DownloadInfo(
@@ -85,6 +89,14 @@ sealed class UiAction {
     internal data class ProcessNextDownload(
         val modelId: String,
     ) : UiAction()
+
+    internal data class CatalogLoaded(
+        val models: List<ModelConfiguration>,
+    ) : UiAction()
+
+    internal data class CatalogLoadFailed(
+        val error: String,
+    ) : UiAction()
 }
 
 internal sealed interface ActionState {
@@ -109,10 +121,13 @@ interface ModelSelectorViewModel {
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ModelSelectorViewModelImpl(
-    private val availableModels: List<ModelConfiguration>,
+    private val modelCatalogProvider: ModelCatalogProvider,
     private val modelDownloadManager: ModelDownloadManager,
 ) : ModelSelectorViewModel {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
+    // Loaded models - populated after catalog is fetched
+    private var loadedModels: List<ModelConfiguration> = emptyList()
 
     internal val userActions = MutableSharedFlow<UiAction>(replay = 0)
 
@@ -130,18 +145,39 @@ class ModelSelectorViewModelImpl(
         val actionFlow: Flow<Any> =
             when (action) {
                 is UiAction.Initialize -> {
+                    // Launch catalog fetch in background and return immediately
+                    scope.launch {
+                        val result = modelCatalogProvider.fetchModels()
+                        if (result.isSuccess) {
+                            val models = result.getOrThrow()
+                            loadedModels = models
+                            userActions.emit(UiAction.CatalogLoaded(models))
+                        } else {
+                            val error = result.exceptionOrNull()?.message ?: "Unknown error"
+                            userActions.emit(UiAction.CatalogLoadFailed(error))
+                        }
+                    }
+                    flowOf(Unit) // Return immediately
+                }
+
+                is UiAction.CatalogLoaded -> {
                     flow {
                         val modelsWithStatus =
-                            availableModels.map { config ->
+                            action.models.map { config ->
                                 val isDownloaded = modelDownloadManager.modelExists(config.bundleFilename)
                                 ModelInfo(
                                     config = config,
                                     isDownloaded = isDownloaded,
                                     downloadStatus = if (isDownloaded) DownloadStatus.Completed else DownloadStatus.NotStarted,
+                                    isGated = config.isGated,
                                 )
                             }
                         emit(modelsWithStatus)
                     }
+                }
+
+                is UiAction.CatalogLoadFailed -> {
+                    flowOf(action.error)
                 }
 
                 is UiAction.DownloadModel -> {
@@ -156,7 +192,7 @@ class ModelSelectorViewModelImpl(
                     // Launch download in separate coroutine to avoid blocking action flow.
                     // The coroutine will terminate naturally when the download completes or is cancelled.
                     scope.launch {
-                        val model = availableModels.first { it.modelId == action.modelId }
+                        val model = loadedModels.first { it.modelId == action.modelId }
                         modelDownloadManager
                             .downloadModel(model.modelId, model.downloadUrl, model.bundleFilename)
                             .collect { status ->
@@ -178,7 +214,7 @@ class ModelSelectorViewModelImpl(
 
                 is UiAction.DeleteModel -> {
                     flow {
-                        val model = availableModels.first { it.modelId == action.modelId }
+                        val model = loadedModels.first { it.modelId == action.modelId }
                         val success = modelDownloadManager.deleteModel(model.bundleFilename)
                         emit(success to action.modelId)
                     }
@@ -226,11 +262,30 @@ class ModelSelectorViewModelImpl(
     private fun reduceSuccess(state: UiState, action: UiAction, actionState: ActionState.Success): UiState =
         when (action) {
             is UiAction.Initialize -> {
+                // Catalog fetch launched in background, nothing to reduce here
+                state.copy(
+                    isLoadingCatalog = true,
+                    statusMessage = "Loading models from Hugging Face...",
+                )
+            }
+
+            is UiAction.CatalogLoaded -> {
                 @Suppress("UNCHECKED_CAST")
                 val models = actionState.result as List<ModelInfo>
                 state.copy(
                     models = models,
+                    isLoadingCatalog = false,
+                    catalogError = null,
                     statusMessage = "Found ${models.count { it.isDownloaded }} of ${models.size} models downloaded",
+                )
+            }
+
+            is UiAction.CatalogLoadFailed -> {
+                val error = actionState.result as String
+                state.copy(
+                    isLoadingCatalog = false,
+                    catalogError = error,
+                    statusMessage = "Failed to load catalog: $error",
                 )
             }
 
@@ -263,7 +318,7 @@ class ModelSelectorViewModelImpl(
 
             is UiAction.SelectModel -> {
                 val modelId = actionState.result as String
-                val selectedModelName = availableModels.find { it.modelId == modelId }?.displayName
+                val selectedModelName = state.models.find { it.config.modelId == modelId }?.config?.displayName
                 state.copy(
                     selectedModelId = modelId,
                     statusMessage = "Selected $selectedModelName",
