@@ -10,8 +10,10 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapConcat
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
@@ -19,7 +21,7 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
-import kotlinx.coroutines.flow.scan
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
@@ -112,7 +114,7 @@ internal sealed interface ActionState {
 }
 
 interface ModelSelectorViewModel {
-    val uiState: Flow<UiState>
+    val uiState: StateFlow<UiState>
 
     fun onUiAction(uiAction: UiAction)
 
@@ -130,31 +132,43 @@ class ModelSelectorViewModelImpl(
     private var loadedModels: List<ModelConfiguration> = emptyList()
 
     internal val userActions = MutableSharedFlow<UiAction>(replay = 0)
+    private val _uiState = MutableStateFlow(UiState())
+    override val uiState: StateFlow<UiState> = _uiState.asStateFlow()
 
-    override val uiState: Flow<UiState> =
-        userActions
-            .onStart { emit(UiAction.Initialize) }
-            .flatMapConcat { action -> processAction(action) }
-            .onEach { if (it.first !is UiAction.ProcessNextDownload) Logger.d { "Action: $it" } }
-            .flowOn(Dispatchers.IO)
-            .scan(UiState()) { state, (action, actionState) ->
-                reduce(state, action, actionState)
-            }.distinctUntilChanged()
+    init {
+        scope.launch {
+            userActions
+                .onStart { emit(UiAction.Initialize) }
+                .flatMapConcat { action -> processAction(action) }
+                .onEach { pair: Pair<UiAction, ActionState> ->
+                    if (pair.first !is UiAction.ProcessNextDownload) Logger.d { "Action: $pair" }
+                }
+                .flowOn(Dispatchers.IO)
+                .collect { result: Pair<UiAction, ActionState> ->
+                    val (action, actionState) = result
+                    _uiState.update { state: UiState ->
+                        reduce(state, action, actionState)
+                    }
+                }
+        }
+    }
 
     private fun processAction(action: UiAction): Flow<Pair<UiAction, ActionState>> {
         val actionFlow: Flow<Any> =
             when (action) {
                 is UiAction.Initialize -> {
-                    // Launch catalog fetch in background and return immediately
-                    scope.launch {
-                        val result = modelCatalogProvider.fetchModels()
-                        if (result.isSuccess) {
-                            val models = result.getOrThrow()
-                            loadedModels = models
-                            userActions.emit(UiAction.CatalogLoaded(models))
-                        } else {
-                            val error = result.exceptionOrNull()?.message ?: "Unknown error"
-                            userActions.emit(UiAction.CatalogLoadFailed(error))
+                    if (loadedModels.isEmpty() && _uiState.value.catalogError == null) {
+                        // Launch catalog fetch in background and return immediately
+                        scope.launch {
+                            val result = modelCatalogProvider.fetchModels()
+                            if (result.isSuccess) {
+                                val models = result.getOrThrow()
+                                loadedModels = models
+                                userActions.emit(UiAction.CatalogLoaded(models))
+                            } else {
+                                val error = result.exceptionOrNull()?.message ?: "Unknown error"
+                                userActions.emit(UiAction.CatalogLoadFailed(error))
+                            }
                         }
                     }
                     flowOf(Unit) // Return immediately

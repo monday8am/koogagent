@@ -7,12 +7,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.monday8am.koogagent.Dependencies
 import com.monday8am.koogagent.data.ModelCatalog
 import com.monday8am.koogagent.ui.screens.testing.InitializationIndicator
@@ -29,8 +29,8 @@ import com.monday8am.presentation.modelselector.UiState
  */
 @Composable
 fun ModelSelectorScreen(onNavigateToNotification: (String) -> Unit, onNavigateToTesting: (String) -> Unit) {
-    val viewModel =
-        remember {
+    val viewModel: AndroidModelSelectorViewModel =
+        viewModel {
             AndroidModelSelectorViewModel(
                 ModelSelectorViewModelImpl(
                     modelCatalogProvider = Dependencies.modelCatalogProvider,
