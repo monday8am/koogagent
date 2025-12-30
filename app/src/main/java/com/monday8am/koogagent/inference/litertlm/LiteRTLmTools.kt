@@ -3,6 +3,7 @@ package com.monday8am.koogagent.inference.litertlm
 import android.util.Log
 import com.google.ai.edge.litertlm.Tool
 import com.google.ai.edge.litertlm.ToolParam
+import com.monday8am.agent.tools.ToolCall
 import com.monday8am.agent.tools.ToolTrace
 import com.monday8am.koogagent.data.WeatherProviderImpl
 import kotlinx.coroutines.runBlocking
@@ -20,7 +21,12 @@ class LiteRTLmTools {
         @ToolParam(description = "Longitude coordinate (between -180 and 180)")
         longitude: Double,
     ): String = runBlocking {
-        ToolTrace.log("get_weather")
+        ToolTrace.log(
+            ToolCall(
+                name = "get_weather",
+                args = mapOf("latitude" to latitude, "longitude" to longitude),
+            ),
+        )
         try {
             val weatherCondition = weatherProvider.getCurrentWeather(latitude, longitude)
 
@@ -38,7 +44,12 @@ class LiteRTLmTools {
 class NativeLocationTools {
     @Tool(description = "No arguments required. Get the user's current location in latitude and longitude format")
     fun get_location(): String {
-        ToolTrace.log("get_location")
+        ToolTrace.log(
+            ToolCall(
+                name = "get_location",
+                args = emptyMap(),
+            ),
+        )
         val result = """{"latitude": 40.4168, "longitude": -3.7038}"""
         Log.e("NativeLocationTools", "🔧 Returning: $result")
         return result

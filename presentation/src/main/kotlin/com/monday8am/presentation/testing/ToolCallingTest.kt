@@ -3,6 +3,7 @@ package com.monday8am.presentation.testing
 import co.touchlab.kermit.Logger
 import co.touchlab.kermit.Severity
 import com.monday8am.agent.tools.ToolTrace
+import kotlin.math.abs
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.emitAll
@@ -233,10 +234,10 @@ class ToolCallingTest(
                     queries = listOf(TestQuery("Where am I located?")),
                     systemPrompt = "You are a helpful assistant with access to location tools.",
                     validator = { _ ->
-                        if (ToolTrace.calls.contains("get_location")) {
+                        if (ToolTrace.calls.any { it.name == "get_location" }) {
                             ValidationResult.Pass("get_location tool called")
                         } else {
-                            ValidationResult.Fail("get_location tool NOT called. Calls: ${ToolTrace.calls}")
+                            ValidationResult.Fail("get_location tool NOT called. Calls: ${ToolTrace.calls.map { it.name }}")
                         }
                     },
                 ),
@@ -247,11 +248,11 @@ class ToolCallingTest(
                     systemPrompt = "You are a weather assistant with access to weather tools. " +
                         "First you should call get_location to get the location, and then call get_weather with the obtained location.",
                     validator = { _ ->
-                        val calls = ToolTrace.calls
-                        if (calls.contains("get_location") && calls.contains("get_weather")) {
+                        val callNames = ToolTrace.calls.map { it.name }
+                        if (callNames.contains("get_location") && callNames.contains("get_weather")) {
                             ValidationResult.Pass("get_location and get_weather tools called")
                         } else {
-                            ValidationResult.Fail("Missing tool calls. Calls: $calls")
+                            ValidationResult.Fail("Missing tool calls. Calls: $callNames")
                         }
                     },
                 ),
@@ -261,10 +262,17 @@ class ToolCallingTest(
                     queries = listOf(TestQuery("What is the weather at lat 35.6 and lon 139.7?")),
                     systemPrompt = "You are a weather assistant.",
                     validator = { _ ->
-                        if (ToolTrace.calls.contains("get_weather")) {
-                            ValidationResult.Pass("get_weather tool called")
+                        val weatherCall = ToolTrace.calls.find { it.name == "get_weather" }
+                        if (weatherCall != null) {
+                            val lat = weatherCall.args["latitude"] as? Double ?: 0.0
+                            val lon = weatherCall.args["longitude"] as? Double ?: 0.0
+                            if (abs(lat - 35.6) < 0.1 && abs(lon - 139.7) < 0.1) {
+                                ValidationResult.Pass("get_weather tool called with correct Tokyo coordinates")
+                            } else {
+                                ValidationResult.Fail("get_weather called with wrong coordinates: lat=$lat, lon=$lon")
+                            }
                         } else {
-                            ValidationResult.Fail("get_weather tool NOT called. Calls: ${ToolTrace.calls}")
+                            ValidationResult.Fail("get_weather tool NOT called. Calls: ${ToolTrace.calls.map { it.name }}")
                         }
                     },
                 ),
@@ -277,7 +285,7 @@ class ToolCallingTest(
                         if (ToolTrace.calls.isEmpty()) {
                             ValidationResult.Pass("No tools called")
                         } else {
-                            ValidationResult.Fail("Unexpected tool calls: ${ToolTrace.calls}")
+                            ValidationResult.Fail("Unexpected tool calls: ${ToolTrace.calls.map { it.name }}")
                         }
                     },
                 ),
@@ -304,11 +312,31 @@ class ToolCallingTest(
                     systemPrompt = "You are a weather assistant. When asked about weather in multiple locations, " +
                         "call get_weather for each location.",
                     validator = { _ ->
-                        val weatherCalls = ToolTrace.calls.count { it == "get_weather" }
-                        if (weatherCalls >= 2) {
-                            ValidationResult.Pass("Multiple get_weather calls made ($weatherCalls)")
+                        val weatherCalls = ToolTrace.calls.filter { it.name == "get_weather" }
+                        if (weatherCalls.size >= 2) {
+                            val hasTokyo = weatherCalls.any {
+                                val lat = it.args["latitude"] as? Double ?: 0.0
+                                val lon = it.args["longitude"] as? Double ?: 0.0
+                                abs(lat - 35.6) < 0.1 && abs(lon - 139.7) < 0.1
+                            }
+                            val hasParis = weatherCalls.any {
+                                val lat = it.args["latitude"] as? Double ?: 0.0
+                                val lon = it.args["longitude"] as? Double ?: 0.0
+                                abs(lat - 48.8) < 0.1 && abs(lon - 2.3) < 0.1
+                            }
+
+                            when {
+                                hasTokyo && hasParis -> ValidationResult.Pass("Multiple get_weather calls made with correct coordinates")
+                                hasTokyo -> ValidationResult.Fail("Paris coordinates not found. Calls: ${weatherCalls.map { it.args }}")
+                                hasParis -> ValidationResult.Fail("Tokyo coordinates not found. Calls: ${weatherCalls.map { it.args }}")
+                                else -> ValidationResult.Fail(
+                                    "Coordinates for Tokyo and Paris not found. Calls: ${weatherCalls.map { it.args }}"
+                                )
+                            }
                         } else {
-                            ValidationResult.Fail("Expected 2+ get_weather calls, got: $weatherCalls. Calls: ${ToolTrace.calls}")
+                            ValidationResult.Fail(
+                                "Expected 2+ get_weather calls, got: ${weatherCalls.size}. Calls: ${ToolTrace.calls.map { it.name }}"
+                            )
                         }
                     },
                 ),
