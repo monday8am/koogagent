@@ -2,6 +2,7 @@ package com.monday8am.presentation.testing
 
 import co.touchlab.kermit.Logger
 import co.touchlab.kermit.Severity
+import com.monday8am.agent.tools.ToolTrace
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.emitAll
@@ -170,6 +171,9 @@ class ToolCallingTest(
 
             val prompt = "${testCase.systemPrompt}\n\n${query.text}"
 
+            // Clear tool trace before execution
+            ToolTrace.clear()
+
             streamPromptExecutor(prompt)
                 .map { chunk ->
                     processor.process(chunk)
@@ -214,7 +218,9 @@ class ToolCallingTest(
                     queries = listOf(TestQuery("Hello, how are you?")),
                     systemPrompt = "You are a helpful assistant.",
                     validator = { result ->
-                        if (result.isNotBlank() && result.length > 5) {
+                        if (ToolTrace.calls.isNotEmpty()) {
+                            ValidationResult.Fail("Unexpected tool call: ${ToolTrace.calls}")
+                        } else if (result.isNotBlank() && result.length > 5) {
                             ValidationResult.Pass("Valid response received")
                         } else {
                             ValidationResult.Fail("Response too short or empty")
@@ -223,54 +229,68 @@ class ToolCallingTest(
                 ),
                 TestCase(
                     name = "TEST 1: Location Query",
-                    description = listOf("Expects model to use location tool"),
+                    description = listOf("Expects model to use location tool. 'get_location' should be called."),
                     queries = listOf(TestQuery("Where am I located?")),
                     systemPrompt = "You are a helpful assistant with access to location tools.",
-                    validator = { result ->
-                        val hasCoordinates =
-                            result.contains("40.4") ||
-                                result.contains("latitude", ignoreCase = true) ||
-                                result.contains("longitude", ignoreCase = true) ||
-                                result.contains("location", ignoreCase = true)
-                        if (hasCoordinates) {
-                            ValidationResult.Pass("Location data returned")
+                    validator = { _ ->
+                        if (ToolTrace.calls.contains("get_location")) {
+                            ValidationResult.Pass("get_location tool called")
                         } else {
-                            ValidationResult.Fail("No location data in response")
+                            ValidationResult.Fail("get_location tool NOT called. Calls: ${ToolTrace.calls}")
                         }
                     },
                 ),
                 TestCase(
-                    name = "TEST 2: Weather Query",
-                    description = listOf("Expects model to use weather tool"),
-                    queries = listOf(TestQuery("What's the weather like?")),
-                    systemPrompt = "You are a weather assistant with access to weather tools.",
-                    validator = { result ->
-                        val hasWeather =
-                            result.contains("weather", ignoreCase = true) ||
-                                result.contains("temperature", ignoreCase = true) ||
-                                result.contains("sunny", ignoreCase = true) ||
-                                result.contains("cloudy", ignoreCase = true) ||
-                                result.contains("degrees", ignoreCase = true)
-                        if (hasWeather) {
-                            ValidationResult.Pass("Weather data returned")
+                    name = "TEST 2: Weather Query (Sequential)",
+                    description = listOf("Expects weather check for current location. Should call get_location then get_weather."),
+                    queries = listOf(TestQuery("What's the weather like here?")),
+                    systemPrompt = "You are a weather assistant with access to weather tools. " +
+                        "First you should call get_location to get the location, and then call get_weather with the obtained location.",
+                    validator = { _ ->
+                        val calls = ToolTrace.calls
+                        if (calls.contains("get_location") && calls.contains("get_weather")) {
+                            ValidationResult.Pass("get_location and get_weather tools called")
                         } else {
-                            ValidationResult.Fail("No weather data in response")
+                            ValidationResult.Fail("Missing tool calls. Calls: $calls")
                         }
                     },
                 ),
                 TestCase(
-                    name = "TEST 3: Math Reasoning (raw output)",
-                    description = listOf("Raw output without tag parsing"),
-                    queries = listOf(TestQuery("What is 15 + 27? Think step by step.")),
-                    systemPrompt = "You are a math assistant. Show your work.",
-                    validator = { result ->
-                        if (result.contains("42")) {
-                            ValidationResult.Pass("Correct answer: 42")
+                    name = "TEST 3: Specific Weather (One Tool)",
+                    description = listOf("Expects weather check for specific coordinates."),
+                    queries = listOf(TestQuery("What is the weather at lat 35.6 and lon 139.7?")),
+                    systemPrompt = "You are a weather assistant.",
+                    validator = { _ ->
+                        if (ToolTrace.calls.contains("get_weather")) {
+                            ValidationResult.Pass("get_weather tool called")
                         } else {
-                            ValidationResult.Fail(
-                                message = "Incorrect or missing answer",
-                                details = "Expected: 42",
-                            )
+                            ValidationResult.Fail("get_weather tool NOT called. Calls: ${ToolTrace.calls}")
+                        }
+                    },
+                ),
+                TestCase(
+                    name = "TEST 4: No Tool Needed",
+                    description = listOf("General knowledge question. No tools should be called."),
+                    queries = listOf(TestQuery("What is the capital of France?")),
+                    systemPrompt = "You are a helpful assistant.",
+                    validator = { _ ->
+                        if (ToolTrace.calls.isEmpty()) {
+                            ValidationResult.Pass("No tools called")
+                        } else {
+                            ValidationResult.Fail("Unexpected tool calls: ${ToolTrace.calls}")
+                        }
+                    },
+                ),
+                TestCase(
+                    name = "TEST 5: Chat with Tool Awareness",
+                    description = listOf("Chit-chat. No tools should be called."),
+                    queries = listOf(TestQuery("Tell me a short joke.")),
+                    systemPrompt = "You are a funny assistant.",
+                    validator = { result ->
+                        if (ToolTrace.calls.isEmpty() && result.isNotBlank()) {
+                            ValidationResult.Pass("Chat response received without tool usage")
+                        } else {
+                            ValidationResult.Fail("Failed. Calls: ${ToolTrace.calls}, Result: $result")
                         }
                     },
                 ),
