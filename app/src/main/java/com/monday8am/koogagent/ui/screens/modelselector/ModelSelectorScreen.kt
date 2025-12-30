@@ -45,7 +45,7 @@ fun ModelSelectorScreen(onNavigateToNotification: (String) -> Unit, onNavigateTo
     ModelSelectorScreenContent(
         uiState = uiState,
         modifier = Modifier,
-        onAction = viewModel::onUiAction,
+        onIntent = viewModel::onUiAction,
         onNavigateToNotification = onNavigateToNotification,
         onNavigateToTesting = onNavigateToTesting,
     )
@@ -55,7 +55,7 @@ fun ModelSelectorScreen(onNavigateToNotification: (String) -> Unit, onNavigateTo
 private fun ModelSelectorScreenContent(
     uiState: UiState,
     modifier: Modifier = Modifier,
-    onAction: (UiAction) -> Unit = {},
+    onIntent: (UiAction) -> Unit = {},
     onNavigateToNotification: (String) -> Unit = {},
     onNavigateToTesting: (String) -> Unit = {},
 ) {
@@ -96,7 +96,7 @@ private fun ModelSelectorScreenContent(
             ModelList(
                 models = uiState.models,
                 selectedModelId = uiState.selectedModelId,
-                onAction = onAction,
+                onIntent = onIntent,
                 modifier = Modifier.weight(1f),
             )
         }
@@ -104,7 +104,7 @@ private fun ModelSelectorScreenContent(
         ToolBar(
             models = uiState.models,
             selectedModelId = uiState.selectedModelId,
-            onAction = onAction,
+            onIntent = onIntent,
             onNavigateToTesting = onNavigateToTesting,
             onNavigateToNotification = onNavigateToNotification,
         )

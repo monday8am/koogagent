@@ -29,7 +29,7 @@ import com.monday8am.presentation.modelselector.UiAction
 internal fun ToolBar(
     models: List<ModelInfo>,
     selectedModelId: String?,
-    onAction: (UiAction) -> Unit,
+    onIntent: (UiAction) -> Unit,
     onNavigateToTesting: (String) -> Unit,
     onNavigateToNotification: (String) -> Unit,
     modifier: Modifier = Modifier
@@ -51,7 +51,7 @@ internal fun ToolBar(
             -> {
                 Button(
                     onClick = {
-                        onAction(UiAction.CancelCurrentDownload)
+                        onIntent(UiAction.CancelCurrentDownload)
                     },
                 ) {
                     Icon(
@@ -65,7 +65,7 @@ internal fun ToolBar(
                 Button(
                     onClick = {
                         selectedModelId?.let { modelId ->
-                            onAction(UiAction.DeleteModel(modelId))
+                            onIntent(UiAction.DeleteModel(modelId))
                         }
                     },
                     colors =
@@ -129,7 +129,7 @@ private fun ToolBarPreview_NotDownloaded() {
                 ),
             ),
             selectedModelId = ModelCatalog.QWEN3_0_6B.modelId,
-            onAction = {},
+            onIntent = {},
             onNavigateToTesting = {},
             onNavigateToNotification = {},
         )
@@ -150,7 +150,7 @@ private fun ToolBarPreview_DownloadedSelected() {
                 ),
             ),
             selectedModelId = ModelCatalog.HAMMER2_1_0_5B.modelId,
-            onAction = {},
+            onIntent = {},
             onNavigateToTesting = {},
             onNavigateToNotification = {},
         )
@@ -171,7 +171,7 @@ private fun ToolBarPreview_Downloading() {
                 ),
             ),
             selectedModelId = ModelCatalog.GEMMA3_1B.modelId,
-            onAction = {},
+            onIntent = {},
             onNavigateToTesting = {},
             onNavigateToNotification = {},
         )
