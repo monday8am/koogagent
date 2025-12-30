@@ -294,6 +294,24 @@ class ToolCallingTest(
                         }
                     },
                 ),
+                TestCase(
+                    name = "TEST 6: Parallel Tool Calls",
+                    description = listOf(
+                        "Expects multiple get_weather calls for different cities.",
+                        "Model should call get_weather at least twice.",
+                    ),
+                    queries = listOf(TestQuery("What's the weather in Tokyo (lat 35.6, lon 139.7) and Paris (lat 48.8, lon 2.3)?")),
+                    systemPrompt = "You are a weather assistant. When asked about weather in multiple locations, " +
+                        "call get_weather for each location.",
+                    validator = { _ ->
+                        val weatherCalls = ToolTrace.calls.count { it == "get_weather" }
+                        if (weatherCalls >= 2) {
+                            ValidationResult.Pass("Multiple get_weather calls made ($weatherCalls)")
+                        } else {
+                            ValidationResult.Fail("Expected 2+ get_weather calls, got: $weatherCalls. Calls: ${ToolTrace.calls}")
+                        }
+                    },
+                ),
             )
     }
 }
