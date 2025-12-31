@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -81,10 +82,12 @@ class ModelSelectorViewModelImpl(
 
     override val uiState: StateFlow<UiState> = combine(
         catalogState,
-        modelDownloadManager.activeDownloads,
-    ) { catalog, activeDownloads ->
-        deriveUiState(catalog, activeDownloads)
-    }.stateIn(scope, SharingStarted.Eagerly, UiState())
+        modelDownloadManager.modelsStatus,
+    ) { catalog, modelsStatus ->
+        deriveUiState(catalog, modelsStatus)
+    }
+        .flowOn(ioDispatcher)
+        .stateIn(scope, SharingStarted.Eagerly, UiState())
 
     init {
         loadCatalog()
@@ -136,19 +139,13 @@ class ModelSelectorViewModelImpl(
     private fun deleteModel(modelId: String) {
         val model = modelRepository.findById(modelId) ?: return
         scope.launch(ioDispatcher) {
-            if (modelDownloadManager.deleteModel(model.bundleFilename)) {
-                // Increment version to trigger UI refresh
-                val current = catalogState.value
-                if (current is CatalogState.Success) {
-                    catalogState.value = current.copy(version = current.version + 1)
-                }
-            }
+            modelDownloadManager.deleteModel(model.bundleFilename)
         }
     }
 
-    private suspend fun deriveUiState(
+    private fun deriveUiState(
         catalog: CatalogState,
-        activeDownloads: Map<String, ModelDownloadManager.Status>,
+        modelsStatus: Map<String, ModelDownloadManager.Status>,
     ): UiState = when (catalog) {
         is CatalogState.Loading -> UiState(
             isLoadingCatalog = true,
@@ -166,8 +163,7 @@ class ModelSelectorViewModelImpl(
             val queuedIds = mutableListOf<String>()
 
             val modelsInfo = catalog.models.map { config ->
-                val status = activeDownloads[config.modelId]
-                val isDownloaded = modelDownloadManager.modelExists(config.bundleFilename)
+                val status = modelsStatus[config.bundleFilename] ?: ModelDownloadManager.Status.NotStarted
 
                 val downloadStatus = when (status) {
                     is ModelDownloadManager.Status.InProgress -> {
@@ -186,12 +182,12 @@ class ModelSelectorViewModelImpl(
                     is ModelDownloadManager.Status.Completed -> DownloadStatus.Completed
                     is ModelDownloadManager.Status.Failed -> DownloadStatus.Failed(status.message)
                     is ModelDownloadManager.Status.Cancelled -> DownloadStatus.NotStarted
-                    null -> if (isDownloaded) DownloadStatus.Completed else DownloadStatus.NotStarted
+                    ModelDownloadManager.Status.NotStarted -> DownloadStatus.NotStarted
                 }
 
                 ModelInfo(
                     config = config,
-                    isDownloaded = isDownloaded || status is ModelDownloadManager.Status.Completed,
+                    isDownloaded = status is ModelDownloadManager.Status.Completed,
                     downloadStatus = downloadStatus,
                     isGated = config.isGated
                 )

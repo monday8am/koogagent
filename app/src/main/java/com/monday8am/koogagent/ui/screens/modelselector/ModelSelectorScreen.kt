@@ -138,7 +138,7 @@ private fun ModelSelectorScreenContent(
         ToolBar(
             models = uiState.models,
             selectedModelId = selectedModelId,
-            onIntent = onIntent,
+            onAction = onIntent,
             onNavigateToTesting = onNavigateToTesting,
             onNavigateToNotification = onNavigateToNotification,
         )

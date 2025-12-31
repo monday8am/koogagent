@@ -11,13 +11,17 @@ import com.monday8am.presentation.modelselector.ModelDownloadManager
 import java.io.File
 import java.util.UUID
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.ProducerScope
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -27,7 +31,53 @@ class ModelDownloadManagerImpl(
     private val workManager: WorkManager = WorkManager.getInstance(context),
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : ModelDownloadManager {
+    private val scope = CoroutineScope(SupervisorJob() + dispatcher)
     private val modelDestinationPath = "${context.applicationContext.filesDir}/data/local/tmp/slm/"
+
+    private val downloadedFilenames = MutableStateFlow<Set<String>>(emptySet())
+
+    override val modelsStatus: Flow<Map<String, ModelDownloadManager.Status>> = combine(
+        downloadedFilenames,
+        workManager.getWorkInfosByTagFlow(WORK_TAG)
+    ) { downloaded, workInfos ->
+        val statusMap = mutableMapOf<String, ModelDownloadManager.Status>()
+
+        // 1. Mark everything on disk as Completed
+        downloaded.forEach { filename ->
+            statusMap[filename] = ModelDownloadManager.Status.Completed(File(getModelPath(filename)))
+        }
+
+        // 2. Overlay WorkManager status for anything NOT finished
+        workInfos.forEach { info ->
+            val filename = info.tags
+                .firstOrNull { it.startsWith(BUNDLE_FILENAME_PREFIX) }
+                ?.removePrefix(BUNDLE_FILENAME_PREFIX) ?: return@forEach
+
+            val status = info.toModelDownloadManagerStatus(null)
+
+            // Only overlay if it's actually active or just failed
+            // If it's SUCCEEDED, we trust the disk scan more
+            if (status !is ModelDownloadManager.Status.Completed) {
+                statusMap[filename] = status
+            }
+        }
+        statusMap
+    }.flowOn(dispatcher)
+
+    init {
+        updateDownloadedFiles()
+        // Also observe work manager to catch completions from other components or previous sessions
+        scope.launch {
+            workManager.getWorkInfosByTagFlow(WORK_TAG).collect {
+                updateDownloadedFiles()
+            }
+        }
+    }
+
+    private fun updateDownloadedFiles() {
+        val files = File(modelDestinationPath).listFiles()?.map { it.name }?.toSet() ?: emptySet()
+        downloadedFilenames.value = files
+    }
 
     override fun getModelPath(bundleFilename: String) = "$modelDestinationPath$bundleFilename"
 
@@ -37,11 +87,15 @@ class ModelDownloadManagerImpl(
 
     override suspend fun deleteModel(bundleFilename: String): Boolean = withContext(dispatcher) {
         val modelFile = File(getModelPath(bundleFilename))
-        if (modelFile.exists()) {
+        val deleted = if (modelFile.exists()) {
             modelFile.delete()
         } else {
             true // Already deleted
         }
+        if (deleted) {
+            updateDownloadedFiles()
+        }
+        deleted
     }
 
     override fun downloadModel(
@@ -94,6 +148,7 @@ class ModelDownloadManagerImpl(
             )
             .addTag(WORK_TAG)
             .addTag("$MODEL_ID_PREFIX$modelId")
+            .addTag("$BUNDLE_FILENAME_PREFIX${destinationFile.name}")
             .build()
     }
 
@@ -126,19 +181,6 @@ class ModelDownloadManagerImpl(
         }
     }
 
-    override val activeDownloads: Flow<Map<String, ModelDownloadManager.Status>> =
-        workManager.getWorkInfosByTagFlow(WORK_TAG).map { workInfos ->
-            workInfos
-                .filter { !it.state.isFinished }
-                .associate { info ->
-                    val modelId =
-                        info.tags
-                            .firstOrNull { it.startsWith(MODEL_ID_PREFIX) }
-                            ?.removePrefix(MODEL_ID_PREFIX) ?: "unknown"
-                    modelId to info.toModelDownloadManagerStatus(null)
-                }
-        }
-
     override fun cancelDownload() {
         // This function correctly cancels all work tagged as "model-download".
         workManager.cancelAllWorkByTag(WORK_TAG)
@@ -147,6 +189,7 @@ class ModelDownloadManagerImpl(
     companion object {
         private const val WORK_TAG = "model-download"
         private const val MODEL_ID_PREFIX = "model-id:"
+        private const val BUNDLE_FILENAME_PREFIX = "bundle-filename:"
     }
 }
 

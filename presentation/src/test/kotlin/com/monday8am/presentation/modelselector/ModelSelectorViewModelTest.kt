@@ -48,16 +48,15 @@ class ModelSelectorViewModelTest {
 
     private lateinit var fakeRepository: ModelRepository
     private lateinit var fakeDownloadManager: FakeModelDownloadManager
-    private lateinit var activeDownloadFlow: MutableStateFlow<Map<String, ModelDownloadManager.Status>>
+    private lateinit var modelsStatusFlow: MutableStateFlow<Map<String, ModelDownloadManager.Status>>
 
     @BeforeTest
     fun setup() {
         Dispatchers.setMain(testDispatcher)
         fakeRepository = ModelRepository()
-        activeDownloadFlow = MutableStateFlow(emptyMap())
+        modelsStatusFlow = MutableStateFlow(emptyMap())
         fakeDownloadManager = FakeModelDownloadManager(
-            modelExists = false,
-            activeDownloadFlow = activeDownloadFlow
+            modelsStatusFlow = modelsStatusFlow
         )
     }
 
@@ -155,8 +154,8 @@ class ModelSelectorViewModelTest {
     @Test
     fun `Initialize should re-attach to active download`() = runTest {
         // Setup manager with an active download for model1
-        activeDownloadFlow.value = mapOf(
-            model1.modelId to ModelDownloadManager.Status.InProgress(progress = 42f)
+        modelsStatusFlow.value = mapOf(
+            model1.bundleFilename to ModelDownloadManager.Status.InProgress(progress = 42f)
         )
 
         val viewModel = createViewModel()
@@ -184,9 +183,8 @@ class ModelSelectorViewModelTest {
         fakeRepository.setModels(testModels)
 
         val downloadManager = FakeModelDownloadManager(
-            modelExists = false,
             progressSteps = listOf(25f, 50f, 75f),
-            activeDownloadFlow = activeDownloadFlow
+            modelsStatusFlow = modelsStatusFlow
         )
         val viewModel = createViewModel(downloadManager = downloadManager)
         advanceUntilIdle()
@@ -213,11 +211,11 @@ class ModelSelectorViewModelTest {
         val viewModel = createViewModel()
         advanceUntilIdle()
 
-        // In the new reactive architecture, queue is derived from activeDownloads.
+        // In the new reactive architecture, queue is derived from modelsStatus.
         // Set up the flow to show model1 in progress and model2 pending.
-        activeDownloadFlow.value = mapOf(
-            model1.modelId to ModelDownloadManager.Status.InProgress(progress = 10f),
-            model2.modelId to ModelDownloadManager.Status.Pending
+        modelsStatusFlow.value = mapOf(
+            model1.bundleFilename to ModelDownloadManager.Status.InProgress(progress = 10f),
+            model2.bundleFilename to ModelDownloadManager.Status.Pending
         )
         advanceUntilIdle()
 
@@ -280,6 +278,30 @@ class ModelSelectorViewModelTest {
         assertFalse(deletedModel.isDownloaded)
 
         viewModel.dispose()
+    }
+
+    @Test
+    fun `isReady should update reactively when downloadedFilenames changes`() = runTest {
+        fakeRepository.setModels(testModels)
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        // Initially not downloaded
+        val initialModel = viewModel.uiState.value.models.find { it.config.modelId == model1.modelId }
+        assertNotNull(initialModel)
+        assertFalse(updatedModelIsReady(viewModel, model1.modelId))
+
+        // Simulate file appearing
+        fakeDownloadManager.setDownloadedFilenames(setOf(model1.bundleFilename))
+        advanceUntilIdle()
+
+        assertTrue(updatedModelIsReady(viewModel, model1.modelId))
+
+        viewModel.dispose()
+    }
+
+    private fun updatedModelIsReady(viewModel: ModelSelectorViewModelImpl, modelId: String): Boolean {
+        return viewModel.uiState.value.models.find { it.config.modelId == modelId }?.isDownloaded ?: false
     }
 
     // endregion
