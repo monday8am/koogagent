@@ -154,10 +154,7 @@ class ModelSelectorViewModelTest {
 
     @Test
     fun `Initialize should re-attach to active download`() = runTest {
-        // Prepare repository content is not needed as VM fetches it
-
         // Setup manager with an active download for model1
-        // StateFlow.first() will get this initial value immediately
         activeDownloadFlow.value = mapOf(
             model1.modelId to ModelDownloadManager.Status.InProgress(progress = 42f)
         )
@@ -166,7 +163,6 @@ class ModelSelectorViewModelTest {
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
-        // Should show 42f because handleInitialize picked it up and re-attached
         assertEquals(42f, state.currentDownload?.progress)
         assertEquals(model1.modelId, state.currentDownload?.modelId)
 
@@ -174,24 +170,6 @@ class ModelSelectorViewModelTest {
         assertNotNull(model1Info)
         assertTrue(model1Info.downloadStatus is DownloadStatus.Downloading)
         assertEquals(42f, model1Info.downloadStatus.progress)
-
-        viewModel.dispose()
-    }
-
-    // endregion
-
-    // region Model Selection Tests
-
-    @Test
-    fun `SelectModel should update selectedModelId`() = runTest {
-        val viewModel = createViewModel()
-        advanceUntilIdle()
-
-        viewModel.onUiAction(UiAction.SelectModel(model1.modelId))
-        advanceUntilIdle()
-
-        assertEquals(model1.modelId, viewModel.uiState.value.selectedModelId)
-        assertTrue(viewModel.uiState.value.statusMessage.contains("Selected"))
 
         viewModel.dispose()
     }
@@ -292,8 +270,6 @@ class ModelSelectorViewModelTest {
 
         // Delete model
         viewModel.onUiAction(UiAction.DeleteModel(model1.modelId))
-        // Trigger a re-emission of activeDownloads to force combine to recalculate
-        activeDownloadFlow.value = mapOf("trigger" to ModelDownloadManager.Status.Cancelled)
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
@@ -302,23 +278,6 @@ class ModelSelectorViewModelTest {
         // After deletion and re-evaluation, model should be NotStarted
         assertEquals(DownloadStatus.NotStarted, deletedModel.downloadStatus)
         assertFalse(deletedModel.isDownloaded)
-
-        viewModel.dispose()
-    }
-
-    @Test
-    fun `DeleteModel should clear selection if deleted model was selected`() = runTest {
-        fakeRepository.setModels(testModels)
-        val viewModel = createViewModel()
-        advanceUntilIdle()
-
-        viewModel.onUiAction(UiAction.SelectModel(model1.modelId))
-        advanceUntilIdle()
-        viewModel.onUiAction(UiAction.DeleteModel(model1.modelId))
-        advanceUntilIdle()
-
-        val state = viewModel.uiState.value
-        assertNull(state.selectedModelId)
 
         viewModel.dispose()
     }

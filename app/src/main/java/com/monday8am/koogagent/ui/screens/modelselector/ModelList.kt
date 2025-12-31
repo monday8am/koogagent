@@ -20,6 +20,7 @@ internal fun ModelList(
     models: List<ModelInfo>,
     selectedModelId: String?,
     onIntent: (UiAction) -> Unit,
+    onSelectModel: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -37,7 +38,7 @@ internal fun ModelList(
                     onIntent(UiAction.DownloadModel(modelInfo.config.modelId))
                 },
                 onSelectClick = {
-                    onIntent(UiAction.SelectModel(modelInfo.config.modelId))
+                    onSelectModel(modelInfo.config.modelId)
                 },
             )
         }
@@ -84,7 +85,8 @@ private fun ModelListPreview() {
         ModelList(
             models = sampleModels,
             selectedModelId = sampleModels.first().config.modelId,
-            onIntent = {}
+            onIntent = {},
+            onSelectModel = {}
         )
     }
 }

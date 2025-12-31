@@ -19,7 +19,6 @@ import kotlinx.coroutines.launch
  */
 data class UiState(
     val models: List<ModelInfo> = emptyList(),
-    val selectedModelId: String? = null,
     val currentDownload: DownloadInfo? = null,
     val queuedDownloads: List<String> = emptyList(),
     val statusMessage: String = "Select a model to get started",
@@ -48,10 +47,10 @@ sealed interface DownloadStatus {
 }
 
 sealed class UiAction {
-    data class SelectModel(val modelId: String) : UiAction()
     data class DownloadModel(val modelId: String) : UiAction()
     data object CancelCurrentDownload : UiAction()
     data class DeleteModel(val modelId: String) : UiAction()
+    internal data object Initialize : UiAction()
 }
 
 interface ModelSelectorViewModel {
@@ -69,17 +68,14 @@ class ModelSelectorViewModelImpl(
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val catalogResult = MutableStateFlow<Result<List<ModelConfiguration>>?>(null)
+    private val refreshTrigger = MutableStateFlow(System.currentTimeMillis())
 
     private val _uiState = MutableStateFlow(UiState())
     override val uiState: StateFlow<UiState> = _uiState.asStateFlow()
 
     init {
         scope.launch(ioDispatcher) {
-            val models = modelCatalogProvider.fetchModels()
-            if (models.isSuccess) {
-                modelRepository.setModels(models.getOrNull()!!)
-            }
-            catalogResult.value = models
+            fetchAndSyncModels()
         }
         // Observe combined state
         observeCombinedState()
@@ -89,8 +85,9 @@ class ModelSelectorViewModelImpl(
         scope.launch {
             combine(
                 flow = catalogResult.filterNotNull(),
-                flow2 = modelDownloadManager.activeDownloads
-            ) { catalogResult, activeDownloads ->
+                flow2 = modelDownloadManager.activeDownloads,
+                flow3 = refreshTrigger
+            ) { catalogResult, activeDownloads, _ ->
                 if (catalogResult.isSuccess) {
                     val models = catalogResult.getOrThrow()
                     var currentDownload: DownloadInfo? = null
@@ -123,13 +120,13 @@ class ModelSelectorViewModelImpl(
                         ModelInfo(
                             config = config,
                             isDownloaded = isDownloaded || status is ModelDownloadManager.Status.Completed,
-                            downloadStatus = downloadStatus
+                            downloadStatus = downloadStatus,
+                            isGated = config.isGated
                         )
                     }
 
                     UiState(
                         models = modelsInfo,
-                        selectedModelId = _uiState.value.selectedModelId,
                         currentDownload = currentDownload,
                         queuedDownloads = queuedIds,
                         isLoadingCatalog = false,
@@ -154,7 +151,7 @@ class ModelSelectorViewModelImpl(
     override fun onUiAction(action: UiAction) {
         scope.launch {
             when (action) {
-                is UiAction.SelectModel -> handleSelectModel(action.modelId)
+                is UiAction.Initialize -> handleRefresh()
                 is UiAction.DownloadModel -> handleDownloadModel(action.modelId)
                 is UiAction.CancelCurrentDownload -> handleCancelDownload()
                 is UiAction.DeleteModel -> handleDeleteModel(action.modelId)
@@ -166,9 +163,17 @@ class ModelSelectorViewModelImpl(
         scope.cancel()
     }
 
-    private fun handleSelectModel(modelId: String) {
-        val modelName = _uiState.value.models.find { it.config.modelId == modelId }?.config?.displayName
-        _uiState.update { it.copy(selectedModelId = modelId, statusMessage = "Selected $modelName") }
+    private suspend fun handleRefresh() {
+        _uiState.update { it.copy(isLoadingCatalog = true, statusMessage = "Loading models...") }
+        fetchAndSyncModels()
+    }
+
+    private suspend fun fetchAndSyncModels() {
+        val models = modelCatalogProvider.fetchModels()
+        if (models.isSuccess) {
+            modelRepository.setModels(models.getOrNull()!!)
+        }
+        catalogResult.value = models
     }
 
     private fun handleDownloadModel(modelId: String) {
@@ -186,12 +191,7 @@ class ModelSelectorViewModelImpl(
     private suspend fun handleDeleteModel(modelId: String) {
         val model = modelRepository.findById(modelId) ?: return
         if (modelDownloadManager.deleteModel(model.bundleFilename)) {
-            _uiState.update {
-                it.copy(
-                    selectedModelId = if (it.selectedModelId == modelId) null else it.selectedModelId,
-                    statusMessage = "Model deleted"
-                )
-            }
+            refreshTrigger.value = System.currentTimeMillis()
         }
     }
 }

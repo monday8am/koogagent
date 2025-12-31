@@ -7,6 +7,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
@@ -41,11 +44,33 @@ fun ModelSelectorScreen(onNavigateToNotification: (String) -> Unit, onNavigateTo
         }
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    var selectedModelId by remember { mutableStateOf<String?>(null) }
+
+    // Auto-deselect if model disappears from list (e.g. after deletion)
+    androidx.compose.runtime.LaunchedEffect(uiState.models) {
+        if (selectedModelId != null && uiState.models.none { it.config.modelId == selectedModelId }) {
+            selectedModelId = null
+        }
+    }
+
+    val displayStatusMessage = when {
+        uiState.isLoadingCatalog -> "Loading models from Hugging Face..."
+        uiState.currentDownload != null -> "Downloading: ${uiState.currentDownload?.modelId?.take(20)}..."
+        selectedModelId != null -> {
+            val name = uiState.models.find { it.config.modelId == selectedModelId }?.config?.displayName
+            "Selected: $name"
+        }
+
+        else -> uiState.statusMessage
+    }
 
     ModelSelectorScreenContent(
         uiState = uiState,
+        selectedModelId = selectedModelId,
+        statusMessage = displayStatusMessage,
         modifier = Modifier,
         onIntent = viewModel::onUiAction,
+        onSelectModel = { selectedModelId = it },
         onNavigateToNotification = onNavigateToNotification,
         onNavigateToTesting = onNavigateToTesting,
     )
@@ -54,8 +79,11 @@ fun ModelSelectorScreen(onNavigateToNotification: (String) -> Unit, onNavigateTo
 @Composable
 private fun ModelSelectorScreenContent(
     uiState: UiState,
+    selectedModelId: String?,
+    statusMessage: String,
     modifier: Modifier = Modifier,
     onIntent: (UiAction) -> Unit = {},
+    onSelectModel: (String) -> Unit = {},
     onNavigateToNotification: (String) -> Unit = {},
     onNavigateToTesting: (String) -> Unit = {},
 ) {
@@ -72,7 +100,7 @@ private fun ModelSelectorScreenContent(
         )
 
         Text(
-            text = uiState.statusMessage,
+            text = statusMessage,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(bottom = 8.dp),
@@ -95,15 +123,21 @@ private fun ModelSelectorScreenContent(
         } else {
             ModelList(
                 models = uiState.models,
-                selectedModelId = uiState.selectedModelId,
-                onIntent = onIntent,
+                selectedModelId = selectedModelId,
+                onIntent = { action ->
+                    if (action is UiAction.DownloadModel) {
+                        onSelectModel(action.modelId)
+                    }
+                    onIntent(action)
+                },
+                onSelectModel = onSelectModel,
                 modifier = Modifier.weight(1f),
             )
         }
 
         ToolBar(
             models = uiState.models,
-            selectedModelId = uiState.selectedModelId,
+            selectedModelId = selectedModelId,
             onIntent = onIntent,
             onNavigateToTesting = onNavigateToTesting,
             onNavigateToNotification = onNavigateToNotification,
@@ -133,11 +167,12 @@ private fun ModelSelectorScreenPreview() {
                         },
                     )
                 },
-                selectedModelId = ModelCatalog.GEMMA3_1B.modelId,
                 currentDownload = DownloadInfo(ModelCatalog.GEMMA3_1B.modelId, 10f),
                 statusMessage = "Downloading model: GEMMA3_1B",
                 isLoadingCatalog = false,
             ),
+            selectedModelId = ModelCatalog.GEMMA3_1B.modelId,
+            statusMessage = "Selected: GEMMA3_1B",
         )
     }
 }
@@ -152,6 +187,8 @@ private fun ModelSelectorScreenPreview_Loading() {
                 isLoadingCatalog = true,
                 statusMessage = "Loading models from Hugging Face...",
             ),
+            selectedModelId = null,
+            statusMessage = "Loading models from Hugging Face...",
         )
     }
 }
