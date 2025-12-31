@@ -34,6 +34,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.monday8am.koogagent.Dependencies
 import com.monday8am.koogagent.data.MealType
 import com.monday8am.koogagent.data.ModelCatalog
@@ -48,14 +49,11 @@ import com.monday8am.presentation.notifications.NotificationViewModelImpl
 import com.monday8am.presentation.notifications.UiAction
 import com.monday8am.presentation.notifications.defaultNotificationContext
 
-/**
- * Notification Screen - Main screen for generating notifications.
- */
 @Composable
 fun NotificationScreen(modelId: String) {
     val viewModel: AndroidNotificationViewModel =
-        remember(modelId) {
-            val selectedModel = ModelCatalog.findById(modelId) ?: ModelCatalog.DEFAULT
+        viewModel(key = modelId) {
+            val selectedModel = Dependencies.modelRepository.findById(modelId) ?: ModelCatalog.DEFAULT
 
             val inferenceEngine =
                 InferenceEngineFactory.create(
@@ -69,7 +67,7 @@ fun NotificationScreen(modelId: String) {
                 (Dependencies.modelDownloadManager as ModelDownloadManagerImpl)
                     .getModelPath(selectedModel.bundleFilename)
 
-            val impl =
+            AndroidNotificationViewModel(
                 NotificationViewModelImpl(
                     selectedModel = selectedModel,
                     modelPath = modelPath,
@@ -78,9 +76,9 @@ fun NotificationScreen(modelId: String) {
                     weatherProvider = Dependencies.weatherProvider,
                     locationProvider = Dependencies.locationProvider,
                     deviceContextProvider = Dependencies.deviceContextProvider,
-                )
-
-            AndroidNotificationViewModel(impl, selectedModel)
+                ),
+                selectedModel
+            )
         }
 
     val state by viewModel.uiState.collectAsStateWithLifecycle()

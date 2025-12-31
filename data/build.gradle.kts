@@ -15,6 +15,10 @@ kotlin {
 }
 dependencies {
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.kermit)
     api(libs.okhttp)
     api(libs.json)
+
+    // Testing
+    testImplementation(kotlin("test"))
 }

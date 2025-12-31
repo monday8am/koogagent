@@ -4,8 +4,13 @@ import android.content.Context
 import com.google.ai.edge.localagents.core.proto.Tool
 import com.monday8am.koogagent.data.LocationProvider
 import com.monday8am.koogagent.data.MockLocationProvider
+import com.monday8am.koogagent.data.ModelCatalog
+import com.monday8am.koogagent.data.ModelCatalogProvider
+import com.monday8am.koogagent.data.ModelRepository
 import com.monday8am.koogagent.data.WeatherProvider
 import com.monday8am.koogagent.data.WeatherProviderImpl
+import com.monday8am.koogagent.data.huggingface.FallbackModelCatalogProvider
+import com.monday8am.koogagent.data.huggingface.HuggingFaceModelCatalogProvider
 import com.monday8am.koogagent.download.ModelDownloadManagerImpl
 import com.monday8am.koogagent.inference.litertlm.LiteRTLmTools
 import com.monday8am.koogagent.inference.litertlm.NativeLocationTools
@@ -41,6 +46,17 @@ object Dependencies {
 
     val modelDownloadManager: ModelDownloadManager by lazy {
         ModelDownloadManagerImpl(appContext)
+    }
+
+    val modelCatalogProvider: ModelCatalogProvider by lazy {
+        FallbackModelCatalogProvider(
+            primary = HuggingFaceModelCatalogProvider(),
+            fallback = ModelCatalog.ALL_MODELS,
+        )
+    }
+
+    val modelRepository: ModelRepository by lazy {
+        ModelRepository()
     }
 
     val nativeTools: List<Any> by lazy {

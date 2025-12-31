@@ -77,16 +77,32 @@ class DownloadUnzipWorker(
     }
 
     private suspend fun downloadFile(url: String, destFile: File, scaleForUnzip: Boolean = false) {
-        val request = Request.Builder().url(url).build()
+        val existingBytes = if (destFile.exists()) destFile.length() else 0L
+
+        val requestBuilder = Request.Builder().url(url)
+        if (existingBytes > 0) {
+            requestBuilder.addHeader("Range", "bytes=$existingBytes-")
+        }
+        val request = requestBuilder.build()
+
         client.newCall(request).execute().use { response ->
+            if (response.code == 416) { // Requested Range Not Satisfiable
+                // File might be already fully downloaded or server doesn't support the range
+                // For safety, let's assume it might be corrupted or complete.
+                // If it's the exact same size as the content-length from a fresh request, it's complete.
+                // But for now, let's just log and return if it's already there and we can't get more.
+                return
+            }
             if (!response.isSuccessful) throw IOException("HTTP error ${response.code}")
 
             val body = response.body
-            val totalBytes = body.contentLength().takeIf { it > 0 } ?: -1L
+            val isResuming = response.code == 206
+            val contentLen = body.contentLength()
+            val totalBytes = if (isResuming) contentLen + existingBytes else contentLen.takeIf { it > 0 } ?: -1L
 
             body.byteStream().use { input ->
-                FileOutputStream(destFile).use { output ->
-                    copyStreamWithProgress(input, output, totalBytes) { progress ->
+                FileOutputStream(destFile, isResuming).use { output ->
+                    copyStreamWithProgress(input, output, totalBytes, existingBytes) { progress ->
                         // Scale progress: 0-85% for ZIP downloads, 0-100% for direct downloads
                         val scaledProgress =
                             if (scaleForUnzip) {
@@ -106,7 +122,7 @@ class DownloadUnzipWorker(
         val totalUncompressedSize = calculateTotalUncompressedSize(zipFile)
         var bytesExtracted = 0L
 
-        ZipInputStream(BufferedInputStream(FileInputStream(zipFile))).use { zis ->
+        ZipInputStream(BufferedInputStream(FileInputStream(zipFile), BUFFER_SIZE)).use { zis ->
             var entry: ZipEntry? = zis.nextEntry
             while (entry != null) {
                 val newFile = File(targetDir, entry.name)
@@ -134,7 +150,7 @@ class DownloadUnzipWorker(
 
     private fun calculateTotalUncompressedSize(zipFile: File): Long {
         var totalSize = 0L
-        ZipInputStream(BufferedInputStream(FileInputStream(zipFile))).use { zis ->
+        ZipInputStream(BufferedInputStream(FileInputStream(zipFile), BUFFER_SIZE)).use { zis ->
             var entry: ZipEntry? = zis.nextEntry
             while (entry != null) {
                 if (!entry.isDirectory) {
@@ -153,19 +169,27 @@ class DownloadUnzipWorker(
         currentBytesExtracted: Long,
         totalBytes: Long,
     ): Long {
-        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+        val buffer = ByteArray(BUFFER_SIZE)
         var bytesRead: Int
         var bytesCopied = 0L
+        var lastUpdateProgress = -1f
+        var lastUpdateTime = 0L
 
         while (input.read(buffer).also { bytesRead = it } != -1) {
             output.write(buffer, 0, bytesRead)
             bytesCopied += bytesRead
 
             if (totalBytes > 0) {
-                // Calculate extraction progress (0-100%) and scale to 85-100% range
+                val currentTime = System.currentTimeMillis()
                 val extractProgress = ((currentBytesExtracted + bytesCopied) * 100f) / totalBytes
-                val scaledProgress = EXTRACT_PROGRESS_START + (extractProgress * EXTRACT_PROGRESS_WEIGHT)
-                setProgress(workDataOf(KEY_PROGRESS to scaledProgress.coerceAtMost(100f)))
+
+                // Throttle updates: at least 1% change or 500ms passed
+                if (extractProgress - lastUpdateProgress >= 1f || currentTime - lastUpdateTime >= 500L) {
+                    val scaledProgress = EXTRACT_PROGRESS_START + (extractProgress * EXTRACT_PROGRESS_WEIGHT)
+                    setProgress(workDataOf(KEY_PROGRESS to scaledProgress.coerceAtMost(100f)))
+                    lastUpdateProgress = extractProgress
+                    lastUpdateTime = currentTime
+                }
             }
         }
         return bytesCopied
@@ -175,19 +199,29 @@ class DownloadUnzipWorker(
         input: InputStream,
         output: OutputStream,
         totalBytes: Long,
+        alreadyCopied: Long,
         onProgress: suspend (Float) -> Unit,
     ) {
-        val buffer = ByteArray(DEFAULT_BUFFER_SIZE) // 8KB
+        val buffer = ByteArray(BUFFER_SIZE)
         var bytesRead: Int
-        var bytesCopied: Long = 0
+        var bytesCopied: Long = alreadyCopied
+        var lastUpdateProgress = -1f
+        var lastUpdateTime = 0L
 
         while (input.read(buffer).also { bytesRead = it } != -1) {
             output.write(buffer, 0, bytesRead)
             bytesCopied += bytesRead
 
             if (totalBytes > 0) {
+                val currentTime = System.currentTimeMillis()
                 val progress = (bytesCopied * 100).toFloat() / totalBytes.toFloat()
-                onProgress(progress)
+
+                // Throttle updates: at least 1% change or 500ms passed
+                if (progress - lastUpdateProgress >= 1f || currentTime - lastUpdateTime >= 500L) {
+                    onProgress(progress)
+                    lastUpdateProgress = progress
+                    lastUpdateTime = currentTime
+                }
             }
         }
     }
@@ -204,5 +238,6 @@ class DownloadUnzipWorker(
         private const val DOWNLOAD_PROGRESS_WEIGHT = 0.85f
         private const val EXTRACT_PROGRESS_START = 85f
         private const val EXTRACT_PROGRESS_WEIGHT = 0.15f
+        private const val BUFFER_SIZE = 64 * 1024 // 64KB
     }
 }

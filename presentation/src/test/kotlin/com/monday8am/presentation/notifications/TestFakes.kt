@@ -11,8 +11,10 @@ import com.monday8am.koogagent.data.WeatherProvider
 import com.monday8am.presentation.modelselector.ModelDownloadManager
 import java.io.File
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.update
 
 internal class FakeLocalInferenceEngine : LocalInferenceEngine {
     var initializeCalled = false
@@ -59,9 +61,9 @@ internal class FakeDeviceContextProvider : DeviceContextProvider {
 }
 
 internal class FakeModelDownloadManager(
-    private val modelExists: Boolean = true,
     private val progressSteps: List<Float> = emptyList(),
     private val shouldFail: Boolean = false,
+    private val modelsStatusFlow: MutableStateFlow<Map<String, ModelDownloadManager.Status>> = MutableStateFlow(emptyMap())
 ) : ModelDownloadManager {
     override fun downloadModel(
         modelId: String,
@@ -73,15 +75,31 @@ internal class FakeModelDownloadManager(
         }
 
         progressSteps.forEach { progress ->
+            modelsStatusFlow.update { it + (bundleFilename to ModelDownloadManager.Status.InProgress(progress)) }
             emit(ModelDownloadManager.Status.InProgress(progress))
         }
+        modelsStatusFlow.update { it + (bundleFilename to ModelDownloadManager.Status.Completed(File("/fake/path/$bundleFilename"))) }
         emit(ModelDownloadManager.Status.Completed(File("/fake/path/$bundleFilename")))
+    }
+
+    override val modelsStatus: Flow<Map<String, ModelDownloadManager.Status>>
+        get() = modelsStatusFlow
+
+    fun setDownloadedFilenames(filenames: Set<String>) {
+        modelsStatusFlow.update { current ->
+            val updated = current.toMutableMap()
+            filenames.forEach { filename ->
+                updated[filename] = ModelDownloadManager.Status.Completed(File("/fake/path/$filename"))
+            }
+            updated
+        }
     }
 
     override fun cancelDownload() {
     }
 
-    override suspend fun modelExists(bundleFilename: String): Boolean = modelExists
+    override suspend fun modelExists(bundleFilename: String): Boolean =
+        modelsStatusFlow.value[bundleFilename] is ModelDownloadManager.Status.Completed
 
     override fun getModelPath(bundleFilename: String): String = "/fake/path/$bundleFilename"
 

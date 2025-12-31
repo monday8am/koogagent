@@ -5,6 +5,8 @@ import kotlinx.coroutines.flow.Flow
 
 interface ModelDownloadManager {
     sealed interface Status {
+        data object NotStarted : Status
+
         data object Pending : Status
 
         data class InProgress(
@@ -27,6 +29,8 @@ interface ModelDownloadManager {
     suspend fun modelExists(bundleFilename: String): Boolean
 
     fun downloadModel(modelId: String, downloadUrl: String, bundleFilename: String): Flow<Status>
+
+    val modelsStatus: Flow<Map<String, Status>>
 
     fun cancelDownload()
 
