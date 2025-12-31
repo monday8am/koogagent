@@ -191,6 +191,15 @@ class ModelSelectorViewModelImpl(
                     downloadStatus = downloadStatus,
                     isGated = config.isGated
                 )
+            }.sortedBy {
+                if (it.downloadStatus is DownloadStatus.Downloading ||
+                    it.downloadStatus is DownloadStatus.Queued ||
+                    it.downloadStatus is DownloadStatus.Completed
+                ) {
+                    0
+                } else {
+                    1
+                }
             }
 
             UiState(
