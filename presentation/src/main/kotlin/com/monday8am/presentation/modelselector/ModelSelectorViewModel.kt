@@ -4,17 +4,15 @@ import com.monday8am.koogagent.data.ModelCatalogProvider
 import com.monday8am.koogagent.data.ModelConfiguration
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.take
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 
 /**
  * UI State for model selector screen
@@ -54,7 +52,6 @@ sealed class UiAction {
     data class DownloadModel(val modelId: String) : UiAction()
     data object CancelCurrentDownload : UiAction()
     data class DeleteModel(val modelId: String) : UiAction()
-    internal data object Initialize : UiAction()
 }
 
 interface ModelSelectorViewModel {
@@ -71,23 +68,92 @@ class ModelSelectorViewModelImpl(
 ) : ModelSelectorViewModel {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private val mutex = Mutex()
+    private val catalogResult = MutableStateFlow<Result<List<ModelConfiguration>>?>(null)
 
     private val _uiState = MutableStateFlow(UiState())
     override val uiState: StateFlow<UiState> = _uiState.asStateFlow()
 
-    private var activeDownloadJob: Job? = null
-
     init {
+        scope.launch(ioDispatcher) {
+            val models = modelCatalogProvider.fetchModels()
+            if (models.isSuccess) {
+                modelRepository.setModels(models.getOrNull()!!)
+            }
+            catalogResult.value = models
+        }
+        // Observe combined state
+        observeCombinedState()
+    }
+
+    private fun observeCombinedState() {
         scope.launch {
-            handleInitialize()
+            combine(
+                flow = catalogResult.filterNotNull(),
+                flow2 = modelDownloadManager.activeDownloads
+            ) { catalogResult, activeDownloads ->
+                if (catalogResult.isSuccess) {
+                    val models = catalogResult.getOrThrow()
+                    var currentDownload: DownloadInfo? = null
+                    val queuedIds = mutableListOf<String>()
+
+                    val modelsInfo = models.map { config ->
+                        val status = activeDownloads[config.modelId]
+                        val isDownloaded = modelDownloadManager.modelExists(config.bundleFilename)
+
+                        val downloadStatus = when (status) {
+                            is ModelDownloadManager.Status.InProgress -> {
+                                val progress = status.progress ?: 0f
+                                if (currentDownload == null) {
+                                    currentDownload = DownloadInfo(config.modelId, progress)
+                                }
+                                DownloadStatus.Downloading(progress)
+                            }
+
+                            is ModelDownloadManager.Status.Pending -> {
+                                queuedIds.add(config.modelId)
+                                DownloadStatus.Queued
+                            }
+
+                            is ModelDownloadManager.Status.Completed -> DownloadStatus.Completed
+                            is ModelDownloadManager.Status.Failed -> DownloadStatus.Failed(status.message)
+                            is ModelDownloadManager.Status.Cancelled -> DownloadStatus.NotStarted
+                            null -> if (isDownloaded) DownloadStatus.Completed else DownloadStatus.NotStarted
+                        }
+
+                        ModelInfo(
+                            config = config,
+                            isDownloaded = isDownloaded || status is ModelDownloadManager.Status.Completed,
+                            downloadStatus = downloadStatus
+                        )
+                    }
+
+                    UiState(
+                        models = modelsInfo,
+                        selectedModelId = _uiState.value.selectedModelId,
+                        currentDownload = currentDownload,
+                        queuedDownloads = queuedIds,
+                        isLoadingCatalog = false,
+                        catalogError = null,
+                        statusMessage = currentDownload?.let { "Downloading: ${it.modelId.take(20)}..." }
+                            ?: "Select a model"
+                    )
+                } else {
+                    val error = catalogResult.exceptionOrNull()?.message ?: "Unknown error"
+                    UiState(
+                        isLoadingCatalog = false,
+                        catalogError = error,
+                        statusMessage = "Error: $error"
+                    )
+                }
+            }.collect { newState ->
+                _uiState.value = newState
+            }
         }
     }
 
     override fun onUiAction(action: UiAction) {
         scope.launch {
             when (action) {
-                is UiAction.Initialize -> handleInitialize()
                 is UiAction.SelectModel -> handleSelectModel(action.modelId)
                 is UiAction.DownloadModel -> handleDownloadModel(action.modelId)
                 is UiAction.CancelCurrentDownload -> handleCancelDownload()
@@ -97,268 +163,35 @@ class ModelSelectorViewModelImpl(
     }
 
     override fun dispose() {
-        activeDownloadJob?.cancel()
-        modelDownloadManager.cancelDownload()
         scope.cancel()
     }
 
-    private suspend fun handleInitialize() {
-        if (modelRepository.getAllModels().isNotEmpty() || _uiState.value.catalogError != null) {
-            return
-        }
-
-        updateState { it.copy(isLoadingCatalog = true, statusMessage = "Loading models from Hugging Face...") }
-
-        val result = modelCatalogProvider.fetchModels()
-        if (result.isSuccess) {
-            val models = result.getOrThrow()
-            modelRepository.setModels(models)
-            handleCatalogLoaded(models)
-        } else {
-            val error = result.exceptionOrNull()?.message ?: "Unknown error"
-            updateState {
-                it.copy(
-                    isLoadingCatalog = false,
-                    catalogError = error,
-                    statusMessage = "Failed to load catalog: $error"
-                )
-            }
-        }
-    }
-
-    private suspend fun handleCatalogLoaded(models: List<ModelConfiguration>) {
-        val activeDownloads = modelDownloadManager.activeDownloads.take(1).let { flow ->
-            var result: Map<String, ModelDownloadManager.Status> = emptyMap()
-            flow.collect { result = it }
-            result
-        }
-
-        val modelsWithStatus = models.map { config ->
-            val isDownloaded = modelDownloadManager.modelExists(config.bundleFilename)
-            val activeStatus = activeDownloads[config.modelId]
-
-            // If there's an active background download, re-attach to it
-            if (activeStatus != null && !isDownloaded) {
-                reattachToDownload(config)
-            }
-
-            ModelInfo(
-                config = config,
-                isDownloaded = isDownloaded,
-                downloadStatus = when {
-                    isDownloaded -> DownloadStatus.Completed
-                    activeStatus is ModelDownloadManager.Status.InProgress ->
-                        DownloadStatus.Downloading(activeStatus.progress ?: 0f)
-
-                    activeStatus is ModelDownloadManager.Status.Pending ->
-                        DownloadStatus.Queued
-
-                    else -> DownloadStatus.NotStarted
-                },
-                isGated = config.isGated,
-            )
-        }
-
-        updateState {
-            it.copy(
-                models = modelsWithStatus,
-                isLoadingCatalog = false,
-                catalogError = null,
-                statusMessage = "Found ${modelsWithStatus.count { m -> m.isDownloaded }} of ${modelsWithStatus.size} models downloaded"
-            )
-        }
-    }
-
-    private fun reattachToDownload(config: ModelConfiguration) {
-        scope.launch {
-            modelDownloadManager.downloadModel(config.modelId, config.downloadUrl, config.bundleFilename)
-                .collect { status ->
-                    handleDownloadStatus(config.modelId, status)
-                }
-        }
-    }
-
-    private suspend fun handleSelectModel(modelId: String) {
+    private fun handleSelectModel(modelId: String) {
         val modelName = _uiState.value.models.find { it.config.modelId == modelId }?.config?.displayName
-        updateState {
-            it.copy(
-                selectedModelId = modelId,
-                statusMessage = "Selected $modelName"
-            )
+        _uiState.update { it.copy(selectedModelId = modelId, statusMessage = "Selected $modelName") }
+    }
+
+    private fun handleDownloadModel(modelId: String) {
+        val model = modelRepository.findById(modelId) ?: return
+        // Just tell the manager to start the download. The combined observer will update UI.
+        scope.launch(ioDispatcher) {
+            modelDownloadManager.downloadModel(model.modelId, model.downloadUrl, model.bundleFilename).collect {}
         }
     }
 
-    private suspend fun handleDownloadModel(modelId: String) {
-        mutex.withLock {
-            val state = _uiState.value
-            if (state.currentDownload != null) {
-                // Already downloading something, queue this one
-                _uiState.update {
-                    it.copy(
-                        queuedDownloads = it.queuedDownloads + modelId,
-                        models = it.updateModelStatus(modelId, DownloadStatus.Queued),
-                        statusMessage = "Download queued"
-                    )
-                }
-            } else {
-                // Start downloading immediately
-                startDownload(modelId)
-            }
-        }
-    }
-
-    private fun startDownload(modelId: String) {
-        val model = modelRepository.findById(modelId)
-            ?: _uiState.value.models.first { it.config.modelId == modelId }.config
-
-        _uiState.update {
-            it.copy(
-                selectedModelId = modelId,
-                currentDownload = DownloadInfo(modelId = modelId, progress = 0f),
-                models = it.updateModelStatus(modelId, DownloadStatus.Downloading(0f)),
-                queuedDownloads = it.queuedDownloads.filter { id -> id != modelId },
-                statusMessage = "Starting download..."
-            )
-        }
-
-        activeDownloadJob = scope.launch(ioDispatcher) {
-            modelDownloadManager.downloadModel(model.modelId, model.downloadUrl, model.bundleFilename)
-                .collect { status ->
-                    handleDownloadStatus(modelId, status)
-                }
-        }
-    }
-
-    private suspend fun handleDownloadStatus(modelId: String, status: ModelDownloadManager.Status) {
-        when (status) {
-            is ModelDownloadManager.Status.Pending -> {
-                // Initial state, do nothing
-            }
-
-            is ModelDownloadManager.Status.InProgress -> {
-                val progress = status.progress ?: 0f
-                updateState {
-                    it.copy(
-                        currentDownload = DownloadInfo(modelId, progress),
-                        models = it.updateModelStatus(modelId, DownloadStatus.Downloading(progress)),
-                        statusMessage = "Downloading: ${modelId.take(20)}..."
-                    )
-                }
-            }
-
-            is ModelDownloadManager.Status.Completed -> {
-                updateState {
-                    it.copy(
-                        models = it.models.map { m ->
-                            if (m.config.modelId == modelId) {
-                                m.copy(isDownloaded = true, downloadStatus = DownloadStatus.Completed)
-                            } else {
-                                m
-                            }
-                        },
-                        currentDownload = null,
-                        statusMessage = "Download complete!"
-                    )
-                }
-                processNextInQueue()
-            }
-
-            is ModelDownloadManager.Status.Failed -> {
-                updateState {
-                    it.copy(
-                        models = it.updateModelStatus(modelId, DownloadStatus.Failed(status.message)),
-                        currentDownload = null,
-                        statusMessage = "Download failed: ${status.message}"
-                    )
-                }
-                processNextInQueue()
-            }
-
-            is ModelDownloadManager.Status.Cancelled -> {
-                updateState {
-                    it.copy(
-                        models = it.models.map { m ->
-                            if (m.downloadStatus is DownloadStatus.Downloading || m.downloadStatus == DownloadStatus.Queued) {
-                                m.copy(downloadStatus = DownloadStatus.NotStarted)
-                            } else {
-                                m
-                            }
-                        },
-                        currentDownload = null,
-                        queuedDownloads = emptyList(),
-                        statusMessage = "Download cancelled"
-                    )
-                }
-            }
-        }
-    }
-
-    private suspend fun processNextInQueue() {
-        mutex.withLock {
-            val next = _uiState.value.queuedDownloads.firstOrNull()
-            if (next != null) {
-                startDownload(next)
-            }
-        }
-    }
-
-    private suspend fun handleCancelDownload() {
-        activeDownloadJob?.cancel()
-        activeDownloadJob = null
+    private fun handleCancelDownload() {
         modelDownloadManager.cancelDownload()
-
-        updateState {
-            it.copy(
-                models = it.models.map { m ->
-                    if (m.downloadStatus is DownloadStatus.Downloading || m.downloadStatus == DownloadStatus.Queued) {
-                        m.copy(downloadStatus = DownloadStatus.NotStarted)
-                    } else {
-                        m
-                    }
-                },
-                currentDownload = null,
-                queuedDownloads = emptyList(),
-                statusMessage = "Download cancelled"
-            )
-        }
     }
 
     private suspend fun handleDeleteModel(modelId: String) {
-        updateState { it.copy(statusMessage = "Deleting model...") }
-
-        val model = modelRepository.findById(modelId)
-            ?: _uiState.value.models.first { it.config.modelId == modelId }.config
-
-        val success = modelDownloadManager.deleteModel(model.bundleFilename)
-
-        if (success) {
-            updateState {
-                val newSelectedId = if (it.selectedModelId == modelId) null else it.selectedModelId
+        val model = modelRepository.findById(modelId) ?: return
+        if (modelDownloadManager.deleteModel(model.bundleFilename)) {
+            _uiState.update {
                 it.copy(
-                    models = it.models.map { m ->
-                        if (m.config.modelId == modelId) {
-                            m.copy(isDownloaded = false, downloadStatus = DownloadStatus.NotStarted)
-                        } else {
-                            m
-                        }
-                    },
-                    selectedModelId = newSelectedId,
+                    selectedModelId = if (it.selectedModelId == modelId) null else it.selectedModelId,
                     statusMessage = "Model deleted"
                 )
             }
-        } else {
-            updateState { it.copy(statusMessage = "Failed to delete model") }
         }
     }
-
-    private suspend fun updateState(block: (UiState) -> UiState) {
-        mutex.withLock {
-            _uiState.update(block)
-        }
-    }
-
-    private fun UiState.updateModelStatus(modelId: String, status: DownloadStatus): List<ModelInfo> =
-        this.models.map { m ->
-            if (m.config.modelId == modelId) m.copy(downloadStatus = status) else m
-        }
 }
