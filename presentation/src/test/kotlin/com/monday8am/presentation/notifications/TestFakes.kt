@@ -12,7 +12,6 @@ import com.monday8am.presentation.modelselector.ModelDownloadManager
 import java.io.File
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.update
 
@@ -65,21 +64,20 @@ internal class FakeModelDownloadManager(
     private val shouldFail: Boolean = false,
     private val modelsStatusFlow: MutableStateFlow<Map<String, ModelDownloadManager.Status>> = MutableStateFlow(emptyMap())
 ) : ModelDownloadManager {
-    override fun downloadModel(
+
+    override suspend fun downloadModel(
         modelId: String,
         downloadUrl: String,
         bundleFilename: String,
-    ): Flow<ModelDownloadManager.Status> = flow {
+    ) {
         if (shouldFail) {
-            throw Exception("Download failed") // Throw inside flow builder to be caught by .catch { }
+            throw Exception("Download failed")
         }
 
         progressSteps.forEach { progress ->
             modelsStatusFlow.update { it + (bundleFilename to ModelDownloadManager.Status.InProgress(progress)) }
-            emit(ModelDownloadManager.Status.InProgress(progress))
         }
         modelsStatusFlow.update { it + (bundleFilename to ModelDownloadManager.Status.Completed(File("/fake/path/$bundleFilename"))) }
-        emit(ModelDownloadManager.Status.Completed(File("/fake/path/$bundleFilename")))
     }
 
     override val modelsStatus: Flow<Map<String, ModelDownloadManager.Status>>
@@ -95,13 +93,14 @@ internal class FakeModelDownloadManager(
         }
     }
 
-    override fun cancelDownload() {
-    }
-
-    override suspend fun modelExists(bundleFilename: String): Boolean =
-        modelsStatusFlow.value[bundleFilename] is ModelDownloadManager.Status.Completed
+    override fun cancelDownload() {}
 
     override fun getModelPath(bundleFilename: String): String = "/fake/path/$bundleFilename"
 
-    override suspend fun deleteModel(bundleFilename: String): Boolean = true
+    override suspend fun deleteModel(bundleFilename: String): Boolean {
+        modelsStatusFlow.update { it - bundleFilename }
+        return true
+    }
+
+    override fun dispose() {}
 }

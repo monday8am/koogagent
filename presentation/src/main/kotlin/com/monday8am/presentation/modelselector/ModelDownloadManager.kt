@@ -24,15 +24,36 @@ interface ModelDownloadManager {
         data object Cancelled : Status
     }
 
-    fun getModelPath(bundleFilename: String): String
-
-    suspend fun modelExists(bundleFilename: String): Boolean
-
-    fun downloadModel(modelId: String, downloadUrl: String, bundleFilename: String): Flow<Status>
-
+    /**
+     * Flow of all model statuses keyed by bundle filename.
+     * Combines disk state with active WorkManager jobs.
+     */
     val modelsStatus: Flow<Map<String, Status>>
 
+    /**
+     * Returns the absolute path for a model bundle.
+     */
+    fun getModelPath(bundleFilename: String): String
+
+    /**
+     * Starts downloading a model. Status updates come through [modelsStatus].
+     * If the model already exists on disk, returns immediately.
+     */
+    suspend fun downloadModel(modelId: String, downloadUrl: String, bundleFilename: String)
+
+    /**
+     * Cancels all active downloads.
+     */
     fun cancelDownload()
 
+    /**
+     * Deletes a downloaded model from disk.
+     * @return true if deletion succeeded or file didn't exist
+     */
     suspend fun deleteModel(bundleFilename: String): Boolean
+
+    /**
+     * Releases resources. Should be called when the manager is no longer needed.
+     */
+    fun dispose()
 }

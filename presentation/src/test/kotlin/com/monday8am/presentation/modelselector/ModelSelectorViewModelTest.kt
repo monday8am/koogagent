@@ -253,27 +253,27 @@ class ModelSelectorViewModelTest {
     fun `DeleteModel should reset model status`() = runTest {
         fakeRepository.setModels(testModels)
 
-        // Create a manager that tracks deletion
-        var deleted = false
-        val downloadManager = object : ModelDownloadManager by fakeDownloadManager {
-            override suspend fun modelExists(bundleFilename: String): Boolean = !deleted
-            override suspend fun deleteModel(bundleFilename: String): Boolean {
-                deleted = true
-                return true
-            }
-        }
+        // Start with model1 as downloaded
+        modelsStatusFlow.value = mapOf(
+            model1.bundleFilename to ModelDownloadManager.Status.Completed(java.io.File("/fake/path"))
+        )
 
-        val viewModel = createViewModel(downloadManager = downloadManager)
+        val viewModel = createViewModel()
         advanceUntilIdle()
 
-        // Delete model
+        // Verify model is initially downloaded
+        val initialModel = viewModel.uiState.value.models.find { it.config.modelId == model1.modelId }
+        assertNotNull(initialModel)
+        assertTrue(initialModel.isDownloaded)
+
+        // Delete model - FakeModelDownloadManager removes from modelsStatusFlow
         viewModel.onUiAction(UiAction.DeleteModel(model1.modelId))
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
         val deletedModel = state.models.find { it.config.modelId == model1.modelId }
         assertNotNull(deletedModel)
-        // After deletion and re-evaluation, model should be NotStarted
+        // After deletion, model should be NotStarted
         assertEquals(DownloadStatus.NotStarted, deletedModel.downloadStatus)
         assertFalse(deletedModel.isDownloaded)
 

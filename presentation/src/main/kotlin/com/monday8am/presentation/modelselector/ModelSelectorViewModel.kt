@@ -60,7 +60,7 @@ sealed class UiAction {
  */
 private sealed interface CatalogState {
     data object Loading : CatalogState
-    data class Success(val models: List<ModelConfiguration>, val version: Long = 0) : CatalogState
+    data class Success(val models: List<ModelConfiguration>) : CatalogState
     data class Error(val message: String) : CatalogState
 }
 
@@ -128,7 +128,7 @@ class ModelSelectorViewModelImpl(
                 model.modelId,
                 model.downloadUrl,
                 model.bundleFilename
-            ).collect {}
+            )
         }
     }
 
