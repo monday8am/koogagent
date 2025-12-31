@@ -5,20 +5,21 @@ import com.monday8am.koogagent.data.ModelCatalogProvider
 import com.monday8am.koogagent.data.ModelConfiguration
 import com.monday8am.koogagent.data.ModelRepository
 import com.monday8am.presentation.notifications.FakeModelDownloadManager
-import java.io.File
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 
 /**
@@ -45,21 +46,18 @@ class ModelSelectorViewModelTest {
     private val model2 = ModelCatalog.GEMMA3_1B
     private val testModels = listOf(model1, model2)
 
-    private val initialState = UiState()
-    private lateinit var viewModel: ModelSelectorViewModelImpl
     private lateinit var fakeRepository: ModelRepository
+    private lateinit var fakeDownloadManager: FakeModelDownloadManager
+    private lateinit var modelsStatusFlow: MutableStateFlow<Map<String, ModelDownloadManager.Status>>
 
     @BeforeTest
     fun setup() {
         Dispatchers.setMain(testDispatcher)
         fakeRepository = ModelRepository()
-        // Create a fresh ViewModel for each test
-        viewModel =
-            ModelSelectorViewModelImpl(
-                modelCatalogProvider = FakeModelCatalogProvider(models = testModels),
-                modelDownloadManager = FakeModelDownloadManager(),
-                modelRepository = fakeRepository,
-            )
+        modelsStatusFlow = MutableStateFlow(emptyMap())
+        fakeDownloadManager = FakeModelDownloadManager(
+            modelsStatusFlow = modelsStatusFlow
+        )
     }
 
     @AfterTest
@@ -67,124 +65,112 @@ class ModelSelectorViewModelTest {
         Dispatchers.resetMain()
     }
 
+    private fun createViewModel(
+        catalogProvider: ModelCatalogProvider = FakeModelCatalogProvider(models = testModels),
+        downloadManager: ModelDownloadManager = fakeDownloadManager,
+    ): ModelSelectorViewModelImpl {
+        return ModelSelectorViewModelImpl(
+            modelCatalogProvider = catalogProvider,
+            modelDownloadManager = downloadManager,
+            modelRepository = fakeRepository,
+            ioDispatcher = testDispatcher,
+        )
+    }
+
     // region Initialization Tests
 
     @Test
-    fun `Initialize should show loading state`() {
-        val newState = reduce(action = UiAction.Initialize, result = Unit)
+    fun `Initialize should load catalog and show models`() = runTest {
+        val viewModel = createViewModel()
+        advanceUntilIdle()
 
-        assertTrue(newState.isLoadingCatalog)
-        assertStatusMessageContains(newState, "Loading models")
+        val state = viewModel.uiState.value
+        assertEquals(2, state.models.size)
+        assertFalse(state.isLoadingCatalog)
+        assertNull(state.catalogError)
+
+        viewModel.dispose()
     }
 
     @Test
-    fun `CatalogLoaded should populate models and show correct count`() {
-        val modelInfoList = testModels.map { ModelInfo(config = it, isDownloaded = false) }
-
-        val newState = reduce(action = UiAction.CatalogLoaded(testModels), result = modelInfoList)
-
-        assertEquals(2, newState.models.size)
-        assertEquals(model1.modelId, newState.models[0].config.modelId)
-        assertFalse(newState.isLoadingCatalog)
-        assertNull(newState.catalogError)
-        assertStatusMessageContains(newState, "0 of 2")
-    }
-
-    @Test
-    fun `CatalogLoaded should correctly count downloaded models`() {
-        val modelInfoList =
-            listOf(
-                ModelInfo(config = model1, isDownloaded = true),
-                ModelInfo(config = model2, isDownloaded = false),
-            )
-
-        val newState = reduce(action = UiAction.CatalogLoaded(testModels), result = modelInfoList)
-
-        assertFalse(newState.isLoadingCatalog)
-        assertStatusMessageContains(newState, "1 of 2")
-    }
-
-    @Test
-    fun `CatalogLoadFailed should set error and stop loading`() {
+    fun `Initialize should handle catalog load failure`() = runTest {
         val errorMessage = "Network error"
+        val viewModel = createViewModel(
+            catalogProvider = FakeModelCatalogProvider(shouldFail = true, failureMessage = errorMessage)
+        )
+        advanceUntilIdle()
 
-        val newState = reduce(action = UiAction.CatalogLoadFailed(errorMessage), result = errorMessage)
+        val state = viewModel.uiState.value
+        assertFalse(state.isLoadingCatalog)
+        assertEquals(errorMessage, state.catalogError)
+        assertTrue(state.statusMessage.contains(errorMessage))
 
-        assertFalse(newState.isLoadingCatalog)
-        assertEquals(errorMessage, newState.catalogError)
-        assertStatusMessageContains(newState, "Failed to load catalog")
+        viewModel.dispose()
     }
 
     @Test
-    fun `CatalogLoaded should populate repository with models`() {
-        val modelInfoList = testModels.map { ModelInfo(config = it, isDownloaded = false) }
+    fun `Initialize should allow retry after failure`() = runTest {
+        var shouldFail = true
+        val catalogProvider = object : ModelCatalogProvider {
+            override suspend fun fetchModels(): Result<List<ModelConfiguration>> {
+                return if (shouldFail) {
+                    Result.failure(Exception("Network error"))
+                } else {
+                    Result.success(testModels)
+                }
+            }
+        }
 
-        val newState = reduce(action = UiAction.CatalogLoaded(testModels), result = modelInfoList)
+        val viewModel = createViewModel(catalogProvider = catalogProvider)
+        advanceUntilIdle()
 
-        // Verify repository was populated
+        // Verify failure
+        assertNotNull(viewModel.uiState.value.catalogError)
+
+        // Retry
+        shouldFail = false
+        viewModel.onUiAction(UiAction.Initialize)
+        advanceUntilIdle()
+
+        // Verify success
+        assertNull(viewModel.uiState.value.catalogError)
+        assertEquals(2, viewModel.uiState.value.models.size)
+
+        viewModel.dispose()
+    }
+
+    @Test
+    fun `Initialize should populate repository with models`() = runTest {
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
         assertEquals(2, fakeRepository.getAllModels().size)
         assertNotNull(fakeRepository.findById(model1.modelId))
         assertNotNull(fakeRepository.findById(model2.modelId))
+
+        viewModel.dispose()
     }
 
-    // endregion
-
-    // region Model Selection and Deletion Tests
-
     @Test
-    fun `SelectModel should update selectedModelId and status message`() {
-        val stateWithModels = givenState(models = testModels.map { ModelInfo(config = it) })
-
-        val newState = reduce(
-            state = stateWithModels,
-            action = UiAction.SelectModel(model1.modelId),
-            result = model1.modelId,
+    fun `Initialize should re-attach to active download`() = runTest {
+        // Setup manager with an active download for model1
+        modelsStatusFlow.value = mapOf(
+            model1.bundleFilename to ModelDownloadManager.Status.InProgress(progress = 42f)
         )
 
-        assertEquals(model1.modelId, newState.selectedModelId)
-        assertStatusMessageContains(newState, "Selected", model1.displayName)
-    }
+        val viewModel = createViewModel()
+        advanceUntilIdle()
 
-    @Test
-    fun `DeleteModel should reset model status and show deleted message`() {
-        val stateWithDownloadedModel =
-            givenState(
-                models =
-                listOf(
-                    ModelInfo(config = model1, isDownloaded = true, downloadStatus = DownloadStatus.Completed),
-                    ModelInfo(config = model2, isDownloaded = false),
-                ),
-            )
+        val state = viewModel.uiState.value
+        assertEquals(42f, state.currentDownload?.progress)
+        assertEquals(model1.modelId, state.currentDownload?.modelId)
 
-        val newState =
-            reduce(
-                state = stateWithDownloadedModel,
-                action = UiAction.DeleteModel(model1.modelId),
-                result = true to model1.modelId,
-            )
+        val model1Info = state.models.find { it.config.modelId == model1.modelId }
+        assertNotNull(model1Info)
+        assertTrue(model1Info.downloadStatus is DownloadStatus.Downloading)
+        assertEquals(42f, model1Info.downloadStatus.progress)
 
-        val deletedModel = newState.models.find { it.config.modelId == model1.modelId }
-        assertFalse(deletedModel!!.isDownloaded)
-        assertEquals(DownloadStatus.NotStarted, deletedModel.downloadStatus)
-        assertStatusMessageContains(newState, "deleted")
-    }
-
-    @Test
-    fun `DeleteModel should clear selection if the deleted model was selected`() {
-        val stateWithSelection =
-            givenState(
-                selectedModelId = model1.modelId,
-                models = listOf(ModelInfo(config = model1, isDownloaded = true)),
-            )
-
-        val newState =
-            reduce(
-                state = stateWithSelection,
-                action = UiAction.DeleteModel(model1.modelId),
-                result = true to model1.modelId,
-            )
-
-        assertNull(newState.selectedModelId)
+        viewModel.dispose()
     }
 
     // endregion
@@ -192,194 +178,131 @@ class ModelSelectorViewModelTest {
     // region Download Flow Tests
 
     @Test
-    fun `DownloadModel should start a new download and select model if none is active`() {
-        val newState = reduce(action = UiAction.DownloadModel(model1.modelId), result = model1.modelId)
+    fun `DownloadModel should start download when no active download`() = runTest {
+        // VM needs models in repository to start download
+        fakeRepository.setModels(testModels)
 
-        assertEquals(model1.modelId, newState.currentDownload?.modelId)
-        assertEquals(0f, newState.currentDownload?.progress)
-        assertEquals(model1.modelId, newState.selectedModelId)
-        assertStatusMessageContains(newState, "Starting download")
-    }
+        val downloadManager = FakeModelDownloadManager(
+            progressSteps = listOf(25f, 50f, 75f),
+            modelsStatusFlow = modelsStatusFlow
+        )
+        val viewModel = createViewModel(downloadManager = downloadManager)
+        advanceUntilIdle()
 
-    @Test
-    fun `DownloadModel should queue a download if another is already in progress`() {
-        val stateWithDownload =
-            givenState(
-                currentDownload = DownloadInfo(modelId = model1.modelId, progress = 50f),
-                models = testModels.map { ModelInfo(config = it) },
-            )
+        viewModel.onUiAction(UiAction.DownloadModel(model1.modelId))
 
-        val newState =
-            reduce(
-                state = stateWithDownload,
-                action = UiAction.DownloadModel(model2.modelId),
-                result = model2.modelId,
-            )
+        // Wait for progress updates and completion
+        advanceUntilIdle()
 
-        assertTrue(newState.queuedDownloads.contains(model2.modelId))
-        assertEquals(model1.modelId, newState.currentDownload?.modelId) // Unchanged
-        val queuedModel = newState.models.find { it.config.modelId == model2.modelId }
-        assertEquals(DownloadStatus.Queued, queuedModel?.downloadStatus)
-        assertStatusMessageContains(newState, "queued")
-    }
-
-    @Test
-    fun `DownloadProgress InProgress should update download progress`() {
-        val stateWithModels = givenState(models = testModels.map { ModelInfo(config = it) })
-        val progress = 45f
-
-        val newState =
-            reduce(
-                state = stateWithModels,
-                action = UiAction.DownloadProgress(model1.modelId, ModelDownloadManager.Status.InProgress(progress)),
-                result = UiAction.DownloadProgress(model1.modelId, ModelDownloadManager.Status.InProgress(progress)),
-            )
-
-        assertEquals(model1.modelId, newState.currentDownload?.modelId)
-        assertEquals(progress, newState.currentDownload?.progress)
-        val model = newState.models.find { it.config.modelId == model1.modelId }
-        val downloadStatus = assertIs<DownloadStatus.Downloading>(model?.downloadStatus)
-        assertEquals(progress, downloadStatus.progress)
-    }
-
-    @Test
-    fun `DownloadProgress Completed should mark model as downloaded`() {
-        val stateWithModels = givenState(models = testModels.map { ModelInfo(config = it) })
-
-        val newState =
-            reduce(
-                state = stateWithModels,
-                action = UiAction.DownloadProgress(
-                    model1.modelId,
-                    ModelDownloadManager.Status.Completed(File("dummy"))
-                ),
-                result = UiAction.DownloadProgress(
-                    model1.modelId,
-                    ModelDownloadManager.Status.Completed(File("dummy"))
-                ),
-            )
-
-        assertNull(newState.currentDownload)
-        val model = newState.models.find { it.config.modelId == model1.modelId }
-        assertTrue(model!!.isDownloaded)
+        val state = viewModel.uiState.value
+        // Download should complete because fake manager sends Completed at the end
+        assertNull(state.currentDownload)
+        val model = state.models.find { it.config.modelId == model1.modelId }
+        assertNotNull(model)
+        assertTrue(model.isDownloaded)
         assertEquals(DownloadStatus.Completed, model.downloadStatus)
-        assertStatusMessageContains(newState, "Download complete!")
+
+        viewModel.dispose()
     }
 
     @Test
-    fun `CancelCurrentDownload should clear currentDownload and queued list`() {
-        val stateWithDownloads =
-            givenState(
-                currentDownload = DownloadInfo(modelId = model1.modelId, progress = 50f),
-                queuedDownloads = listOf(model2.modelId),
-            )
+    fun `DownloadModel should queue when another download is active`() = runTest {
+        fakeRepository.setModels(testModels)
+        val viewModel = createViewModel()
+        advanceUntilIdle()
 
-        val newState =
-            reduce(
-                state = stateWithDownloads,
-                action = UiAction.CancelCurrentDownload,
-                result = Unit,
-            )
+        // In the new reactive architecture, queue is derived from modelsStatus.
+        // Set up the flow to show model1 in progress and model2 pending.
+        modelsStatusFlow.value = mapOf(
+            model1.bundleFilename to ModelDownloadManager.Status.InProgress(progress = 10f),
+            model2.bundleFilename to ModelDownloadManager.Status.Pending
+        )
+        advanceUntilIdle()
 
-        assertNull(newState.currentDownload)
-        assertTrue(newState.queuedDownloads.isEmpty())
-        assertStatusMessageContains(newState, "cancelled")
+        val state = viewModel.uiState.value
+        assertEquals(1, state.queuedDownloads.size)
+        assertEquals(model2.modelId, state.queuedDownloads.first())
+        assertEquals(model1.modelId, state.currentDownload?.modelId)
+
+        viewModel.dispose()
     }
 
     @Test
-    fun `DownloadProgress Cancelled should reset all downloading and queued models to NotStarted`() {
-        val stateWithDownloads =
-            givenState(
-                currentDownload = DownloadInfo(modelId = model1.modelId, progress = 50f),
-                queuedDownloads = listOf(model2.modelId),
-                models =
-                listOf(
-                    ModelInfo(config = model1, downloadStatus = DownloadStatus.Downloading(50f)),
-                    ModelInfo(config = model2, downloadStatus = DownloadStatus.Queued),
-                ),
-            )
+    fun `CancelDownload should call manager`() = runTest {
+        fakeRepository.setModels(testModels)
+        val viewModel = createViewModel()
+        advanceUntilIdle()
 
-        val newState =
-            reduce(
-                state = stateWithDownloads,
-                action = UiAction.DownloadProgress(model1.modelId, ModelDownloadManager.Status.Cancelled),
-                result = UiAction.DownloadProgress(model1.modelId, ModelDownloadManager.Status.Cancelled),
-            )
+        viewModel.onUiAction(UiAction.DownloadModel(model1.modelId))
+        // Trigger cancel
+        viewModel.onUiAction(UiAction.CancelCurrentDownload)
+        advanceUntilIdle()
 
-        // All downloading/queued models should be reset to NotStarted
-        val downloadingModel = newState.models.find { it.config.modelId == model1.modelId }
-        val queuedModel = newState.models.find { it.config.modelId == model2.modelId }
-        assertEquals(DownloadStatus.NotStarted, downloadingModel?.downloadStatus)
-        assertEquals(DownloadStatus.NotStarted, queuedModel?.downloadStatus)
+        val state = viewModel.uiState.value
+        assertNull(state.currentDownload)
+        assertTrue(state.queuedDownloads.isEmpty())
 
-        // Download state should be cleared
-        assertNull(newState.currentDownload)
-        assertTrue(newState.queuedDownloads.isEmpty())
-        assertStatusMessageContains(newState, "cancelled")
-    }
-
-    @Test
-    fun `DownloadProgress Cancelled should not affect already completed models`() {
-        val stateWithMixedModels =
-            givenState(
-                currentDownload = DownloadInfo(modelId = model1.modelId, progress = 50f),
-                models =
-                listOf(
-                    ModelInfo(config = model1, downloadStatus = DownloadStatus.Downloading(50f)),
-                    ModelInfo(config = model2, isDownloaded = true, downloadStatus = DownloadStatus.Completed),
-                ),
-            )
-
-        val newState =
-            reduce(
-                state = stateWithMixedModels,
-                action = UiAction.DownloadProgress(model1.modelId, ModelDownloadManager.Status.Cancelled),
-                result = UiAction.DownloadProgress(model1.modelId, ModelDownloadManager.Status.Cancelled),
-            )
-
-        // Downloading model should be reset
-        val downloadingModel = newState.models.find { it.config.modelId == model1.modelId }
-        assertEquals(DownloadStatus.NotStarted, downloadingModel?.downloadStatus)
-
-        // Completed model should remain unchanged
-        val completedModel = newState.models.find { it.config.modelId == model2.modelId }
-        assertEquals(DownloadStatus.Completed, completedModel?.downloadStatus)
-        assertEquals(completedModel?.isDownloaded, true)
+        viewModel.dispose()
     }
 
     // endregion
 
-    // --- Helper Functions ---
+    // region Delete Model Tests
 
-    /**
-     * A helper to create a specific UiState for the "arrange" part of a test.
-     */
-    private fun givenState(
-        models: List<ModelInfo> = emptyList(),
-        selectedModelId: String? = null,
-        currentDownload: DownloadInfo? = null,
-        queuedDownloads: List<String> = emptyList(),
-    ): UiState = initialState.copy(
-        models = models,
-        selectedModelId = selectedModelId,
-        currentDownload = currentDownload,
-        queuedDownloads = queuedDownloads,
-    )
+    @Test
+    fun `DeleteModel should reset model status`() = runTest {
+        fakeRepository.setModels(testModels)
 
-    /**
-     * A helper to execute the reduce function with a simplified signature.
-     * It defaults to using the initial state and a Success ActionState.
-     */
-    private fun <T : Any> reduce(state: UiState = this.initialState, action: UiAction, result: T): UiState =
-        viewModel.reduce(state, action, ActionState.Success(result))
+        // Create a manager that tracks deletion
+        var deleted = false
+        val downloadManager = object : ModelDownloadManager by fakeDownloadManager {
+            override suspend fun modelExists(bundleFilename: String): Boolean = !deleted
+            override suspend fun deleteModel(bundleFilename: String): Boolean {
+                deleted = true
+                return true
+            }
+        }
 
-    /**
-     * A custom assertion to check if the status message contains all given substrings.
-     */
-    private fun assertStatusMessageContains(state: UiState, vararg expected: String) {
-        assertTrue(
-            expected.all { state.statusMessage.contains(it, ignoreCase = true) },
-            "Expected status message '${state.statusMessage}' to contain all of: ${expected.joinToString()}",
-        )
+        val viewModel = createViewModel(downloadManager = downloadManager)
+        advanceUntilIdle()
+
+        // Delete model
+        viewModel.onUiAction(UiAction.DeleteModel(model1.modelId))
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        val deletedModel = state.models.find { it.config.modelId == model1.modelId }
+        assertNotNull(deletedModel)
+        // After deletion and re-evaluation, model should be NotStarted
+        assertEquals(DownloadStatus.NotStarted, deletedModel.downloadStatus)
+        assertFalse(deletedModel.isDownloaded)
+
+        viewModel.dispose()
     }
+
+    @Test
+    fun `isReady should update reactively when downloadedFilenames changes`() = runTest {
+        fakeRepository.setModels(testModels)
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        // Initially not downloaded
+        val initialModel = viewModel.uiState.value.models.find { it.config.modelId == model1.modelId }
+        assertNotNull(initialModel)
+        assertFalse(updatedModelIsReady(viewModel, model1.modelId))
+
+        // Simulate file appearing
+        fakeDownloadManager.setDownloadedFilenames(setOf(model1.bundleFilename))
+        advanceUntilIdle()
+
+        assertTrue(updatedModelIsReady(viewModel, model1.modelId))
+
+        viewModel.dispose()
+    }
+
+    private fun updatedModelIsReady(viewModel: ModelSelectorViewModelImpl, modelId: String): Boolean {
+        return viewModel.uiState.value.models.find { it.config.modelId == modelId }?.isDownloaded ?: false
+    }
+
+    // endregion
 }

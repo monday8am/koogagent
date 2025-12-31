@@ -19,7 +19,8 @@ import com.monday8am.presentation.modelselector.UiAction
 internal fun ModelList(
     models: List<ModelInfo>,
     selectedModelId: String?,
-    onAction: (UiAction) -> Unit,
+    onIntent: (UiAction) -> Unit,
+    onSelectModel: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -34,10 +35,10 @@ internal fun ModelList(
                 modelInfo = modelInfo,
                 isSelected = modelInfo.config.modelId == selectedModelId,
                 onDownloadClick = {
-                    onAction(UiAction.DownloadModel(modelInfo.config.modelId))
+                    onIntent(UiAction.DownloadModel(modelInfo.config.modelId))
                 },
                 onSelectClick = {
-                    onAction(UiAction.SelectModel(modelInfo.config.modelId))
+                    onSelectModel(modelInfo.config.modelId)
                 },
             )
         }
@@ -84,7 +85,8 @@ private fun ModelListPreview() {
         ModelList(
             models = sampleModels,
             selectedModelId = sampleModels.first().config.modelId,
-            onAction = {}
+            onIntent = {},
+            onSelectModel = {}
         )
     }
 }
