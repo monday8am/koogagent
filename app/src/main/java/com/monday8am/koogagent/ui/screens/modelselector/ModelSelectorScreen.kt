@@ -35,7 +35,6 @@ fun ModelSelectorScreen(onNavigateToNotification: (String) -> Unit, onNavigateTo
         viewModel {
             AndroidModelSelectorViewModel(
                 ModelSelectorViewModelImpl(
-                    modelCatalogProvider = Dependencies.modelCatalogProvider,
                     modelDownloadManager = Dependencies.modelDownloadManager,
                     modelRepository = Dependencies.modelRepository,
                 ),

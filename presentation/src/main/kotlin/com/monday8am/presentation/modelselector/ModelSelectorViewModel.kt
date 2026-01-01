@@ -1,14 +1,13 @@
 package com.monday8am.presentation.modelselector
 
-import com.monday8am.koogagent.data.ModelCatalogProvider
 import com.monday8am.koogagent.data.ModelConfiguration
 import com.monday8am.koogagent.data.ModelRepository
+import com.monday8am.koogagent.data.RepositoryState
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -55,15 +54,6 @@ sealed class UiAction {
     internal data object Initialize : UiAction()
 }
 
-/**
- * Internal state for catalog loading
- */
-private sealed interface CatalogState {
-    data object Loading : CatalogState
-    data class Success(val models: List<ModelConfiguration>) : CatalogState
-    data class Error(val message: String) : CatalogState
-}
-
 interface ModelSelectorViewModel {
     val uiState: StateFlow<UiState>
     fun onUiAction(action: UiAction)
@@ -71,20 +61,18 @@ interface ModelSelectorViewModel {
 }
 
 class ModelSelectorViewModelImpl(
-    private val modelCatalogProvider: ModelCatalogProvider,
     private val modelDownloadManager: ModelDownloadManager,
     private val modelRepository: ModelRepository,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : ModelSelectorViewModel {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private val catalogState = MutableStateFlow<CatalogState>(CatalogState.Loading)
 
     override val uiState: StateFlow<UiState> = combine(
-        catalogState,
+        modelRepository.loadingState,
         modelDownloadManager.modelsStatus,
-    ) { catalog, modelsStatus ->
-        deriveUiState(catalog, modelsStatus)
+    ) { loadingState, modelsStatus ->
+        deriveUiState(loadingState, modelsStatus)
     }
         .flowOn(ioDispatcher)
         .stateIn(scope, SharingStarted.Eagerly, UiState())
@@ -107,17 +95,8 @@ class ModelSelectorViewModelImpl(
     }
 
     private fun loadCatalog() {
-        catalogState.value = CatalogState.Loading
-        scope.launch(ioDispatcher) {
-            val result = modelCatalogProvider.fetchModels()
-            if (result.isSuccess) {
-                val models = result.getOrThrow()
-                modelRepository.setModels(models)
-                catalogState.value = CatalogState.Success(models)
-            } else {
-                val error = result.exceptionOrNull()?.message ?: "Unknown error"
-                catalogState.value = CatalogState.Error(error)
-            }
+        scope.launch {
+            modelRepository.refreshModels()
         }
     }
 
@@ -144,25 +123,26 @@ class ModelSelectorViewModelImpl(
     }
 
     private fun deriveUiState(
-        catalog: CatalogState,
+        loadingState: RepositoryState,
         modelsStatus: Map<String, ModelDownloadManager.Status>,
-    ): UiState = when (catalog) {
-        is CatalogState.Loading -> UiState(
+    ): UiState = when (loadingState) {
+        is RepositoryState.Idle,
+        is RepositoryState.Loading -> UiState(
             isLoadingCatalog = true,
             statusMessage = "Loading models...",
         )
 
-        is CatalogState.Error -> UiState(
+        is RepositoryState.Error -> UiState(
             isLoadingCatalog = false,
-            catalogError = catalog.message,
-            statusMessage = "Error: ${catalog.message}",
+            catalogError = loadingState.message,
+            statusMessage = "Error: ${loadingState.message}",
         )
 
-        is CatalogState.Success -> {
+        is RepositoryState.Success -> {
             var currentDownload: DownloadInfo? = null
             val queuedIds = mutableListOf<String>()
 
-            val modelsInfo = catalog.models.map { config ->
+            val modelsInfo = loadingState.models.map { config ->
                 val status = modelsStatus[config.bundleFilename] ?: ModelDownloadManager.Status.NotStarted
 
                 val downloadStatus = when (status) {

@@ -16,7 +16,7 @@ class ModelFilenameParserTest {
         )
 
         assertNotNull(result)
-        assertEquals("qwen3", result!!.modelFamily)
+        assertEquals("qwen3", result.modelFamily)
         assertEquals(0.6f, result.parameterCount)
         assertEquals(InferenceLibrary.LITERT, result.inferenceLibrary)
     }
@@ -44,7 +44,7 @@ class ModelFilenameParserTest {
         )
 
         assertNotNull(result)
-        assertEquals("smollm", result!!.modelFamily)
+        assertEquals("smollm", result.modelFamily)
         assertEquals(0.135f, result.parameterCount)
         assertEquals("f32", result.quantization)
         assertEquals(1280, result.contextLength)
@@ -59,7 +59,7 @@ class ModelFilenameParserTest {
         )
 
         assertNotNull(result)
-        assertEquals("gemma3", result!!.modelFamily)
+        assertEquals("gemma3", result.modelFamily)
         assertEquals("int4", result.quantization)
     }
 
@@ -71,7 +71,7 @@ class ModelFilenameParserTest {
         )
 
         assertNotNull(result)
-        assertEquals("qwen2.5", result!!.modelFamily)
+        assertEquals("qwen2.5", result.modelFamily)
         assertEquals(1.5f, result.parameterCount)
         assertEquals("q8", result.quantization)
     }
