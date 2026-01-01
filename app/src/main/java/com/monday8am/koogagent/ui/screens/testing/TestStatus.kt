@@ -20,7 +20,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.monday8am.koogagent.ui.theme.KoogAgentTheme
@@ -63,7 +62,7 @@ internal fun TestStatusCard(status: TestStatus) {
                 TestStatus.State.IDLE -> Icon(
                     Icons.Default.PlayArrow,
                     contentDescription = "Idle",
-                    tint = Color.Gray
+                    tint = MaterialTheme.colorScheme.outline
                 )
 
                 TestStatus.State.RUNNING -> CircularProgressIndicator(
@@ -74,13 +73,13 @@ internal fun TestStatusCard(status: TestStatus) {
                 TestStatus.State.PASS -> Icon(
                     Icons.Default.CheckCircle,
                     contentDescription = "Pass",
-                    tint = Color(0xFF4CAF50)
+                    tint = MaterialTheme.colorScheme.primary
                 )
 
                 TestStatus.State.FAIL -> Icon(
                     Icons.Default.Close,
                     contentDescription = "Fail",
-                    tint = Color(0xFFF44336)
+                    tint = MaterialTheme.colorScheme.error
                 )
             }
         }

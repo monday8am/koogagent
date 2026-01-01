@@ -29,7 +29,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -161,11 +160,11 @@ private fun LogPanel(textLog: String, modifier: Modifier = Modifier) {
             .fillMaxWidth()
             .height(290.dp)
             .verticalScroll(scrollState)
-            .background(Color(0xFF000080)),
+            .background(MaterialTheme.colorScheme.inverseSurface),
     ) {
         Text(
             text = textLog,
-            color = Color(0xFF00FF00),
+            color = MaterialTheme.colorScheme.primary,
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth()
         )
