@@ -11,7 +11,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -110,7 +109,7 @@ private fun ModelSelectorScreenContent(
             Text(
                 text = "Using cached models: $error",
                 style = MaterialTheme.typography.bodySmall,
-                color = Color(0xFFFF9800), // Orange warning color
+                color = MaterialTheme.colorScheme.tertiary,
                 modifier = Modifier.padding(bottom = 8.dp),
             )
         }

@@ -10,7 +10,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.monday8am.presentation.testing.TestResultFrame
@@ -65,18 +64,18 @@ internal fun QueryCell(frame: TestResultFrame.Query) {
 @Composable
 internal fun ThinkingCell(frame: TestResultFrame.Thinking) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF2D2D44)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(modifier = Modifier.padding(8.dp)) {
             Text(
                 text = "${frame.testName} • Thinking",
                 style = MaterialTheme.typography.labelSmall,
-                color = Color.Gray,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
             )
             Text(
                 text = frame.accumulator,
-                color = Color(0xFFB0B0B0),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }
@@ -85,18 +84,18 @@ internal fun ThinkingCell(frame: TestResultFrame.Thinking) {
 @Composable
 internal fun ToolCell(frame: TestResultFrame.Tool) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF1E3A5F)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(modifier = Modifier.padding(8.dp)) {
             Text(
                 text = "${frame.testName} • Tool Call",
                 style = MaterialTheme.typography.labelSmall,
-                color = Color.Gray,
+                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f),
             )
             Text(
                 text = frame.accumulator,
-                color = Color(0xFF64B5F6),
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
             )
         }
     }
@@ -105,18 +104,18 @@ internal fun ToolCell(frame: TestResultFrame.Tool) {
 @Composable
 internal fun ContentCell(frame: TestResultFrame.Content) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A2E)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(modifier = Modifier.padding(8.dp)) {
             Text(
                 text = "${frame.testName} • Response",
                 style = MaterialTheme.typography.labelSmall,
-                color = Color.Gray,
+                color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f),
             )
             Text(
                 text = frame.accumulator,
-                color = Color(0xFF00FF00),
+                color = MaterialTheme.colorScheme.onTertiaryContainer,
             )
         }
     }
@@ -126,8 +125,17 @@ internal fun ContentCell(frame: TestResultFrame.Content) {
 internal fun ValidationCell(frame: TestResultFrame.Validation) {
     val (backgroundColor, textColor, message) =
         when (val result = frame.result) {
-            is ValidationResult.Pass -> Triple(Color(0xFF1B5E20), Color(0xFF81C784), result.message)
-            is ValidationResult.Fail -> Triple(Color(0xFF7F0000), Color(0xFFE57373), result.message)
+            is ValidationResult.Pass -> Triple(
+                MaterialTheme.colorScheme.primaryContainer,
+                MaterialTheme.colorScheme.primary,
+                result.message
+            )
+
+            is ValidationResult.Fail -> Triple(
+                MaterialTheme.colorScheme.errorContainer,
+                MaterialTheme.colorScheme.error,
+                result.message
+            )
         }
 
     Card(
