@@ -86,7 +86,7 @@ object ModelFilenameParser {
         val family = extractFamily(modelId)
 
         // Generate human-readable display name
-        val displayName = buildDisplayName(family, params, quant, context, library)
+        val displayName = buildDisplayName(family, params)
 
         return ParsedMetadata(
             modelFamily = family,
@@ -151,29 +151,15 @@ object ModelFilenameParser {
     private fun buildDisplayName(
         family: String,
         params: Float?,
-        quant: String,
-        context: Int?,
-        library: InferenceLibrary,
     ): String {
         val familyDisplay = family.replaceFirstChar { it.uppercase() }
         val paramsDisplay = params?.let { formatParams(it) } ?: ""
-        val quantDisplay = quant.uppercase()
-        val contextDisplay = context?.let { formatContext(it) } ?: ""
-        val libraryDisplay = when (library) {
-            InferenceLibrary.LITERT -> "LT"
-            InferenceLibrary.MEDIAPIPE -> "MP"
-        }
 
         val parts = mutableListOf<String>()
         parts.add(familyDisplay)
         if (paramsDisplay.isNotEmpty()) parts.add(paramsDisplay)
 
-        val details = mutableListOf<String>()
-        details.add(quantDisplay)
-        if (contextDisplay.isNotEmpty()) details.add(contextDisplay)
-        details.add(libraryDisplay)
-
-        return "${parts.joinToString(" ")} (${details.joinToString(", ")})"
+        return parts.joinToString("-")
     }
 
     /**

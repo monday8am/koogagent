@@ -18,6 +18,7 @@ data class HuggingFaceModelSummary(
 /**
  * Represents detailed model info from the model details endpoint.
  * GET https://huggingface.co/api/models/{model_id}
+ * Note: description is fetched separately from README.md
  */
 data class HuggingFaceModelDetails(
     val id: String,
@@ -33,6 +34,7 @@ data class HuggingFaceModelDetails(
  */
 data class HuggingFaceFile(
     val rfilename: String,
+    val size: Long? = null,
 )
 
 /**

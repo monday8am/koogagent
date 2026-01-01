@@ -51,33 +51,45 @@ class HuggingFaceModelCatalogProvider(
         private const val DEFAULT_PARAM_COUNT = 1.0f
     }
 
-    override suspend fun fetchModels(): Result<List<ModelConfiguration>> = withContext(dispatcher) {
-        runCatching {
-            logger.d { "Fetching model list from $LIST_URL" }
-            val summaries = fetchModelList()
-                .filter { it.pipelineTag == "text-generation" }
+    private val requestSemaphore = kotlinx.coroutines.sync.Semaphore(5)
 
-            logger.d { "Found ${summaries.size} text-generation models. Fetching details in parallel..." }
+    override suspend fun fetchModels(): Result<List<ModelConfiguration>> =
+        withContext(dispatcher) {
+            runCatching {
+                logger.d { "Fetching model list from $LIST_URL" }
+                val summaries = fetchModelList().filter { it.pipelineTag == "text-generation" }
 
-            // Fetch details in parallel to speed up catalog loading
-            val detailsResults = summaries.map { summary ->
-                async {
-                    try {
-                        fetchModelDetails(summary.id)
-                    } catch (e: Exception) {
-                        logger.e(e) { "Failed to fetch details for ${summary.id}" }
-                        null
-                    }
+                logger.d {
+                    "Found ${summaries.size} text-generation models. Fetching metadata concurrently..."
                 }
-            }.awaitAll()
 
-            detailsResults
-                .filterNotNull()
-                .flatMap { convertToConfigurations(it) }
-                .sortedByDescending { it.parameterCount }
-                .also { logger.d { "Successfully loaded ${it.size} model configurations" } }
+                // Fetch details and file sizes in parallel with concurrency limit
+                val modelDataResults =
+                    summaries
+                        .map { summary ->
+                            async {
+                                requestSemaphore.acquire()
+                                try {
+                                    val details = fetchModelDetails(summary.id)
+                                    val fileSizes = fetchFileSizes(summary.id)
+                                    details?.let { Pair(it, fileSizes) }
+                                } catch (e: Exception) {
+                                    logger.e(e) { "Failed to fetch data for ${summary.id}" }
+                                    null
+                                } finally {
+                                    requestSemaphore.release()
+                                }
+                            }
+                        }
+                        .awaitAll()
+
+                modelDataResults
+                    .filterNotNull()
+                    .flatMap { (details, fileSizes) -> convertToConfigurations(details, fileSizes) }
+                    .sortedByDescending { it.parameterCount }
+                    .also { logger.d { "Successfully loaded ${it.size} model configurations" } }
+            }
         }
-    }
 
     /**
      * Fetches the list of models from the organization.
@@ -112,6 +124,46 @@ class HuggingFaceModelCatalogProvider(
         } catch (e: Exception) {
             logger.w { "Failed to fetch details for $modelId: ${e.message}" }
             null
+        }
+    }
+
+    /**
+     * Fetches file tree to get file sizes (not available in model details endpoint).
+     * Returns a map of filename -> size in bytes.
+     */
+    private suspend fun fetchFileSizes(modelId: String): Map<String, Long> {
+        val url = "$BASE_URL/$modelId/tree/main"
+        val request = Request.Builder()
+            .url(url)
+            .build()
+
+        return try {
+            executeRequest(request) { response ->
+                val jsonArray = JSONArray(response.body.string())
+                val sizeMap = mutableMapOf<String, Long>()
+
+                for (i in 0 until jsonArray.length()) {
+                    val fileObj = jsonArray.getJSONObject(i)
+                    val path = fileObj.optString("path", null) ?: continue
+
+                    // Try to get size from LFS metadata first (for large files)
+                    val size = if (fileObj.has("lfs")) {
+                        fileObj.getJSONObject("lfs").optLong("size", -1L)
+                    } else {
+                        fileObj.optLong("size", -1L)
+                    }
+
+                    if (size > 0) {
+                        sizeMap[path] = size
+                    }
+                }
+
+                logger.d { "Found ${sizeMap.size} files with size info" }
+                sizeMap
+            }
+        } catch (e: Exception) {
+            logger.w { "Failed to fetch file sizes for $modelId: ${e.message}" }
+            emptyMap()
         }
     }
 
@@ -156,7 +208,7 @@ class HuggingFaceModelCatalogProvider(
                 downloads = json.optInt("downloads", 0),
                 likes = json.optInt("likes", 0),
             )
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             null
         }
     }
@@ -170,7 +222,15 @@ class HuggingFaceModelCatalogProvider(
             val siblings = (0 until siblingsArray.length()).mapNotNull { i ->
                 val sibling = siblingsArray.getJSONObject(i)
                 val rfilename = sibling.optString("rfilename", null)
-                if (rfilename != null) HuggingFaceFile(rfilename) else null
+                // Note: size is not in siblings array, fetched separately from /tree/main
+                if (rfilename != null) {
+                    HuggingFaceFile(
+                        rfilename = rfilename,
+                        size = null,
+                    )
+                } else {
+                    null
+                }
             }
 
             val gatedValue = json.opt("gated")
@@ -190,13 +250,23 @@ class HuggingFaceModelCatalogProvider(
 
     /**
      * Converts model details to a list of ModelConfiguration (one per valid file variant).
+     * @param details Model metadata from API
+     * @param fileSizes Map of filename -> size in bytes from /tree/main endpoint
      */
-    private fun convertToConfigurations(details: HuggingFaceModelDetails): List<ModelConfiguration> {
+    private fun convertToConfigurations(
+        details: HuggingFaceModelDetails,
+        fileSizes: Map<String, Long>
+    ): List<ModelConfiguration> {
         return details.siblings.mapNotNull { file ->
             val parsed = ModelFilenameParser.parse(file.rfilename, details.id)
                 ?: return@mapNotNull null
 
             val downloadUrl = String.format(DOWNLOAD_URL_TEMPLATE, details.id, file.rfilename)
+            val huggingFaceUrl = "https://huggingface.co/${details.id}"
+
+            // Get file size from the tree endpoint
+            val fileSize = fileSizes[file.rfilename]
+            logger.d { "Model ${details.id}/${file.rfilename}: size=$fileSize bytes" }
 
             ModelConfiguration(
                 displayName = parsed.displayName,
@@ -209,6 +279,9 @@ class HuggingFaceModelCatalogProvider(
                 inferenceLibrary = parsed.inferenceLibrary,
                 hardwareAcceleration = determineHardwareBackend(parsed.inferenceLibrary),
                 isGated = details.gated.isGated,
+                description = null, // TODO: Fetch from README.md or implement in-app markdown viewer
+                fileSizeBytes = fileSize,
+                huggingFaceUrl = huggingFaceUrl,
             )
         }
     }

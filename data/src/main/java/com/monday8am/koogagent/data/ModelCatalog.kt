@@ -19,6 +19,9 @@ object ModelCatalog {
             defaultTopK = 40,
             defaultTopP = 0.85f,
             defaultTemperature = 0.2f,
+            description = "Efficient bilingual model optimized for on-device inference",
+            fileSizeBytes = 642_000_000L, // ~642 MB
+            huggingFaceUrl = "https://huggingface.co/litert-community/Qwen3-0.6B",
         )
 
     val QWEN2_5_1_5B =
@@ -37,6 +40,9 @@ object ModelCatalog {
             defaultTopK = 40,
             defaultTopP = 0.85f,
             defaultTemperature = 0.2f,
+            description = "Improved Qwen model with enhanced multilingual capabilities",
+            fileSizeBytes = 1_600_000_000L, // ~1.6 GB
+            huggingFaceUrl = "https://huggingface.co/litert-community/Qwen2.5-1.5B-Instruct",
         )
 
     val GEMMA3_1B =
@@ -54,6 +60,9 @@ object ModelCatalog {
             defaultTopP = 0.85f,
             // Gemma benefits from higher temp
             defaultTemperature = 0.7f,
+            description = "Google's Gemma 3 model optimized for mobile devices",
+            fileSizeBytes = 535_000_000L, // ~535 MB
+            huggingFaceUrl = "https://huggingface.co/google/gemma-3-1b-it",
         )
 
     val HAMMER2_1_0_5B =
@@ -72,6 +81,9 @@ object ModelCatalog {
             defaultTopP = 0.9f,
             defaultTemperature = 0.7f,
             defaultMaxOutputTokens = 4096,
+            description = "Compact model with tool calling support",
+            fileSizeBytes = 535_000_000L, // ~535 MB
+            huggingFaceUrl = "https://huggingface.co/google/hammer-2.1-0.5b",
         )
 
     val SMOLLM_135M =
@@ -92,6 +104,9 @@ object ModelCatalog {
             defaultTopP = 0.9f,
             defaultTemperature = 0.7f,
             defaultMaxOutputTokens = 1280,
+            description = "Ultra-compact model for resource-constrained devices",
+            fileSizeBytes = 540_000_000L, // ~540 MB
+            huggingFaceUrl = "https://huggingface.co/HuggingFaceTB/SmolLM-135M-Instruct",
         )
 
     val ALL_MODELS =

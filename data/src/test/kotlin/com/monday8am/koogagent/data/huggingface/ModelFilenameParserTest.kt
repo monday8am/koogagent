@@ -112,13 +112,10 @@ class ModelFilenameParserTest {
         )
 
         assertNotNull(result)
-        // Display name should contain family, params, quant, context, library
+        // Display name should contain family and params
         val displayName = result!!.displayName
         assert(displayName.contains("Gemma3", ignoreCase = true)) { "Expected 'Gemma3' in '$displayName'" }
         assert(displayName.contains("1B", ignoreCase = true)) { "Expected '1B' in '$displayName'" }
-        assert(displayName.contains("Q4", ignoreCase = true)) { "Expected 'Q4' in '$displayName'" }
-        assert(displayName.contains("4K", ignoreCase = true)) { "Expected '4K' in '$displayName'" }
-        assert(displayName.contains("LT", ignoreCase = true)) { "Expected 'LT' in '$displayName'" }
     }
 
     @Test
