@@ -1,6 +1,8 @@
 package com.monday8am.koogagent.ui.screens.modelselector
 
 import android.annotation.SuppressLint
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -15,19 +17,22 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -48,12 +53,11 @@ internal fun ModelCard(
     onSelectClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val context = LocalContext.current
     val backgroundColor =
         when {
-            modelInfo.isDownloaded -> Color(0xFF2D5016)
-
-            // Dark green
-            else -> Color(0xFF424242) // Dark grey
+            modelInfo.isDownloaded -> MaterialTheme.colorScheme.primaryContainer
+            else -> MaterialTheme.colorScheme.surfaceVariant
         }
 
     Card(
@@ -62,7 +66,7 @@ internal fun ModelCard(
             .fillMaxWidth()
             .clickable(true) { onSelectClick() },
         colors = CardDefaults.cardColors(containerColor = backgroundColor),
-        border = if (isSelected) BorderStroke(2.dp, Color.Green) else null,
+        border = if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
     ) {
         Row(
             modifier =
@@ -77,31 +81,69 @@ internal fun ModelCard(
                     Text(
                         text = modelInfo.config.displayName,
                         style = MaterialTheme.typography.titleMedium,
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.weight(1f, fill = false),
                     )
                     if (modelInfo.isGated) {
                         Icon(
                             imageVector = Icons.Default.Warning,
                             contentDescription = "Gated model - may require Hugging Face authentication",
-                            tint = Color.Yellow,
+                            tint = MaterialTheme.colorScheme.error,
                             modifier = Modifier
                                 .padding(start = 6.dp)
                                 .size(18.dp),
                         )
                     }
+                    // HuggingFace link button
+                    modelInfo.config.huggingFaceUrl?.let { url ->
+                        IconButton(
+                            onClick = {
+                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                            },
+                            modifier = Modifier.size(48.dp) // Accessibility min touch target
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Info,
+                                contentDescription = "View on HuggingFace",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                modifier = Modifier.size(24.dp),
+                            )
+                        }
+                    }
                 }
+
+                // Description
+                modelInfo.config.description?.let { desc ->
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = desc,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "${modelInfo.config.parameterCount}B params • ${modelInfo.config.contextLength} tokens",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.7f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                 )
                 Text(
                     text = "Library: ${modelInfo.config.inferenceLibrary.name}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.7f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                 )
+
+                // File size
+                modelInfo.config.readableFileSize?.let { sizeText ->
+                    Text(
+                        text = sizeText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    )
+                }
             }
 
             when (val downloadStatus = modelInfo.downloadStatus) {
@@ -115,7 +157,7 @@ internal fun ModelCard(
                     Text(
                         text = "Queued",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color.Yellow,
+                        color = MaterialTheme.colorScheme.secondary,
                     )
                 }
 
@@ -130,7 +172,7 @@ internal fun ModelCard(
                     Icon(
                         imageVector = Icons.Default.CheckCircle,
                         contentDescription = "Downloaded",
-                        tint = Color.Green,
+                        tint = MaterialTheme.colorScheme.primary, // Using primary for success
                         modifier = Modifier.size(32.dp),
                     )
                 }
@@ -140,7 +182,7 @@ internal fun ModelCard(
                         Icon(
                             imageVector = Icons.Default.Error,
                             contentDescription = "Failed",
-                            tint = Color.Red,
+                            tint = MaterialTheme.colorScheme.error,
                         )
                         TextButton(onClick = onDownloadClick) {
                             Text("Retry", fontSize = 12.sp)
@@ -167,7 +209,7 @@ private fun CircularProgressWithText(progress: Float, text: String, modifier: Mo
             text = text,
             style = MaterialTheme.typography.labelSmall,
             fontSize = 10.sp,
-            color = Color.White,
+            color = MaterialTheme.colorScheme.onSurface,
         )
     }
 }

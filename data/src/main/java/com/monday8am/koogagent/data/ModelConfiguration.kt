@@ -30,6 +30,9 @@ enum class HardwareBackend {
  * @property defaultTemperature Default temperature for generation
  * @property defaultMaxOutputTokens Default max tokens to generate
  * @property isGated Whether the model requires Hugging Face authentication
+ * @property description Short description of the model from HuggingFace (optional)
+ * @property fileSizeBytes Download file size in bytes (optional)
+ * @property huggingFaceUrl Link to the HuggingFace model page (optional)
  */
 data class ModelConfiguration(
     val displayName: String,
@@ -46,6 +49,9 @@ data class ModelConfiguration(
     val defaultTemperature: Float = 0.2f,
     val defaultMaxOutputTokens: Int = (contextLength * 0.25).toInt(),
     val isGated: Boolean = false,
+    val description: String? = null,
+    val fileSizeBytes: Long? = null,
+    val huggingFaceUrl: String? = null,
 ) {
     /**
      * Model identifier without file extension (used by NotificationAgent).
@@ -53,4 +59,18 @@ data class ModelConfiguration(
      */
     val modelId: String
         get() = bundleFilename.substringBeforeLast(".") + "-" + inferenceLibrary.toString()
+
+    /**
+     * Helper to format file size into human readable string.
+     */
+    val readableFileSize: String?
+        get() = fileSizeBytes?.let { bytes ->
+            if (bytes >= 1024 * 1024 * 1024) {
+                val sizeGB = bytes / (1024.0 * 1024.0 * 1024.0)
+                "Size: ${"%.2f".format(sizeGB)} GB"
+            } else {
+                val sizeMB = bytes / (1024 * 1024)
+                "Size: $sizeMB MB"
+            }
+        }
 }
