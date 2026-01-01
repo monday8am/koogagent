@@ -3,7 +3,7 @@ package com.monday8am.presentation.modelselector
 import com.monday8am.koogagent.data.ModelCatalog
 import com.monday8am.koogagent.data.ModelCatalogProvider
 import com.monday8am.koogagent.data.ModelConfiguration
-import com.monday8am.koogagent.data.ModelRepository
+import com.monday8am.koogagent.data.ModelRepositoryImpl
 import com.monday8am.presentation.notifications.FakeModelDownloadManager
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -46,18 +46,19 @@ class ModelSelectorViewModelTest {
     private val model2 = ModelCatalog.GEMMA3_1B
     private val testModels = listOf(model1, model2)
 
-    private lateinit var fakeRepository: ModelRepository
+    private lateinit var fakeRepository: ModelRepositoryImpl
     private lateinit var fakeDownloadManager: FakeModelDownloadManager
     private lateinit var modelsStatusFlow: MutableStateFlow<Map<String, ModelDownloadManager.Status>>
 
     @BeforeTest
     fun setup() {
         Dispatchers.setMain(testDispatcher)
-        fakeRepository = ModelRepository()
         modelsStatusFlow = MutableStateFlow(emptyMap())
         fakeDownloadManager = FakeModelDownloadManager(
             modelsStatusFlow = modelsStatusFlow
         )
+        // Default repository for simple cases
+        fakeRepository = ModelRepositoryImpl(FakeModelCatalogProvider(testModels), testDispatcher)
     }
 
     @AfterTest
@@ -69,8 +70,8 @@ class ModelSelectorViewModelTest {
         catalogProvider: ModelCatalogProvider = FakeModelCatalogProvider(models = testModels),
         downloadManager: ModelDownloadManager = fakeDownloadManager,
     ): ModelSelectorViewModelImpl {
+        fakeRepository = ModelRepositoryImpl(catalogProvider, testDispatcher)
         return ModelSelectorViewModelImpl(
-            modelCatalogProvider = catalogProvider,
             modelDownloadManager = downloadManager,
             modelRepository = fakeRepository,
             ioDispatcher = testDispatcher,
