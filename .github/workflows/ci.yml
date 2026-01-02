@@ -39,7 +39,7 @@ jobs:
         if: always()
         with:
           name: Unit Tests
-          path: '**/build/test-results/test/*.xml'
+          path: '**/build/test-results/**/TEST-*.xml'
           reporter: java-junit
 
       - name: Build debug APK
