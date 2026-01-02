@@ -28,7 +28,8 @@ class LocalInferenceLLMClient(
     override suspend fun execute(prompt: Prompt, model: LLModel, tools: List<ToolDescriptor>): List<Message.Response> {
         val lastUserMessage =
             if (prompt.messages.first() is Message.System &&
-                prompt.messages.last() is Message.User && prompt.messages.size == 2
+                prompt.messages.last() is Message.User &&
+                prompt.messages.size == 2
             ) {
                 prompt.messages.joinToString { "${it.content}\n" }
             } else {
@@ -64,7 +65,8 @@ class LocalInferenceLLMClient(
 
         val lastUserMessage =
             if (prompt.messages.first() is Message.System &&
-                prompt.messages.last() is Message.User && prompt.messages.size == 2
+                prompt.messages.last() is Message.User &&
+                prompt.messages.size == 2
             ) {
                 prompt.messages.joinToString { "${it.content}\n" }
             } else {

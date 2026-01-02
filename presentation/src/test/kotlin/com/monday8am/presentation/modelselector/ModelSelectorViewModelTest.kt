@@ -42,9 +42,7 @@ internal class FakeModelCatalogProvider(
     }
 }
 
-internal class FakeAuthRepository(
-    initialToken: String? = null
-) : AuthRepository {
+internal class FakeAuthRepository(initialToken: String? = null) : AuthRepository {
     private val _authToken = MutableStateFlow(initialToken)
     override val authToken: StateFlow<String?> = _authToken.asStateFlow()
 

@@ -36,10 +36,7 @@ data class ModelInfo(
     val isGated: Boolean = false,
 )
 
-data class DownloadInfo(
-    val modelId: String,
-    val progress: Float,
-)
+data class DownloadInfo(val modelId: String, val progress: Float)
 
 sealed interface DownloadStatus {
     data object NotStarted : DownloadStatus

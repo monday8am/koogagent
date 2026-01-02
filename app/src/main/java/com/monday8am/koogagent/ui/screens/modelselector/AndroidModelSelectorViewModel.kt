@@ -8,9 +8,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 
-internal class AndroidModelSelectorViewModel(
-    private val impl: ModelSelectorViewModel,
-) : ViewModel(),
+internal class AndroidModelSelectorViewModel(private val impl: ModelSelectorViewModel) :
+    ViewModel(),
     ModelSelectorViewModel by impl {
     override val uiState: StateFlow<UiState> =
         impl.uiState.stateIn(

@@ -1,5 +1,6 @@
 package com.monday8am.presentation.testing
 
+import co.touchlab.kermit.Logger
 import com.monday8am.agent.core.LocalInferenceEngine
 import com.monday8am.koogagent.data.ModelConfiguration
 import kotlinx.coroutines.CoroutineScope
@@ -26,10 +27,7 @@ data class TestUiState(
     val testStatuses: List<TestStatus> = emptyList(),
 )
 
-data class TestStatus(
-    val name: String,
-    val state: State,
-) {
+data class TestStatus(val name: String, val state: State) {
     enum class State {
         IDLE,
         RUNNING,
@@ -114,6 +112,7 @@ class TestViewModelImpl(
                         duration = 0,
                         fullContent = "",
                     )
+                    Logger.e("Error: ${throwable.message}")
                     emit(errorFrame)
                 }.collect { frame ->
                     _uiState.update { currentState ->

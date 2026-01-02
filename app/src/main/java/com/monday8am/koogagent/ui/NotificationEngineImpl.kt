@@ -16,9 +16,7 @@ private const val CHANNEL_ID = "meal_reminder"
 private const val CHANNEL_NAME = "Meal Reminder"
 private const val REQUEST_CODE = 1001
 
-class NotificationEngineImpl(
-    val context: Context,
-) : NotificationEngine {
+class NotificationEngineImpl(val context: Context) : NotificationEngine {
     private var lastShownNotification: NotificationResult? = null
 
     override fun showNotification(result: NotificationResult) {

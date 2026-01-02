@@ -6,10 +6,7 @@ enum class MealType { BREAKFAST, LUNCH, DINNER, SNACK, WATER }
 
 enum class MotivationLevel { LOW, MEDIUM, HIGH }
 
-data class DeviceContext(
-    val country: String,
-    val language: String,
-)
+data class DeviceContext(val country: String, val language: String)
 
 data class NotificationContext(
     val mealType: MealType,
@@ -34,7 +31,4 @@ data class NotificationResult(
         get() = "Title:$title\nBody:$body\nLanguage:$language\nConfidence:$confidence"
 }
 
-data class Location(
-    val latitude: Double,
-    val longitude: Double,
-)
+data class Location(val latitude: Double, val longitude: Double)

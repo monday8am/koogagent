@@ -52,8 +52,9 @@ object ModelCatalog {
             parameterCount = 1.0f,
             quantization = "int4",
             contextLength = 4096,
-            downloadUrl = "https://github.com/monday8am/koogagent/releases/download/0.0.1/gemma3-1b-it-int4.zip",
-            bundleFilename = "gemma3-1b-it-int4.litertlm",
+            downloadUrl =
+            "https://huggingface.co/litert-community/Gemma3-1B-IT/resolve/main/Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096.litertlm",
+            bundleFilename = "Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096.litertlm",
             inferenceLibrary = InferenceLibrary.LITERT,
             hardwareAcceleration = HardwareBackend.GPU_SUPPORTED,
             defaultTopK = 40,

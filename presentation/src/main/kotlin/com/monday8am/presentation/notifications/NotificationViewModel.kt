@@ -50,27 +50,19 @@ data class UiState(
 sealed class UiAction {
     data object ShowNotification : UiAction()
 
-    data class UpdateContext(
-        val context: NotificationContext,
-    ) : UiAction()
+    data class UpdateContext(val context: NotificationContext) : UiAction()
 
     internal data object Initialize : UiAction()
 
-    internal data class NotificationReady(
-        val content: NotificationResult,
-    ) : UiAction()
+    internal data class NotificationReady(val content: NotificationResult) : UiAction()
 }
 
 internal sealed interface ActionState {
     data object Loading : ActionState
 
-    data class Success(
-        val result: Any,
-    ) : ActionState
+    data class Success(val result: Any) : ActionState
 
-    data class Error(
-        val throwable: Throwable,
-    ) : ActionState
+    data class Error(val throwable: Throwable) : ActionState
 }
 
 interface NotificationViewModel {

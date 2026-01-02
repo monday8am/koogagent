@@ -12,14 +12,12 @@ import kotlinx.serialization.builtins.serializer
  * This tool allows the AI agent to autonomously request weather data
  * when it determines weather context is needed for notification generation.
  */
-class GetWeather(
-    private val locationProvider: LocationProvider,
-    private val weatherProvider: WeatherProvider,
-) : SimpleTool<Unit>(
-    name = "GetWeather",
-    description = "Call this function to get the current weather. Parameters not required!",
-    argsSerializer = Unit.serializer(),
-) {
+class GetWeather(private val locationProvider: LocationProvider, private val weatherProvider: WeatherProvider) :
+    SimpleTool<Unit>(
+        name = "GetWeather",
+        description = "Call this function to get the current weather. Parameters not required!",
+        argsSerializer = Unit.serializer(),
+    ) {
     /**
      * Fetches current weather information for the user's location.
      * Use this tool when you need weather context to personalize meal or hydration suggestions.
