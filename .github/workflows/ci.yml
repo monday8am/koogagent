@@ -34,12 +34,18 @@ jobs:
       - name: Run tests
         run: ./gradlew test
 
+      - name: Debug - List test results
+        if: always()
+        run: find . -path "*/build/test-results/*" -name "*.xml" || echo "No test result files found"
+
       - name: Test Report
         uses: dorny/test-reporter@v1
         if: always()
         with:
           name: Unit Tests
-          path: '**/build/test-results/**/TEST-*.xml'
+          path: |
+            **/build/test-results/test/TEST-*.xml
+            **/build/test-results/testDebugUnitTest/TEST-*.xml
           reporter: java-junit
 
       - name: Build debug APK
