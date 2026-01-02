@@ -72,7 +72,7 @@ class DownloadUnzipWorker(
             Result.success()
         } catch (e: Exception) {
             e.printStackTrace()
-            Result.failure()
+            Result.failure(workDataOf(KEY_ERROR_MESSAGE to (e.message ?: "Unknown error")))
         }
     }
 
@@ -83,6 +83,11 @@ class DownloadUnzipWorker(
         if (existingBytes > 0) {
             requestBuilder.addHeader("Range", "bytes=$existingBytes-")
         }
+
+        inputData.getString(KEY_AUTH_TOKEN)?.let { token ->
+            requestBuilder.addHeader("Authorization", "Bearer $token")
+        }
+
         val request = requestBuilder.build()
 
         client.newCall(request).execute().use { response ->
@@ -93,7 +98,16 @@ class DownloadUnzipWorker(
                 // But for now, let's just log and return if it's already there and we can't get more.
                 return
             }
-            if (!response.isSuccessful) throw IOException("HTTP error ${response.code}")
+            if (!response.isSuccessful) {
+                val errorCode = response.header("X-Error-Code")
+                val errorMessage = response.header("X-Error-Message")
+                val detail = when {
+                    errorCode == "GatedRepo" -> "Access restricted. Please visit the model page to accept the license agreement."
+                    !errorMessage.isNullOrBlank() -> errorMessage
+                    else -> "HTTP error ${response.code}"
+                }
+                throw IOException(detail)
+            }
 
             val body = response.body
             val isResuming = response.code == 206
@@ -232,6 +246,7 @@ class DownloadUnzipWorker(
         const val KEY_REQUIRES_UNZIP = "KEY_REQUIRES_UNZIP"
         const val KEY_PROGRESS = "KEY_PROGRESS"
         const val KEY_ERROR_MESSAGE = "KEY_ERROR_MESSAGE"
+        const val KEY_AUTH_TOKEN = "KEY_AUTH_TOKEN"
 
         // Progress weight constants for split progress reporting
         // Download: 0-85%, Extract: 85-100%

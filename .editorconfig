@@ -11,7 +11,7 @@ trim_trailing_whitespace = true
 
 [*.{kt,kts}]
 ktlint_code_style = android_studio
-ij_kotlin_continuation_indent_size = 8
+ij_kotlin_continuation_indent_size = 4
 ktlint_standard_no-wildcard-imports = enabled
 ktlint_standard_trailing-comma-on-call-site = disabled
 ktlint_standard_trailing-comma-on-declaration-site = disabled

@@ -1,5 +1,6 @@
 package com.monday8am.presentation.modelselector
 
+import com.monday8am.koogagent.data.AuthRepository
 import com.monday8am.koogagent.data.ModelCatalog
 import com.monday8am.koogagent.data.ModelCatalogProvider
 import com.monday8am.koogagent.data.ModelConfiguration
@@ -16,6 +17,8 @@ import kotlin.test.assertTrue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -39,6 +42,21 @@ internal class FakeModelCatalogProvider(
     }
 }
 
+internal class FakeAuthRepository(
+    initialToken: String? = null
+) : AuthRepository {
+    private val _authToken = MutableStateFlow(initialToken)
+    override val authToken: StateFlow<String?> = _authToken.asStateFlow()
+
+    override suspend fun saveToken(token: String) {
+        _authToken.value = token
+    }
+
+    override suspend fun clearToken() {
+        _authToken.value = null
+    }
+}
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class ModelSelectorViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
@@ -48,6 +66,7 @@ class ModelSelectorViewModelTest {
 
     private lateinit var fakeRepository: ModelRepositoryImpl
     private lateinit var fakeDownloadManager: FakeModelDownloadManager
+    private lateinit var fakeAuthRepository: FakeAuthRepository
     private lateinit var modelsStatusFlow: MutableStateFlow<Map<String, ModelDownloadManager.Status>>
 
     @BeforeTest
@@ -57,6 +76,7 @@ class ModelSelectorViewModelTest {
         fakeDownloadManager = FakeModelDownloadManager(
             modelsStatusFlow = modelsStatusFlow
         )
+        fakeAuthRepository = FakeAuthRepository()
         // Default repository for simple cases
         fakeRepository = ModelRepositoryImpl(FakeModelCatalogProvider(testModels), testDispatcher)
     }
@@ -69,11 +89,13 @@ class ModelSelectorViewModelTest {
     private fun createViewModel(
         catalogProvider: ModelCatalogProvider = FakeModelCatalogProvider(models = testModels),
         downloadManager: ModelDownloadManager = fakeDownloadManager,
+        authRepository: AuthRepository = fakeAuthRepository,
     ): ModelSelectorViewModelImpl {
         fakeRepository = ModelRepositoryImpl(catalogProvider, testDispatcher)
         return ModelSelectorViewModelImpl(
             modelDownloadManager = downloadManager,
             modelRepository = fakeRepository,
+            authRepository = authRepository,
             ioDispatcher = testDispatcher,
         )
     }
@@ -297,6 +319,60 @@ class ModelSelectorViewModelTest {
         advanceUntilIdle()
 
         assertTrue(updatedModelIsReady(viewModel, model1.modelId))
+
+        viewModel.dispose()
+    }
+
+    // region Auth Tests
+
+    @Test
+    fun `SubmitToken should save token and close dialog`() = runTest {
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.onUiAction(UiAction.SubmitToken("test-token"))
+        advanceUntilIdle()
+
+        assertEquals("test-token", fakeAuthRepository.authToken.value)
+        assertFalse(viewModel.uiState.value.showAuthDialog)
+        assertTrue(viewModel.uiState.value.isLoggedIn)
+
+        viewModel.dispose()
+    }
+
+    @Test
+    fun `Logout should clear token`() = runTest {
+        fakeAuthRepository.saveToken("existing-token")
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.isLoggedIn)
+
+        viewModel.onUiAction(UiAction.Logout)
+        advanceUntilIdle()
+
+        assertNull(fakeAuthRepository.authToken.value)
+        assertFalse(viewModel.uiState.value.isLoggedIn)
+
+        viewModel.dispose()
+    }
+
+    @Test
+    fun `ShowAuthDialog should update state`() = runTest {
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.showAuthDialog)
+
+        viewModel.onUiAction(UiAction.ShowAuthDialog)
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.showAuthDialog)
+
+        viewModel.onUiAction(UiAction.HideAuthDialog)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.showAuthDialog)
 
         viewModel.dispose()
     }

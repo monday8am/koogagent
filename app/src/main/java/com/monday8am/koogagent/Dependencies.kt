@@ -2,6 +2,8 @@ package com.monday8am.koogagent
 
 import android.content.Context
 import com.google.ai.edge.localagents.core.proto.Tool
+import com.monday8am.koogagent.data.AuthRepository
+import com.monday8am.koogagent.data.AuthRepositoryImpl
 import com.monday8am.koogagent.data.LocationProvider
 import com.monday8am.koogagent.data.MockLocationProvider
 import com.monday8am.koogagent.data.ModelCatalog
@@ -46,12 +48,16 @@ object Dependencies {
     }
 
     val modelDownloadManager: ModelDownloadManager by lazy {
-        ModelDownloadManagerImpl(appContext)
+        ModelDownloadManagerImpl(appContext, authRepository)
+    }
+
+    val authRepository: AuthRepository by lazy {
+        AuthRepositoryImpl(appContext)
     }
 
     val modelCatalogProvider: ModelCatalogProvider by lazy {
         FallbackModelCatalogProvider(
-            primary = HuggingFaceModelCatalogProvider(),
+            primary = HuggingFaceModelCatalogProvider(authRepository = authRepository),
             fallback = ModelCatalog.ALL_MODELS,
         )
     }

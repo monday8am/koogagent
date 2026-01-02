@@ -1,5 +1,6 @@
 package com.monday8am.presentation.modelselector
 
+import com.monday8am.koogagent.data.AuthRepository
 import com.monday8am.koogagent.data.ModelConfiguration
 import com.monday8am.koogagent.data.ModelRepository
 import com.monday8am.koogagent.data.RepositoryState
@@ -25,6 +26,7 @@ data class UiState(
     val statusMessage: String = "Select a model to get started",
     val isLoadingCatalog: Boolean = true,
     val catalogError: String? = null,
+    val isLoggedIn: Boolean = false,
 )
 
 data class ModelInfo(
@@ -51,6 +53,8 @@ sealed class UiAction {
     data class DownloadModel(val modelId: String) : UiAction()
     data object CancelCurrentDownload : UiAction()
     data class DeleteModel(val modelId: String) : UiAction()
+    data class SubmitToken(val token: String) : UiAction()
+    data object Logout : UiAction()
     internal data object Initialize : UiAction()
 }
 
@@ -63,6 +67,7 @@ interface ModelSelectorViewModel {
 class ModelSelectorViewModelImpl(
     private val modelDownloadManager: ModelDownloadManager,
     private val modelRepository: ModelRepository,
+    private val authRepository: AuthRepository,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : ModelSelectorViewModel {
 
@@ -71,8 +76,9 @@ class ModelSelectorViewModelImpl(
     override val uiState: StateFlow<UiState> = combine(
         modelRepository.loadingState,
         modelDownloadManager.modelsStatus,
-    ) { loadingState, modelsStatus ->
-        deriveUiState(loadingState, modelsStatus)
+        authRepository.authToken,
+    ) { loadingState: RepositoryState, modelsStatus: Map<String, ModelDownloadManager.Status>, authToken: String? ->
+        deriveUiState(loadingState, modelsStatus, authToken != null)
     }
         .flowOn(ioDispatcher)
         .stateIn(scope, SharingStarted.Eagerly, UiState())
@@ -87,6 +93,8 @@ class ModelSelectorViewModelImpl(
             is UiAction.DownloadModel -> startDownload(action.modelId)
             is UiAction.CancelCurrentDownload -> cancelDownload()
             is UiAction.DeleteModel -> deleteModel(action.modelId)
+            is UiAction.SubmitToken -> submitToken(action.token)
+            is UiAction.Logout -> logout()
         }
     }
 
@@ -122,20 +130,37 @@ class ModelSelectorViewModelImpl(
         }
     }
 
+    private fun submitToken(token: String) {
+        scope.launch {
+            authRepository.saveToken(token)
+            modelRepository.refreshModels()
+        }
+    }
+
+    private fun logout() {
+        scope.launch {
+            authRepository.clearToken()
+            modelRepository.refreshModels()
+        }
+    }
+
     private fun deriveUiState(
         loadingState: RepositoryState,
         modelsStatus: Map<String, ModelDownloadManager.Status>,
+        isLoggedIn: Boolean,
     ): UiState = when (loadingState) {
         is RepositoryState.Idle,
         is RepositoryState.Loading -> UiState(
             isLoadingCatalog = true,
             statusMessage = "Loading models...",
+            isLoggedIn = isLoggedIn,
         )
 
         is RepositoryState.Error -> UiState(
             isLoadingCatalog = false,
             catalogError = loadingState.message,
             statusMessage = "Error: ${loadingState.message}",
+            isLoggedIn = isLoggedIn,
         )
 
         is RepositoryState.Success -> {
@@ -188,6 +213,7 @@ class ModelSelectorViewModelImpl(
                 queuedDownloads = queuedIds,
                 isLoadingCatalog = false,
                 catalogError = null,
+                isLoggedIn = isLoggedIn,
                 statusMessage = currentDownload?.let { "Downloading: ${it.modelId.take(20)}..." }
                     ?: "Select a model",
             )

@@ -7,6 +7,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.workDataOf
+import com.monday8am.koogagent.data.AuthRepository
 import com.monday8am.presentation.modelselector.ModelDownloadManager
 import java.io.File
 import kotlinx.coroutines.CoroutineDispatcher
@@ -23,6 +24,7 @@ import kotlinx.coroutines.withContext
 
 class ModelDownloadManagerImpl(
     context: Context,
+    private val authRepository: AuthRepository,
     private val workManager: WorkManager = WorkManager.getInstance(context),
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : ModelDownloadManager {
@@ -135,6 +137,7 @@ class ModelDownloadManagerImpl(
                     DownloadUnzipWorker.KEY_URL to downloadUrl,
                     DownloadUnzipWorker.KEY_DESTINATION_PATH to destinationFile.absolutePath,
                     DownloadUnzipWorker.KEY_REQUIRES_UNZIP to requiresUnzip,
+                    DownloadUnzipWorker.KEY_AUTH_TOKEN to authRepository.authToken.value,
                 ),
             )
             .addTag(WORK_TAG)
