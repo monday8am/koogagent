@@ -30,6 +30,14 @@ jobs:
       - name: Run tests
         run: ./gradlew test
 
+      - name: Test Report
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Unit Tests
+          path: '**/build/test-results/test/*.xml'
+          reporter: java-junit
+
       - name: Build debug APK
         run: ./gradlew :app:assembleDebug
 
