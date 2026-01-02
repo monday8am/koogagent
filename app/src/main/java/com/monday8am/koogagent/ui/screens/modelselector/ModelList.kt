@@ -7,7 +7,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import co.touchlab.kermit.Logger
 import com.monday8am.koogagent.data.HardwareBackend
 import com.monday8am.koogagent.data.InferenceLibrary
 import com.monday8am.koogagent.data.ModelConfiguration
@@ -32,7 +31,6 @@ internal fun ModelList(
             items = models,
             key = { it.config.modelId },
         ) { modelInfo ->
-            Logger.d("Model desc: ${modelInfo.config.description}")
             ModelCard(
                 modelInfo = modelInfo,
                 isSelected = modelInfo.config.modelId == selectedModelId,

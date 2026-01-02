@@ -9,10 +9,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonOff
-import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -127,11 +125,11 @@ internal fun ToolBar(
             enabled = downloadStatus == DownloadStatus.Completed,
         ) {
             Text("Function")
-            Icon(
-                imageVector = Icons.Default.Memory,
-                contentDescription = "Go forward",
-                modifier = iconSizeModifier,
-            )
+//            Icon(
+//                imageVector = Icons.Default.Memory,
+//                contentDescription = "Go forward",
+//                modifier = iconSizeModifier,
+//            )
         }
 
         Button(
@@ -141,11 +139,11 @@ internal fun ToolBar(
             enabled = downloadStatus == DownloadStatus.Completed,
         ) {
             Text("Agentic")
-            Icon(
-                imageVector = Icons.Filled.Psychology,
-                contentDescription = "Go forward",
-                modifier = iconSizeModifier,
-            )
+//            Icon(
+//                imageVector = Icons.Filled.Psychology,
+//                contentDescription = "Go forward",
+//                modifier = iconSizeModifier,
+//            )
         }
     }
 }

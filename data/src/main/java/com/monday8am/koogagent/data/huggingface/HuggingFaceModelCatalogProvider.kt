@@ -58,12 +58,7 @@ class HuggingFaceModelCatalogProvider(
     override suspend fun fetchModels(): Result<List<ModelConfiguration>> =
         withContext(dispatcher) {
             runCatching {
-                logger.d { "Fetching model list from $LIST_URL" }
                 val summaries = fetchModelList().filter { it.pipelineTag == "text-generation" }
-
-                logger.d {
-                    "Found ${summaries.size} text-generation models. Fetching metadata concurrently..."
-                }
 
                 // Fetch details and file sizes in parallel with concurrency limit
                 val modelDataResults =
@@ -251,7 +246,7 @@ class HuggingFaceModelCatalogProvider(
                 likes = json.optInt("likes", 0),
                 siblings = siblings,
             )
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             null
         }
     }
@@ -274,7 +269,6 @@ class HuggingFaceModelCatalogProvider(
 
             // Get file size from the tree endpoint
             val fileSize = fileSizes[file.rfilename]
-            logger.d { "Model ${details.id}/${file.rfilename}: size=$fileSize bytes" }
 
             ModelConfiguration(
                 displayName = parsed.displayName,
