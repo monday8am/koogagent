@@ -10,7 +10,7 @@ KoogAgent is an Android prototype that explores how agentic frameworks and on-de
 - JetBrains Koog (agentic framework for language-model-driven agents)
 - LiteRT-LM (on-device LLM inference with GPU/CPU/NPU support)
 - Kotlin with Jetpack Compose
-- Local SLM models (Gemma 3 1B, int4 quantized)
+- Local SLM models (Qwen3-0.6B, Hammer2.1-0.5B - tested for function calling)
 - Ollama (for JVM-side testing)
 
 **Important:** This is a prototype built for fast iteration, experimentation, and learning. The code prioritizes experimentation over production patterns.
@@ -174,63 +174,33 @@ KoogAgent is an Android prototype that explores how agentic frameworks and on-de
 
 ### Model Path Resolution
 - Models are downloaded to app's internal storage via `ModelDownloadManagerImpl`
-- Default model: `gemma3-1b-it-int4.litertlm` (Gemma 3 1B parameters, int4 quantized)
-- Model URL in `NotificationViewModelImpl`: GitHub release at `https://github.com/monday8am/koogagent/releases/download/0.0.1/gemma3-1b-it-int4.zip`
-- `ModelDownloadManager.getModelPath()` returns absolute path for LiteRT-LM Engine
+- `ModelDownloadManager.getModelPath()` returns absolute path for inference engine
 - **Lazy evaluation**: `getLocalModel()` function evaluates path when needed, not at construction time
 
-### Tool Calling Architecture
+### On-Device Function Calling Status
 
-**Current Implementation:**
-The project uses native tool calling from platform inference engines. No custom text-based protocols are needed.
+**Current State (Late 2025): Non-Production-Ready**
 
-**How It Works:**
-1. **LiteRT-LM** (Qwen3, Gemma3):
-   - Tools defined with `@Tool` annotations in `LiteRTLmTools.kt`
-   - Tools passed to `ConversationConfig.tools` during initialization
-   - Model outputs `tool_calls` content type (handled by LiteRT-LM processors like `Qwen3DataProcessor`)
-   - `LocalInferenceEngineImpl` manages the conversation lifecycle
+Tool calling on mobile devices remains experimental. Based on testing with models from the Berkeley Function-Calling Leaderboard:
 
-2. **MediaPipe** (Hammer 2.1):
-   - Tools defined as protobuf `Tool` objects in `MediaPipeTools.kt`
-   - `HammerFormatter` handles function calling protocol
-   - `GenerativeModel` created with tools and formatter
-   - `MediaPipeInferenceEngineImpl` wraps the model and manages chat sessions
+**Models Tested:**
+- **Qwen3-0.6B**: ~68% accuracy at single-turn function call, slightly better accuracy
+- **Hammer2.1-0.5B**: ~68% accuracy, significantly faster inference
 
-3. **Koog Integration:**
-   - `LocalInferenceLLMClient` bridges between Koog's `LLMClient` interface and platform engines
-   - Simply passes prompts through to `promptExecutor` (no protocol translation)
-   - `NotificationAgent` uses this client via `LocalInferenceAIExecutor`
-   - Tools registered in `ToolRegistry` for Koog's tool execution framework
+**The Core Problem:**
+Models capable of function calling cannot reliably execute in available runtimes, while models compatible with runtimes cannot reliably perform function calling. This fundamental incompatibility remains unresolved.
 
-**Model Compatibility:**
-- **Qwen3** (0.6B-8B): Native LiteRT-LM tool calling via `Qwen3DataProcessor`
-- **Gemma3** (1B): LiteRT-LM native tools (requires model support)
-- **Hammer 2.1** (0.5B): MediaPipe with `HammerFormatter`
+**Cognitive Capacity Limitation:**
+0.6B parameter models cannot reliably handle tool calling JSON generation plus reasoning simultaneously. This represents the current ceiling for on-device function calling.
 
----
+**Runtime Limitations:**
+- **LiteRT-LM**: Capable C++ Conversation API but limited Kotlin JNI functionality. Conversion pipeline requires CPU-only processing.
+- **MediaPipe**: Mature and well-documented but dormant (~7 months). Offers custom formatter flexibility (HammerFormatter for Hammer models).
 
-### Previous Approach: Custom Text-Based Protocols (Deprecated)
+**Quantization:**
+Only dynamic-8bits quantization is supported during conversion on GPU L4 processors.
 
-**Historical Context:**
-Earlier versions implemented custom text-based tool calling protocols (SIMPLE, OPENAPI, SLIM, REACT, HERMES) due to limitations with Gemma 1B and LiteRT-LM's native tool calling.
-
-**Why It Was Needed:**
-- Gemma 1B doesn't output tool-specific tokens
-- Required explicit tool schemas in prompt text
-- Framework had to parse JSON/XML output to detect tool calls
-- Created 5 custom LLMClient implementations (~2,400 lines of code)
-
-**Why It Was Removed:**
-- Modern platform implementations (LiteRT-LM, MediaPipe) handle tool calling natively
-- All supported models now use their native tool calling mechanisms
-- Simpler architecture with tool calling at the platform layer (`:app`) instead of abstraction layer (`:agent`)
-- Reduced code complexity and maintenance burden
-
-**References for Understanding:**
-- [LiteRT-LM Function Calling](https://github.com/google-ai-edge/LiteRT-LM/blob/main/docs/conversation.md) - Qwen3DataProcessor
-- [Google AI - Gemma Function Calling](https://ai.google.dev/gemma/docs/capabilities/function-calling) - Why Gemma needs special handling
-- [AI Edge Function Calling SDK](https://ai.google.dev/edge/mediapipe/solutions/genai/function_calling/android) - MediaPipe approach
+**Reference:** [Function Calling at the Edge](https://monday8am.com/blog/2025/12/10/function-calling-edge-ai.html)
 
 ### LLM Client Bridge
 - `LocalInferenceLLMClient` implements Koog's `LLMClient` interface
@@ -330,7 +300,7 @@ python export_to_litert.py \
 ### Key Parameters
 - `max_seq_len` / `max_context_length`: Total tokens (input + output)
 - `kv_cache_max`: KV cache size (should match or exceed max_seq_len)
-- Quantization: `int4`, `int8`, `fp16` (smaller = faster, less accurate)
+- Quantization: Only dynamic-8bits supported on GPU L4 processors
 
 ### Context Size Recommendations
 - **1024 tokens**: Basic prompts and single-turn conversations
@@ -361,15 +331,9 @@ python export_to_litert.py \
   - `DEFAULT_TOPK = 40`
   - `DEFAULT_TOPP = 0.9f`
 - Override in `LocalLLModel` data class (e.g., `getLocalModel()` in NotificationViewModel)
-- `NotificationViewModel` sets temperature to 0.8f
-- **Model-specific context windows**:
-  - Gemma 3n-1b-it: 1280, 2048, or 4096 tokens
-  - Qwen3-0.6B: 32768 tokens (32K)
-  - Qwen3-8B: 131072 tokens (128K)
 - LiteRT-LM's `EngineConfig.maxNumTokens` sets the TOTAL context (input + output combined)
 - **CRITICAL**: Runtime context CANNOT exceed the model's compiled context window
   - The `.litertlm` model has hardcoded KV cache buffers set during TFLite export
-  - Model filename often indicates context: `qwen3_0.6b_q8_ekv1024.litertlm` = 1024 tokens
   - Attempting to exceed compiled context causes `GATHER_ND index out of bounds` errors
   - To increase context: Must re-export model from HuggingFace with larger KV cache
 
@@ -583,11 +547,20 @@ To add alternative weather sources (e.g., OpenWeatherMap, WeatherAPI):
 
 ## Known Limitations
 
-- **Gemma 1B doesn't support LiteRT-LM native tool calling** - requires custom prompt-based protocol
-- No real MCP server integration (weather uses direct API instead of MCP protocol)
+### Function Calling
+- **Tool calling is non-production-ready** on mobile devices as of late 2025
+- 0.6B parameter models cannot reliably handle tool calling JSON + reasoning
+- Models capable of function calling cannot run reliably in available runtimes
+- Best tested accuracy: ~68% at single-turn function call (Qwen3-0.6B, Hammer2.1-0.5B)
+
+### Runtime Constraints
+- LiteRT-LM: Limited Kotlin JNI functionality, CPU-only conversion pipeline
+- MediaPipe: Dormant development (~7 months), but has HammerFormatter flexibility
+- Only dynamic-8bits quantization supported on GPU L4
+
+### Other Limitations
+- No real MCP server integration (weather uses direct API)
 - No prompt safety filtering
-- No translation layer (relies on model to generate in correct language)
-- LiteRT-LM client doesn't support streaming or moderation
-- Conversations maintain state but primarily used for single-shot inference
-- Model download requires GitHub release URL (no fallback)
+- No translation layer (relies on model)
 - Location is mocked (not using device GPS)
+- Model download requires GitHub release URL (no fallback)
