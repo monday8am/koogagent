@@ -22,7 +22,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.monday8am.koogagent.data.ModelCatalog
 import com.monday8am.koogagent.ui.theme.KoogAgentTheme
 import com.monday8am.presentation.modelselector.DownloadStatus
@@ -127,7 +126,7 @@ internal fun ToolBar(
             },
             enabled = downloadStatus == DownloadStatus.Completed,
         ) {
-            Text("Function", fontSize = 11.sp)
+            Text("Function")
             Icon(
                 imageVector = Icons.Default.Memory,
                 contentDescription = "Go forward",
@@ -141,7 +140,7 @@ internal fun ToolBar(
             },
             enabled = downloadStatus == DownloadStatus.Completed,
         ) {
-            Text("Agentic", fontSize = 11.sp)
+            Text("Agentic")
             Icon(
                 imageVector = Icons.Filled.Psychology,
                 contentDescription = "Go forward",
