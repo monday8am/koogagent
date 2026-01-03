@@ -30,11 +30,7 @@ import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 
-private data class LlmModelInstance(
-    val engine: Engine,
-    var conversation: Conversation,
-    val modelConfig: ModelConfiguration,
-)
+private data class LlmModelInstance(val engine: Engine, var conversation: Conversation, val modelConfig: ModelConfiguration)
 
 /**
  * LiteRT-LM implementation with native tool calling support.
@@ -51,7 +47,7 @@ class LiteRTLmInferenceEngineImpl(
                 return@withContext Result.success(Unit)
             }
 
-            runCatching {
+            try {
                 if (!File(modelPath).exists()) {
                     throw IllegalStateException("Model file not found at path: $modelPath")
                 }
@@ -72,7 +68,7 @@ class LiteRTLmInferenceEngineImpl(
                 val conversationConfig =
                     ConversationConfig(
                         systemMessage = Message.of(
-                            "You are Qwen, created by Alibaba Cloud. You are a helpful assistant."
+                            "You are a helpful assistant."
                         ),
                         tools = tools, // Native LiteRT-LM tools with @Tool annotations
                         samplerConfig =
@@ -84,7 +80,24 @@ class LiteRTLmInferenceEngineImpl(
                     )
                 val conversation = engine.createConversation(conversationConfig)
 
-                currentInstance = LlmModelInstance(engine = engine, conversation = conversation, modelConfig = modelConfig)
+                currentInstance =
+                    LlmModelInstance(engine = engine, conversation = conversation, modelConfig = modelConfig)
+
+                Result.success(Unit)
+            } catch (e: Throwable) {
+                val message = e.message ?: ""
+                if (message.contains("Failed to look up signature input tensor")) {
+                    Result.failure(
+                        IllegalStateException(
+                            "Model incompatible: The model signature does not match the expected format. " +
+                                "This usually happens when using a MediaPipe model with LiteRT-LM runtime, " +
+                                "or an outdated model conversion. Please try a different model or check for updates.",
+                            e,
+                        )
+                    )
+                } else {
+                    Result.failure(e)
+                }
             }
         }
 
@@ -143,7 +156,10 @@ class LiteRTLmInferenceEngineImpl(
             }.flowOn(dispatcher)
     }
 
-    override fun initializeAsFlow(modelConfig: ModelConfiguration, modelPath: String): Flow<LocalInferenceEngine> =
+    override fun initializeAsFlow(
+        modelConfig: ModelConfiguration,
+        modelPath: String
+    ): Flow<LocalInferenceEngine> =
         flow {
             initialize(modelConfig = modelConfig, modelPath = modelPath)
                 .onSuccess {

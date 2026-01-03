@@ -5,11 +5,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Memory
-import androidx.compose.material.icons.filled.Psychology
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PersonOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -29,11 +30,15 @@ import com.monday8am.presentation.modelselector.UiAction
 internal fun ToolBar(
     models: List<ModelInfo>,
     selectedModelId: String?,
+    isLoggedIn: Boolean,
     onAction: (UiAction) -> Unit,
+    onShowAuthDialog: () -> Unit,
     onNavigateToTesting: (String) -> Unit,
     onNavigateToNotification: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val iconSizeModifier = Modifier.size(18.dp)
+
     Row(
         modifier =
         modifier
@@ -41,6 +46,30 @@ internal fun ToolBar(
             .padding(top = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        Button(
+            onClick = {
+                if (isLoggedIn) {
+                    onAction(UiAction.Logout)
+                } else {
+                    onShowAuthDialog()
+                }
+            },
+            colors = if (isLoggedIn) {
+                ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            } else {
+                ButtonDefaults.buttonColors()
+            }
+        ) {
+            Icon(
+                imageVector = if (isLoggedIn) Icons.Default.Person else Icons.Default.PersonOff,
+                contentDescription = if (isLoggedIn) "Logout" else "Login",
+                modifier = iconSizeModifier,
+            )
+        }
+
         // Delete button - visible only when downloaded model is selected
         val downloadStatus =
             models.find { it.config.modelId == selectedModelId }?.downloadStatus ?: DownloadStatus.NotStarted
@@ -57,6 +86,7 @@ internal fun ToolBar(
                     Icon(
                         imageVector = Icons.Default.Cancel,
                         contentDescription = "Cancel download",
+                        modifier = iconSizeModifier,
                     )
                 }
             }
@@ -77,6 +107,7 @@ internal fun ToolBar(
                     Icon(
                         imageVector = Icons.Default.Delete,
                         contentDescription = "Delete",
+                        modifier = iconSizeModifier,
                     )
                 }
             }
@@ -94,10 +125,11 @@ internal fun ToolBar(
             enabled = downloadStatus == DownloadStatus.Completed,
         ) {
             Text("Function")
-            Icon(
-                imageVector = Icons.Default.Memory,
-                contentDescription = "Go forward",
-            )
+//            Icon(
+//                imageVector = Icons.Default.Memory,
+//                contentDescription = "Go forward",
+//                modifier = iconSizeModifier,
+//            )
         }
 
         Button(
@@ -107,10 +139,11 @@ internal fun ToolBar(
             enabled = downloadStatus == DownloadStatus.Completed,
         ) {
             Text("Agentic")
-            Icon(
-                imageVector = Icons.Filled.Psychology,
-                contentDescription = "Go forward",
-            )
+//            Icon(
+//                imageVector = Icons.Filled.Psychology,
+//                contentDescription = "Go forward",
+//                modifier = iconSizeModifier,
+//            )
         }
     }
 }
@@ -129,7 +162,9 @@ private fun ToolBarPreview_NotDownloaded() {
                 ),
             ),
             selectedModelId = ModelCatalog.QWEN3_0_6B.modelId,
+            isLoggedIn = false,
             onAction = {},
+            onShowAuthDialog = {},
             onNavigateToTesting = {},
             onNavigateToNotification = {},
         )
@@ -150,7 +185,9 @@ private fun ToolBarPreview_DownloadedSelected() {
                 ),
             ),
             selectedModelId = ModelCatalog.HAMMER2_1_0_5B.modelId,
+            isLoggedIn = true,
             onAction = {},
+            onShowAuthDialog = {},
             onNavigateToTesting = {},
             onNavigateToNotification = {},
         )
@@ -171,7 +208,9 @@ private fun ToolBarPreview_Downloading() {
                 ),
             ),
             selectedModelId = ModelCatalog.GEMMA3_1B.modelId,
+            isLoggedIn = true,
             onAction = {},
+            onShowAuthDialog = {},
             onNavigateToTesting = {},
             onNavigateToNotification = {},
         )

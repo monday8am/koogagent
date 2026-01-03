@@ -179,12 +179,26 @@ internal fun ModelCard(
 
                 is DownloadStatus.Failed -> {
                     Column(horizontalAlignment = Alignment.End) {
-                        Icon(
-                            imageVector = Icons.Default.Error,
-                            contentDescription = "Failed",
-                            tint = MaterialTheme.colorScheme.error,
-                        )
-                        TextButton(onClick = onDownloadClick) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = downloadStatus.error,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.error,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false)
+                            )
+                            Icon(
+                                imageVector = Icons.Default.Error,
+                                contentDescription = "Failed",
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.padding(start = 4.dp).size(16.dp)
+                            )
+                        }
+                        TextButton(
+                            onClick = onDownloadClick,
+                            modifier = Modifier.height(32.dp)
+                        ) {
                             Text("Retry", fontSize = 12.sp)
                         }
                     }

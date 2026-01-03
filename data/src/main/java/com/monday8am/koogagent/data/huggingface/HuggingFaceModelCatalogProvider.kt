@@ -1,6 +1,7 @@
 package com.monday8am.koogagent.data.huggingface
 
 import co.touchlab.kermit.Logger
+import com.monday8am.koogagent.data.AuthRepository
 import com.monday8am.koogagent.data.HardwareBackend
 import com.monday8am.koogagent.data.InferenceLibrary
 import com.monday8am.koogagent.data.ModelCatalogProvider
@@ -31,6 +32,7 @@ import org.json.JSONObject
  * - Details: GET https://huggingface.co/api/models/{model_id}
  */
 class HuggingFaceModelCatalogProvider(
+    private val authRepository: AuthRepository? = null,
     private val client: OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
@@ -56,12 +58,7 @@ class HuggingFaceModelCatalogProvider(
     override suspend fun fetchModels(): Result<List<ModelConfiguration>> =
         withContext(dispatcher) {
             runCatching {
-                logger.d { "Fetching model list from $LIST_URL" }
                 val summaries = fetchModelList().filter { it.pipelineTag == "text-generation" }
-
-                logger.d {
-                    "Found ${summaries.size} text-generation models. Fetching metadata concurrently..."
-                }
 
                 // Fetch details and file sizes in parallel with concurrency limit
                 val modelDataResults =
@@ -171,8 +168,14 @@ class HuggingFaceModelCatalogProvider(
      * Helper to execute OkHttp requests as suspending functions with cancellation support.
      */
     private suspend fun <T> executeRequest(request: Request, parser: (Response) -> T): T {
+        val finalRequest = authRepository?.authToken?.value?.let { token ->
+            request.newBuilder()
+                .header("Authorization", "Bearer $token")
+                .build()
+        } ?: request
+
         return suspendCancellableCoroutine { continuation ->
-            val call = client.newCall(request)
+            val call = client.newCall(finalRequest)
             continuation.invokeOnCancellation { call.cancel() }
 
             call.enqueue(object : Callback {
@@ -243,7 +246,7 @@ class HuggingFaceModelCatalogProvider(
                 likes = json.optInt("likes", 0),
                 siblings = siblings,
             )
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             null
         }
     }
@@ -266,7 +269,6 @@ class HuggingFaceModelCatalogProvider(
 
             // Get file size from the tree endpoint
             val fileSize = fileSizes[file.rfilename]
-            logger.d { "Model ${details.id}/${file.rfilename}: size=$fileSize bytes" }
 
             ModelConfiguration(
                 displayName = parsed.displayName,

@@ -15,23 +15,15 @@ import kotlinx.coroutines.flow.onStart
 /**
  * A single test query with optional description.
  */
-data class TestQuery(
-    val text: String,
-    val description: String? = null,
-)
+data class TestQuery(val text: String, val description: String? = null)
 
 /**
  * Validation result for a test case.
  */
 sealed class ValidationResult {
-    data class Pass(
-        val message: String,
-    ) : ValidationResult()
+    data class Pass(val message: String) : ValidationResult()
 
-    data class Fail(
-        val message: String,
-        val details: String? = null,
-    ) : ValidationResult()
+    data class Fail(val message: String, val details: String? = null) : ValidationResult()
 }
 
 /**
@@ -42,51 +34,28 @@ sealed interface TestResultFrame {
     val testName: String
     val id: String
 
-    data class Description(
-        override val testName: String,
-        val description: String,
-        val systemPrompt: String,
-    ) : TestResultFrame {
+    data class Description(override val testName: String, val description: String, val systemPrompt: String) : TestResultFrame {
         override val id: String = "$testName-description"
     }
 
-    data class Query(
-        override val testName: String,
-        val query: String,
-    ) : TestResultFrame {
+    data class Query(override val testName: String, val query: String) : TestResultFrame {
         override val id: String = "$testName-query"
     }
 
-    data class Tool(
-        override val testName: String,
-        val content: String,
-        val accumulator: String,
-    ) : TestResultFrame {
+    data class Tool(override val testName: String, val content: String, val accumulator: String) : TestResultFrame {
         override val id: String = "$testName-tool"
     }
 
-    data class Content(
-        override val testName: String,
-        val chunk: String,
-        val accumulator: String,
-    ) : TestResultFrame {
+    data class Content(override val testName: String, val chunk: String, val accumulator: String) : TestResultFrame {
         override val id: String = "$testName-content"
     }
 
-    data class Thinking(
-        override val testName: String,
-        val chunk: String,
-        val accumulator: String,
-    ) : TestResultFrame {
+    data class Thinking(override val testName: String, val chunk: String, val accumulator: String) : TestResultFrame {
         override val id: String = "$testName-thinking"
     }
 
-    data class Validation(
-        override val testName: String,
-        val result: ValidationResult,
-        val duration: Long,
-        val fullContent: String,
-    ) : TestResultFrame {
+    data class Validation(override val testName: String, val result: ValidationResult, val duration: Long, val fullContent: String) :
+        TestResultFrame {
         override val id: String = "$testName-validation"
     }
 }
@@ -120,10 +89,7 @@ data class TestCase(
  * @param streamPromptExecutor Executes a prompt and streams the response
  * @param resetConversation Resets conversation state between tests
  */
-class ToolCallingTest(
-    private val streamPromptExecutor: (String) -> Flow<String>,
-    private val resetConversation: () -> Result<Unit>,
-) {
+class ToolCallingTest(private val streamPromptExecutor: (String) -> Flow<String>, private val resetConversation: () -> Result<Unit>) {
     private val logger = Logger.withTag("ToolCallingTest")
 
     /**

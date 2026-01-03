@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -37,15 +38,16 @@ fun ModelSelectorScreen(onNavigateToNotification: (String) -> Unit, onNavigateTo
                 ModelSelectorViewModelImpl(
                     modelDownloadManager = Dependencies.modelDownloadManager,
                     modelRepository = Dependencies.modelRepository,
+                    authRepository = Dependencies.authRepository,
                 ),
             )
         }
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var selectedModelId by remember { mutableStateOf<String?>(null) }
+    var showAuthDialog: Boolean by remember { mutableStateOf(false) }
 
-    // Auto-deselect if model disappears from list (e.g. after deletion)
-    androidx.compose.runtime.LaunchedEffect(uiState.models) {
+    LaunchedEffect(uiState.models) {
         if (selectedModelId != null && uiState.models.none { it.config.modelId == selectedModelId }) {
             selectedModelId = null
         }
@@ -69,9 +71,17 @@ fun ModelSelectorScreen(onNavigateToNotification: (String) -> Unit, onNavigateTo
         modifier = Modifier,
         onIntent = viewModel::onUiAction,
         onSelectModel = { selectedModelId = it },
+        onShowDialog = { showAuthDialog = true },
         onNavigateToNotification = onNavigateToNotification,
         onNavigateToTesting = onNavigateToTesting,
     )
+
+    if (showAuthDialog) {
+        AuthDialog(
+            onDismiss = { showAuthDialog = false },
+            onSubmit = { token -> viewModel.onUiAction(UiAction.SubmitToken(token)) }
+        )
+    }
 }
 
 @Composable
@@ -82,6 +92,7 @@ private fun ModelSelectorScreenContent(
     modifier: Modifier = Modifier,
     onIntent: (UiAction) -> Unit = {},
     onSelectModel: (String) -> Unit = {},
+    onShowDialog: () -> Unit = {},
     onNavigateToNotification: (String) -> Unit = {},
     onNavigateToTesting: (String) -> Unit = {},
 ) {
@@ -124,9 +135,16 @@ private fun ModelSelectorScreenContent(
                 selectedModelId = selectedModelId,
                 onIntent = { action ->
                     if (action is UiAction.DownloadModel) {
-                        onSelectModel(action.modelId)
+                        val model = uiState.models.find { it.config.modelId == action.modelId }
+                        if (model?.isGated == true && !uiState.isLoggedIn) {
+                            onShowDialog()
+                        } else {
+                            onSelectModel(action.modelId)
+                            onIntent(action)
+                        }
+                    } else {
+                        onIntent(action)
                     }
-                    onIntent(action)
                 },
                 onSelectModel = onSelectModel,
                 modifier = Modifier.weight(1f),
@@ -136,7 +154,9 @@ private fun ModelSelectorScreenContent(
         ToolBar(
             models = uiState.models,
             selectedModelId = selectedModelId,
+            isLoggedIn = uiState.isLoggedIn,
             onAction = onIntent,
+            onShowAuthDialog = onShowDialog,
             onNavigateToTesting = onNavigateToTesting,
             onNavigateToNotification = onNavigateToNotification,
         )

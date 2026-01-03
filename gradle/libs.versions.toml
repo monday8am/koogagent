@@ -20,7 +20,8 @@ mediapipe = "0.10.29"
 localagents = "0.1.0"
 navigation = "2.9.6"
 kotlinxSerialization = "1.9.0"
-ktlint = "12.1.2"
+ktlint = "14.0.1"
+security-crypto = "1.1.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -52,6 +53,7 @@ mediapipe-tasks-genai = { group = "com.google.mediapipe", name = "tasks-genai", 
 localagents-fc = { group = "com.google.ai.edge.localagents", name = "localagents-fc", version.ref = "localagents" }
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigation" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
+androidx-security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "security-crypto" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

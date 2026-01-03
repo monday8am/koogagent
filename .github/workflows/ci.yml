@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: read
+  checks: write
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -19,16 +23,23 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: gradle
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
 
       - name: Run ktlint check
         run: ./gradlew ktlintCheck
 
       - name: Run tests
-        run: ./gradlew test
+        run: ./gradlew test --continue
+
+      - name: Test Report
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Unit Tests
+          path: "**/build/test-results/**/*.xml"
+          reporter: java-junit
 
       - name: Build debug APK
         run: ./gradlew :app:assembleDebug

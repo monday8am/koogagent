@@ -9,10 +9,7 @@ internal enum class ParserState {
 /**
  * Internal processor to handle tag-based streaming state.
  */
-internal class TagProcessor(
-    private val testName: String,
-    private val parseTags: Boolean,
-) {
+internal class TagProcessor(private val testName: String, private val parseTags: Boolean) {
     private val currentBlock = StringBuilder()
     private var state = ParserState.Content
 

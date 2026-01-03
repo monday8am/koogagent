@@ -146,6 +146,4 @@ class NotificationAgent private constructor(
     }
 }
 
-private class LocalInferenceAIExecutor(
-    llmClient: LLMClient,
-) : SingleLLMPromptExecutor(llmClient)
+private class LocalInferenceAIExecutor(llmClient: LLMClient) : SingleLLMPromptExecutor(llmClient)

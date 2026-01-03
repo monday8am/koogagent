@@ -8,10 +8,9 @@ import org.json.JSONObject
 
 internal val logger = Logger.withTag("NotificationGenerator")
 
-class NotificationGenerator(
-    private val agent: NotificationAgent,
-) {
-    private val systemPrompt = "You are an nutritionist that generates short, motivating reminders for logging meals or water intake."
+class NotificationGenerator(private val agent: NotificationAgent) {
+    private val systemPrompt =
+        "You are an nutritionist that generates short, motivating reminders for logging meals or water intake."
 
     suspend fun generate(context: NotificationContext): NotificationResult {
         val prompt = buildPrompt(context)

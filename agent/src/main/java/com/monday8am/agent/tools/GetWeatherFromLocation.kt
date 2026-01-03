@@ -14,22 +14,16 @@ import kotlinx.serialization.Serializable
  */
 
 @Serializable
-internal data class WeatherResult(
-    val condition: String,
-    val temperature: Double?,
-    val location: String,
-    val success: Boolean,
-)
+internal data class WeatherResult(val condition: String, val temperature: Double?, val location: String, val success: Boolean)
 
-class GetWeatherFromLocation(
-    private val weatherProvider: WeatherProvider,
-) : SimpleTool<GetWeatherFromLocation.Args>(
-    name = "GetWeatherFromLocation",
-    description =
-    "Call this function to get the weather using latitude and longitude parameters. " +
-        "The latitude and longitude are needed as parameters.",
-    argsSerializer = Args.serializer(),
-) {
+class GetWeatherFromLocation(private val weatherProvider: WeatherProvider) :
+    SimpleTool<GetWeatherFromLocation.Args>(
+        name = "GetWeatherFromLocation",
+        description =
+        "Call this function to get the weather using latitude and longitude parameters. " +
+            "The latitude and longitude are needed as parameters.",
+        argsSerializer = Args.serializer(),
+    ) {
     @Serializable
     data class Args(
         @property:LLMDescription("Latitude of the location in double format")

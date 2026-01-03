@@ -8,12 +8,7 @@ package com.monday8am.koogagent.data.huggingface
  * Represents a model from the Hugging Face API list endpoint.
  * GET https://huggingface.co/api/models?author=litert-community
  */
-data class HuggingFaceModelSummary(
-    val id: String,
-    val pipelineTag: String?,
-    val downloads: Int,
-    val likes: Int,
-)
+data class HuggingFaceModelSummary(val id: String, val pipelineTag: String?, val downloads: Int, val likes: Int)
 
 /**
  * Represents detailed model info from the model details endpoint.
@@ -32,10 +27,7 @@ data class HuggingFaceModelDetails(
 /**
  * Represents a file in the model repository.
  */
-data class HuggingFaceFile(
-    val rfilename: String,
-    val size: Long? = null,
-)
+data class HuggingFaceFile(val rfilename: String, val size: Long? = null)
 
 /**
  * Gated status can be boolean or string "auto".
