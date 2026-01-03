@@ -332,7 +332,6 @@ class ModelSelectorViewModelTest {
         advanceUntilIdle()
 
         assertEquals("test-token", fakeAuthRepository.authToken.value)
-        assertFalse(viewModel.uiState.value.showAuthDialog)
         assertTrue(viewModel.uiState.value.isLoggedIn)
 
         viewModel.dispose()
@@ -351,26 +350,6 @@ class ModelSelectorViewModelTest {
 
         assertNull(fakeAuthRepository.authToken.value)
         assertFalse(viewModel.uiState.value.isLoggedIn)
-
-        viewModel.dispose()
-    }
-
-    @Test
-    fun `ShowAuthDialog should update state`() = runTest {
-        val viewModel = createViewModel()
-        advanceUntilIdle()
-
-        assertFalse(viewModel.uiState.value.showAuthDialog)
-
-        viewModel.onUiAction(UiAction.ShowAuthDialog)
-        advanceUntilIdle()
-
-        assertTrue(viewModel.uiState.value.showAuthDialog)
-
-        viewModel.onUiAction(UiAction.HideAuthDialog)
-        advanceUntilIdle()
-
-        assertFalse(viewModel.uiState.value.showAuthDialog)
 
         viewModel.dispose()
     }
