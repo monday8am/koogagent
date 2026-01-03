@@ -2,6 +2,7 @@ package com.monday8am.koogagent.ui.screens.modelselector
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -102,17 +103,12 @@ private fun ModelSelectorScreenContent(
             .fillMaxSize()
             .padding(16.dp),
     ) {
-        Text(
-            text = "Select a Model",
-            style = MaterialTheme.typography.headlineMedium,
-            modifier = Modifier.padding(top = 32.dp, bottom = 16.dp),
-        )
-
-        Text(
-            text = statusMessage,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(bottom = 8.dp),
+        ModelSelectorHeader(
+            statusMessage = statusMessage,
+            groupingMode = uiState.groupingMode,
+            isAllExpanded = uiState.isAllExpanded,
+            onIntent = onIntent,
+            modifier = Modifier.fillMaxWidth(),
         )
 
         uiState.catalogError?.let { error ->
@@ -131,7 +127,7 @@ private fun ModelSelectorScreenContent(
             )
         } else {
             ModelList(
-                models = uiState.models,
+                groups = uiState.groupedModels,
                 selectedModelId = selectedModelId,
                 onIntent = { action ->
                     if (action is UiAction.DownloadModel) {

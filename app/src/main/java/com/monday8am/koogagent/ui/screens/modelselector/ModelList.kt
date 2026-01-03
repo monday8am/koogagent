@@ -1,9 +1,22 @@
 package com.monday8am.koogagent.ui.screens.modelselector
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -12,12 +25,14 @@ import com.monday8am.koogagent.data.InferenceLibrary
 import com.monday8am.koogagent.data.ModelConfiguration
 import com.monday8am.koogagent.ui.theme.KoogAgentTheme
 import com.monday8am.presentation.modelselector.DownloadStatus
+import com.monday8am.presentation.modelselector.ModelGroup
 import com.monday8am.presentation.modelselector.ModelInfo
 import com.monday8am.presentation.modelselector.UiAction
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun ModelList(
-    models: List<ModelInfo>,
+    groups: List<ModelGroup>,
     selectedModelId: String?,
     onIntent: (UiAction) -> Unit,
     onSelectModel: (String) -> Unit,
@@ -27,21 +42,61 @@ internal fun ModelList(
         verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier = modifier,
     ) {
-        items(
-            items = models,
-            key = { it.config.modelId },
-        ) { modelInfo ->
-            ModelCard(
-                modelInfo = modelInfo,
-                isSelected = modelInfo.config.modelId == selectedModelId,
-                onDownloadClick = {
-                    onIntent(UiAction.DownloadModel(modelInfo.config.modelId))
-                },
-                onSelectClick = {
-                    onSelectModel(modelInfo.config.modelId)
-                },
-            )
+        groups.forEach { group ->
+            stickyHeader(key = group.id) {
+                GroupHeader(
+                    title = group.title,
+                    isExpanded = group.isExpanded,
+                    onToggle = { onIntent(UiAction.ToggleGroup(group.id)) }
+                )
+            }
+
+            if (group.isExpanded) {
+                items(
+                    items = group.models,
+                    key = { it.config.modelId },
+                ) { modelInfo ->
+                    ModelCard(
+                        modelInfo = modelInfo,
+                        isSelected = modelInfo.config.modelId == selectedModelId,
+                        onDownloadClick = {
+                            onIntent(UiAction.DownloadModel(modelInfo.config.modelId))
+                        },
+                        onSelectClick = {
+                            onSelectModel(modelInfo.config.modelId)
+                        },
+                    )
+                }
+            }
         }
+    }
+}
+
+@Composable
+private fun GroupHeader(
+    title: String,
+    isExpanded: Boolean,
+    onToggle: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surface)
+            .clickable(onClick = onToggle)
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Icon(
+            imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+            contentDescription = if (isExpanded) "Collapse" else "Expand",
+            tint = MaterialTheme.colorScheme.primary
+        )
     }
 }
 
@@ -83,7 +138,14 @@ private fun ModelListPreview() {
 
     KoogAgentTheme {
         ModelList(
-            models = sampleModels,
+            groups = listOf(
+                ModelGroup(
+                    id = "group1",
+                    title = "Test Group",
+                    models = sampleModels,
+                    isExpanded = true
+                )
+            ),
             selectedModelId = sampleModels.first().config.modelId,
             onIntent = {},
             onSelectModel = {}
