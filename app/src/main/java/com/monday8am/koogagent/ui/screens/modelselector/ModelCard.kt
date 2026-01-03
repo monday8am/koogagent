@@ -2,7 +2,7 @@ package com.monday8am.koogagent.ui.screens.modelselector
 
 import android.annotation.SuppressLint
 import android.content.Intent
-import android.net.Uri
+import androidx.core.net.toUri
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -98,7 +98,7 @@ internal fun ModelCard(
                     modelInfo.config.huggingFaceUrl?.let { url ->
                         IconButton(
                             onClick = {
-                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                                context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
                             },
                             modifier = Modifier.size(48.dp) // Accessibility min touch target
                         ) {

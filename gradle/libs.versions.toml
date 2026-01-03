@@ -1,5 +1,5 @@
 [versions]
-agp = "8.13.2"
+agp = "9.0.0-rc02"
 json = "20251224"
 kotlin = "2.3.0"
 coreKtx = "1.17.0"
@@ -20,9 +20,10 @@ mediapipe = "0.10.29"
 localagents = "0.1.0"
 navigation = "2.9.6"
 kotlinxSerialization = "1.9.0"
+kotlinx-collections-immutable = "0.4.0"
 ktlint = "14.0.1"
 security-crypto = "1.1.0"
-compose-lint = "1.4.3"
+compose-lint = "1.4.2"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -54,6 +55,7 @@ mediapipe-tasks-genai = { group = "com.google.mediapipe", name = "tasks-genai", 
 localagents-fc = { group = "com.google.ai.edge.localagents", name = "localagents-fc", version.ref = "localagents" }
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigation" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
+kotlinx-collections-immutable = { group = "org.jetbrains.kotlinx", name = "kotlinx-collections-immutable", version.ref = "kotlinx-collections-immutable" }
 androidx-security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "security-crypto" }
 compose-lint-checks = { group = "com.slack.lint.compose", name = "compose-lint-checks", version.ref = "compose-lint" }
 

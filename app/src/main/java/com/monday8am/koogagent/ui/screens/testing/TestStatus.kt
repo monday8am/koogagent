@@ -24,11 +24,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.monday8am.koogagent.ui.theme.KoogAgentTheme
 import com.monday8am.presentation.testing.TestStatus
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.toImmutableList
 import com.monday8am.presentation.testing.ToolCallingTest.Companion.REGRESSION_TEST_SUITE
 
 @Composable
 internal fun TestStatusList(
-    testStatuses: List<TestStatus>,
+    testStatuses: ImmutableList<TestStatus>,
     modifier: Modifier = Modifier,
 ) {
     LazyRow(
@@ -96,7 +98,7 @@ private fun TestStatusListPreview() {
                     name = it.name,
                     state = TestStatus.State.PASS
                 )
-            }
+            }.toImmutableList()
         )
     }
 }

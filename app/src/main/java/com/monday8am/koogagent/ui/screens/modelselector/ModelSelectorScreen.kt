@@ -27,22 +27,25 @@ import com.monday8am.presentation.modelselector.ModelInfo
 import com.monday8am.presentation.modelselector.ModelSelectorViewModelImpl
 import com.monday8am.presentation.modelselector.UiAction
 import com.monday8am.presentation.modelselector.UiState
+import kotlinx.collections.immutable.toImmutableList
 
 /**
  * Model Selector Screen - Entry point for model selection.
  */
 @Composable
-fun ModelSelectorScreen(onNavigateToNotification: (String) -> Unit, onNavigateToTesting: (String) -> Unit) {
-    val viewModel: AndroidModelSelectorViewModel =
-        viewModel {
-            AndroidModelSelectorViewModel(
-                ModelSelectorViewModelImpl(
-                    modelDownloadManager = Dependencies.modelDownloadManager,
-                    modelRepository = Dependencies.modelRepository,
-                    authRepository = Dependencies.authRepository,
-                ),
-            )
-        }
+fun ModelSelectorScreen(
+    onNavigateToNotification: (String) -> Unit,
+    onNavigateToTesting: (String) -> Unit,
+    viewModel: AndroidModelSelectorViewModel = viewModel {
+        AndroidModelSelectorViewModel(
+            ModelSelectorViewModelImpl(
+                modelDownloadManager = Dependencies.modelDownloadManager,
+                modelRepository = Dependencies.modelRepository,
+                authRepository = Dependencies.authRepository,
+            ),
+        )
+    }
+) {
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var selectedModelId by remember { mutableStateOf<String?>(null) }
@@ -99,9 +102,9 @@ private fun ModelSelectorScreenContent(
 ) {
     Column(
         modifier =
-        modifier
-            .fillMaxSize()
-            .padding(16.dp),
+            modifier
+                .fillMaxSize()
+                .padding(16.dp),
     ) {
         ModelSelectorHeader(
             statusMessage = statusMessage,
@@ -165,26 +168,26 @@ private fun ModelSelectorScreenPreview() {
     KoogAgentTheme {
         ModelSelectorScreenContent(
             uiState =
-            UiState(
-                models =
-                ModelCatalog.ALL_MODELS.map {
-                    ModelInfo(
-                        config = it,
-                        isDownloaded = it.modelId != ModelCatalog.GEMMA3_1B.modelId,
-                        downloadStatus =
-                        if (it.modelId ==
-                            ModelCatalog.GEMMA3_1B.modelId
-                        ) {
-                            DownloadStatus.Downloading(10f)
-                        } else {
-                            DownloadStatus.Completed
-                        },
-                    )
-                },
-                currentDownload = DownloadInfo(ModelCatalog.GEMMA3_1B.modelId, 10f),
-                statusMessage = "Downloading model: GEMMA3_1B",
-                isLoadingCatalog = false,
-            ),
+                UiState(
+                    models =
+                        ModelCatalog.ALL_MODELS.map {
+                            ModelInfo(
+                                config = it,
+                                isDownloaded = it.modelId != ModelCatalog.GEMMA3_1B.modelId,
+                                downloadStatus =
+                                    if (it.modelId ==
+                                        ModelCatalog.GEMMA3_1B.modelId
+                                    ) {
+                                        DownloadStatus.Downloading(10f)
+                                    } else {
+                                        DownloadStatus.Completed
+                                    },
+                            )
+                        }.toImmutableList(),
+                    currentDownload = DownloadInfo(ModelCatalog.GEMMA3_1B.modelId, 10f),
+                    statusMessage = "Downloading model: GEMMA3_1B",
+                    isLoadingCatalog = false,
+                ),
             selectedModelId = ModelCatalog.GEMMA3_1B.modelId,
             statusMessage = "Selected: GEMMA3_1B",
         )
@@ -197,10 +200,10 @@ private fun ModelSelectorScreenPreview_Loading() {
     KoogAgentTheme {
         ModelSelectorScreenContent(
             uiState =
-            UiState(
-                isLoadingCatalog = true,
-                statusMessage = "Loading models from Hugging Face...",
-            ),
+                UiState(
+                    isLoadingCatalog = true,
+                    statusMessage = "Loading models from Hugging Face...",
+                ),
             selectedModelId = null,
             statusMessage = "Loading models from Hugging Face...",
         )
