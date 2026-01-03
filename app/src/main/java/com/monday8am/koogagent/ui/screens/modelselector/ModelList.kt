@@ -137,20 +137,18 @@ private fun ModelListPreview() {
     )
 
     KoogAgentTheme {
-        KoogAgentTheme {
-            ModelList(
-                groups = listOf(
-                    ModelGroup(
-                        id = "group1",
-                        title = "Test Group",
-                        models = sampleModels,
-                        isExpanded = true
-                    )
-                ),
-                selectedModelId = sampleModels.first().config.modelId,
-                onIntent = {},
-                onSelectModel = {}
-            )
-        }
+        ModelList(
+            groups = listOf(
+                ModelGroup(
+                    id = "group1",
+                    title = "Test Group",
+                    models = sampleModels,
+                    isExpanded = true
+                )
+            ),
+            selectedModelId = sampleModels.first().config.modelId,
+            onIntent = {},
+            onSelectModel = {}
+        )
     }
 }

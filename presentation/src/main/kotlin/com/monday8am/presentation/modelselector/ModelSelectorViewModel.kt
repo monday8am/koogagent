@@ -188,29 +188,15 @@ class ModelSelectorViewModelImpl(
 
     private fun toggleAllGroups() {
         val currentState = viewModelState.value
-        val isNoneExpanded = currentState.collapsedGroupIds.isNotEmpty()
+        val currentGroups = uiState.value.groupedModels
 
-        if (isNoneExpanded) {
-            // Expand all by clearing collapsed IDs
-            viewModelState.value = currentState.copy(collapsedGroupIds = emptySet())
+        if (currentState.collapsedGroupIds.isEmpty()) {
+            // Collapse all - collect all group IDs from current groups
+            val allGroupIds = currentGroups.map { it.id }.toSet()
+            viewModelState.value = currentState.copy(collapsedGroupIds = allGroupIds)
         } else {
-            // Collapse all. We need the current groups to know IDs,
-            // but we can just use the latest SUCCESS state from model repository to find group prefixes or just rely on the fact that any ID in collapsedGroupIds will collapse it.
-            // Actually, to collapse "all", we need to know what groups are currently available.
-            // SIMPLER: Since we don't have the list of group IDs here easily without calculating them,
-            // and we want a "toggle", let's assume if it's not empty, we clear it.
-            // If it IS empty, we need to populate it.
-            // However, the ViewModel doesn't store the current groups, it calculates them in deriveUiState.
-            // BETTER: If collapsedGroupIds is empty, we set a "sentinel" or we just need to get the current groups.
-            // Let's use a special flag or just calculate the IDs here if we have the models.
-
-            val loadingState = modelRepository.loadingState.value
-            if (loadingState is RepositoryState.Success) {
-                val modelsInfo = loadingState.models.map { ModelInfo(it) } // Minimal mapping
-                val currentGroups = groupModels(modelsInfo, currentState.groupingMode, emptySet())
-                val allIds = currentGroups.map { it.id }.toSet()
-                viewModelState.value = currentState.copy(collapsedGroupIds = allIds)
-            }
+            // Expand all
+            viewModelState.value = currentState.copy(collapsedGroupIds = emptySet())
         }
     }
 
