@@ -359,4 +359,54 @@ class ModelSelectorViewModelTest {
     }
 
     // endregion
+
+    // region Grouping Tests
+
+    @Test
+    fun `SetGroupingMode should update groupedModels`() = runTest {
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        // Default mode is None
+        val stateNone = viewModel.uiState.value
+        assertEquals(GroupingMode.None, stateNone.groupingMode)
+        assertEquals(1, stateNone.groupedModels.size)
+        assertEquals("all", stateNone.groupedModels.first().id)
+
+        // Switch to Family
+        viewModel.onUiAction(UiAction.SetGroupingMode(GroupingMode.Family))
+        advanceUntilIdle()
+
+        val stateFamily = viewModel.uiState.value
+        assertEquals(GroupingMode.Family, stateFamily.groupingMode)
+        // model1 is Qwen3, model2 is Gemma3 => 2 families.
+        assertEquals(2, stateFamily.groupedModels.size)
+
+        // Verify groups are populated
+        assertTrue(stateFamily.groupedModels.all { it.models.isNotEmpty() })
+
+        viewModel.dispose()
+    }
+
+    @Test
+    fun `ToggleGroup should update isExpanded state`() = runTest {
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.onUiAction(UiAction.SetGroupingMode(GroupingMode.Family))
+        advanceUntilIdle()
+
+        val initialGroup = viewModel.uiState.value.groupedModels.first()
+        assertTrue(initialGroup.isExpanded)
+
+        viewModel.onUiAction(UiAction.ToggleGroup(initialGroup.id))
+        advanceUntilIdle()
+
+        val collapsedGroup = viewModel.uiState.value.groupedModels.first { it.id == initialGroup.id }
+        assertFalse(collapsedGroup.isExpanded)
+
+        viewModel.dispose()
+    }
+
+    // endregion
 }

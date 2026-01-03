@@ -1,6 +1,8 @@
 package com.monday8am.presentation.modelselector
 
 import com.monday8am.koogagent.data.AuthRepository
+import com.monday8am.koogagent.data.HardwareBackend
+import com.monday8am.koogagent.data.InferenceLibrary
 import com.monday8am.koogagent.data.ModelConfiguration
 import com.monday8am.koogagent.data.ModelRepository
 import com.monday8am.koogagent.data.RepositoryState
@@ -9,6 +11,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -21,12 +24,28 @@ import kotlinx.coroutines.launch
  */
 data class UiState(
     val models: List<ModelInfo> = emptyList(),
+    val groupedModels: List<ModelGroup> = emptyList(),
+    val groupingMode: GroupingMode = GroupingMode.None,
     val currentDownload: DownloadInfo? = null,
     val queuedDownloads: List<String> = emptyList(),
     val statusMessage: String = "Select a model to get started",
     val isLoadingCatalog: Boolean = true,
     val catalogError: String? = null,
     val isLoggedIn: Boolean = false,
+)
+
+enum class GroupingMode {
+    None,
+    Family,
+    Hardware,
+    Library
+}
+
+data class ModelGroup(
+    val id: String,
+    val title: String,
+    val models: List<ModelInfo>,
+    val isExpanded: Boolean = true
 )
 
 data class ModelInfo(
@@ -52,6 +71,8 @@ sealed class UiAction {
     data class DeleteModel(val modelId: String) : UiAction()
     data class SubmitToken(val token: String) : UiAction()
     data object Logout : UiAction()
+    data class SetGroupingMode(val mode: GroupingMode) : UiAction()
+    data class ToggleGroup(val groupId: String) : UiAction()
     internal data object Initialize : UiAction()
 }
 
@@ -70,12 +91,25 @@ class ModelSelectorViewModelImpl(
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
+    private data class ViewModelState(
+        val groupingMode: GroupingMode = GroupingMode.None,
+        val collapsedGroupIds: Set<String> = emptySet(),
+    )
+
+    private val viewModelState = MutableStateFlow(ViewModelState())
+
     override val uiState: StateFlow<UiState> = combine(
         modelRepository.loadingState,
         modelDownloadManager.modelsStatus,
         authRepository.authToken,
-    ) { loadingState: RepositoryState, modelsStatus: Map<String, ModelDownloadManager.Status>, authToken: String? ->
-        deriveUiState(loadingState, modelsStatus, authToken != null)
+        viewModelState,
+    ) { loadingState, modelsStatus, authToken, viewModelState ->
+        deriveUiState(
+            loadingState = loadingState,
+            modelsStatus = modelsStatus,
+            isLoggedIn = authToken != null,
+            viewModelState = viewModelState
+        )
     }
         .flowOn(ioDispatcher)
         .stateIn(scope, SharingStarted.Eagerly, UiState())
@@ -92,6 +126,8 @@ class ModelSelectorViewModelImpl(
             is UiAction.DeleteModel -> deleteModel(action.modelId)
             is UiAction.SubmitToken -> submitToken(action.token)
             is UiAction.Logout -> logout()
+            is UiAction.SetGroupingMode -> setGroupingMode(action.mode)
+            is UiAction.ToggleGroup -> toggleGroup(action.groupId)
         }
     }
 
@@ -141,16 +177,32 @@ class ModelSelectorViewModelImpl(
         }
     }
 
+    private fun setGroupingMode(mode: GroupingMode) {
+        viewModelState.value = viewModelState.value.copy(groupingMode = mode)
+    }
+
+    private fun toggleGroup(groupId: String) {
+        val currentCollapsed = viewModelState.value.collapsedGroupIds
+        val newCollapsed = if (currentCollapsed.contains(groupId)) {
+            currentCollapsed - groupId
+        } else {
+            currentCollapsed + groupId
+        }
+        viewModelState.value = viewModelState.value.copy(collapsedGroupIds = newCollapsed)
+    }
+
     private fun deriveUiState(
         loadingState: RepositoryState,
         modelsStatus: Map<String, ModelDownloadManager.Status>,
         isLoggedIn: Boolean,
+        viewModelState: ViewModelState,
     ): UiState = when (loadingState) {
         is RepositoryState.Idle,
         is RepositoryState.Loading -> UiState(
             isLoadingCatalog = true,
             statusMessage = "Loading models...",
             isLoggedIn = isLoggedIn,
+            groupingMode = viewModelState.groupingMode,
         )
 
         is RepositoryState.Error -> UiState(
@@ -158,6 +210,7 @@ class ModelSelectorViewModelImpl(
             catalogError = loadingState.message,
             statusMessage = "Error: ${loadingState.message}",
             isLoggedIn = isLoggedIn,
+            groupingMode = viewModelState.groupingMode,
         )
 
         is RepositoryState.Success -> {
@@ -166,30 +219,17 @@ class ModelSelectorViewModelImpl(
 
             val modelsInfo = loadingState.models.map { config ->
                 val status = modelsStatus[config.bundleFilename] ?: ModelDownloadManager.Status.NotStarted
+                val (downloadStatus, isDownloaded) = mapDownloadStatus(status)
 
-                val downloadStatus = when (status) {
-                    is ModelDownloadManager.Status.InProgress -> {
-                        val progress = status.progress ?: 0f
-                        if (currentDownload == null) {
-                            currentDownload = DownloadInfo(config.modelId, progress)
-                        }
-                        DownloadStatus.Downloading(progress)
-                    }
-
-                    is ModelDownloadManager.Status.Pending -> {
-                        queuedIds.add(config.modelId)
-                        DownloadStatus.Queued
-                    }
-
-                    is ModelDownloadManager.Status.Completed -> DownloadStatus.Completed
-                    is ModelDownloadManager.Status.Failed -> DownloadStatus.Failed(status.message)
-                    is ModelDownloadManager.Status.Cancelled -> DownloadStatus.NotStarted
-                    ModelDownloadManager.Status.NotStarted -> DownloadStatus.NotStarted
+                if (downloadStatus is DownloadStatus.Downloading && currentDownload == null) {
+                    currentDownload = DownloadInfo(config.modelId, downloadStatus.progress)
+                } else if (downloadStatus is DownloadStatus.Queued) {
+                    queuedIds.add(config.modelId)
                 }
 
                 ModelInfo(
                     config = config,
-                    isDownloaded = status is ModelDownloadManager.Status.Completed,
+                    isDownloaded = isDownloaded,
                     downloadStatus = downloadStatus,
                     isGated = config.isGated
                 )
@@ -204,8 +244,16 @@ class ModelSelectorViewModelImpl(
                 }
             }
 
+            val groupedModels = groupModels(
+                modelsInfo,
+                viewModelState.groupingMode,
+                viewModelState.collapsedGroupIds
+            )
+
             UiState(
                 models = modelsInfo,
+                groupedModels = groupedModels,
+                groupingMode = viewModelState.groupingMode,
                 currentDownload = currentDownload,
                 queuedDownloads = queuedIds,
                 isLoadingCatalog = false,
@@ -214,6 +262,91 @@ class ModelSelectorViewModelImpl(
                 statusMessage = currentDownload?.let { "Downloading: ${it.modelId.take(20)}..." }
                     ?: "Select a model",
             )
+        }
+    }
+
+    private fun mapDownloadStatus(
+        status: ModelDownloadManager.Status
+    ): Pair<DownloadStatus, Boolean> {
+        val downloadStatus = when (status) {
+            is ModelDownloadManager.Status.InProgress -> {
+                val progress = status.progress ?: 0f
+                DownloadStatus.Downloading(progress)
+            }
+
+            is ModelDownloadManager.Status.Pending -> DownloadStatus.Queued
+            is ModelDownloadManager.Status.Completed -> DownloadStatus.Completed
+            is ModelDownloadManager.Status.Failed -> DownloadStatus.Failed(status.message)
+            is ModelDownloadManager.Status.Cancelled -> DownloadStatus.NotStarted
+            ModelDownloadManager.Status.NotStarted -> DownloadStatus.NotStarted
+        }
+        val isDownloaded = status is ModelDownloadManager.Status.Completed
+        return Pair(downloadStatus, isDownloaded)
+    }
+
+    private fun groupModels(
+        models: List<ModelInfo>,
+        groupingMode: GroupingMode,
+        collapsedGroupIds: Set<String>
+    ): List<ModelGroup> {
+        return when (groupingMode) {
+            GroupingMode.None -> {
+                listOf(
+                    ModelGroup(
+                        id = "all",
+                        title = "All Models",
+                        models = models,
+                        isExpanded = true
+                    )
+                )
+            }
+
+            GroupingMode.Family -> {
+                models.groupBy { it.config.modelFamily }
+                    .map { (family, groupModels) ->
+                        ModelGroup(
+                            id = "family_$family",
+                            title = family.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() },
+                            models = groupModels,
+                            isExpanded = !collapsedGroupIds.contains("family_$family")
+                        )
+                    }
+                    .sortedBy { it.title }
+            }
+
+            GroupingMode.Hardware -> {
+                models.groupBy { it.config.hardwareAcceleration }
+                    .map { (hardware, groupModels) ->
+                        val hardwareName = when (hardware) {
+                            HardwareBackend.CPU_ONLY -> "CPU Only"
+                            HardwareBackend.GPU_SUPPORTED -> "GPU Accelerated"
+                            HardwareBackend.NPU_SUPPORTED -> "NPU Accelerated"
+                        }
+                        ModelGroup(
+                            id = "hw_${hardware.name}",
+                            title = hardwareName,
+                            models = groupModels,
+                            isExpanded = !collapsedGroupIds.contains("hw_${hardware.name}")
+                        )
+                    }
+                    .sortedBy { it.title }
+            }
+
+            GroupingMode.Library -> {
+                models.groupBy { it.config.inferenceLibrary }
+                    .map { (library, groupModels) ->
+                        ModelGroup(
+                            id = "lib_${library.name}",
+                            title = when (library) {
+                                InferenceLibrary.LITERT -> "LiteRT (TensorFlow Lite)"
+                                InferenceLibrary.MEDIAPIPE -> "MediaPipe"
+                            },
+                            models = groupModels,
+                            isExpanded = !collapsedGroupIds.contains("lib_${library.name}")
+                        )
+                    }
+                    .sortedBy { it.title }
+            }
         }
     }
 }

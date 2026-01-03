@@ -2,7 +2,7 @@ package com.monday8am.koogagent.ui.screens.modelselector
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -10,10 +10,20 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
+import com.monday8am.presentation.modelselector.GroupingMode
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.monday8am.koogagent.Dependencies
@@ -98,21 +108,15 @@ private fun ModelSelectorScreenContent(
 ) {
     Column(
         modifier =
-        modifier
-            .fillMaxSize()
-            .padding(16.dp),
+            modifier
+                .fillMaxSize()
+                .padding(16.dp),
     ) {
-        Text(
-            text = "Select a Model",
-            style = MaterialTheme.typography.headlineMedium,
-            modifier = Modifier.padding(top = 32.dp, bottom = 16.dp),
-        )
 
-        Text(
-            text = statusMessage,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(bottom = 8.dp),
+        ModelSelectorHeader(
+            statusMessage = statusMessage,
+            onIntent = onIntent,
+            modifier = Modifier.fillMaxWidth(),
         )
 
         uiState.catalogError?.let { error ->
@@ -131,7 +135,7 @@ private fun ModelSelectorScreenContent(
             )
         } else {
             ModelList(
-                models = uiState.models,
+                groups = uiState.groupedModels,
                 selectedModelId = selectedModelId,
                 onIntent = { action ->
                     if (action is UiAction.DownloadModel) {
@@ -169,26 +173,26 @@ private fun ModelSelectorScreenPreview() {
     KoogAgentTheme {
         ModelSelectorScreenContent(
             uiState =
-            UiState(
-                models =
-                ModelCatalog.ALL_MODELS.map {
-                    ModelInfo(
-                        config = it,
-                        isDownloaded = it.modelId != ModelCatalog.GEMMA3_1B.modelId,
-                        downloadStatus =
-                        if (it.modelId ==
-                            ModelCatalog.GEMMA3_1B.modelId
-                        ) {
-                            DownloadStatus.Downloading(10f)
-                        } else {
-                            DownloadStatus.Completed
+                UiState(
+                    models =
+                        ModelCatalog.ALL_MODELS.map {
+                            ModelInfo(
+                                config = it,
+                                isDownloaded = it.modelId != ModelCatalog.GEMMA3_1B.modelId,
+                                downloadStatus =
+                                    if (it.modelId ==
+                                        ModelCatalog.GEMMA3_1B.modelId
+                                    ) {
+                                        DownloadStatus.Downloading(10f)
+                                    } else {
+                                        DownloadStatus.Completed
+                                    },
+                            )
                         },
-                    )
-                },
-                currentDownload = DownloadInfo(ModelCatalog.GEMMA3_1B.modelId, 10f),
-                statusMessage = "Downloading model: GEMMA3_1B",
-                isLoadingCatalog = false,
-            ),
+                    currentDownload = DownloadInfo(ModelCatalog.GEMMA3_1B.modelId, 10f),
+                    statusMessage = "Downloading model: GEMMA3_1B",
+                    isLoadingCatalog = false,
+                ),
             selectedModelId = ModelCatalog.GEMMA3_1B.modelId,
             statusMessage = "Selected: GEMMA3_1B",
         )
@@ -201,10 +205,10 @@ private fun ModelSelectorScreenPreview_Loading() {
     KoogAgentTheme {
         ModelSelectorScreenContent(
             uiState =
-            UiState(
-                isLoadingCatalog = true,
-                statusMessage = "Loading models from Hugging Face...",
-            ),
+                UiState(
+                    isLoadingCatalog = true,
+                    statusMessage = "Loading models from Hugging Face...",
+                ),
             selectedModelId = null,
             statusMessage = "Loading models from Hugging Face...",
         )
