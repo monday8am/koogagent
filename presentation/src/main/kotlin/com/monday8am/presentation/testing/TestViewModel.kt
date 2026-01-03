@@ -3,6 +3,12 @@ package com.monday8am.presentation.testing
 import co.touchlab.kermit.Logger
 import com.monday8am.agent.core.LocalInferenceEngine
 import com.monday8am.koogagent.data.ModelConfiguration
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.ImmutableMap
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.persistentMapOf
+import kotlinx.collections.immutable.toImmutableList
+import kotlinx.collections.immutable.toImmutableMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -20,11 +26,11 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class TestUiState(
-    val frames: Map<String, TestResultFrame> = emptyMap(),
+    val frames: ImmutableMap<String, TestResultFrame> = persistentMapOf(),
     val selectedModel: ModelConfiguration,
     val isRunning: Boolean = false,
     val isInitializing: Boolean = false,
-    val testStatuses: List<TestStatus> = emptyList(),
+    val testStatuses: ImmutableList<TestStatus> = persistentListOf(),
 )
 
 data class TestStatus(val name: String, val state: State) {
@@ -63,7 +69,7 @@ class TestViewModelImpl(
             testStatuses =
             ToolCallingTest.REGRESSION_TEST_SUITE.map {
                 TestStatus(it.name, TestStatus.State.IDLE)
-            },
+            }.toImmutableList(),
         ),
     )
     override val uiState: StateFlow<TestUiState> = _uiState.asStateFlow()
@@ -86,11 +92,11 @@ class TestViewModelImpl(
                 it.copy(
                     isRunning = true,
                     isInitializing = true,
-                    frames = emptyMap(),
+                    frames = persistentMapOf(),
                     testStatuses =
                     it.testStatuses.map { status ->
                         status.copy(state = TestStatus.State.IDLE)
-                    },
+                    }.toImmutableList(),
                 )
             }
 
@@ -116,8 +122,8 @@ class TestViewModelImpl(
                     emit(errorFrame)
                 }.collect { frame ->
                     _uiState.update { currentState ->
-                        val updatedFrames = currentState.frames + (frame.id to frame)
-                        val updatedStatuses = updateTestStatuses(currentState.testStatuses, frame)
+                        val updatedFrames = (currentState.frames + (frame.id to frame)).toImmutableMap()
+                        val updatedStatuses = updateTestStatuses(currentState.testStatuses, frame).toImmutableList()
                         currentState.copy(frames = updatedFrames, testStatuses = updatedStatuses)
                     }
                 }

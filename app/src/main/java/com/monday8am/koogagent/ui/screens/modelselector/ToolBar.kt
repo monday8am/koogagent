@@ -25,10 +25,12 @@ import com.monday8am.koogagent.ui.theme.KoogAgentTheme
 import com.monday8am.presentation.modelselector.DownloadStatus
 import com.monday8am.presentation.modelselector.ModelInfo
 import com.monday8am.presentation.modelselector.UiAction
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.toImmutableList
 
 @Composable
 internal fun ToolBar(
-    models: List<ModelInfo>,
+    models: ImmutableList<ModelInfo>,
     selectedModelId: String?,
     isLoggedIn: Boolean,
     onAction: (UiAction) -> Unit,
@@ -153,14 +155,13 @@ internal fun ToolBar(
 private fun ToolBarPreview_NotDownloaded() {
     KoogAgentTheme {
         ToolBar(
-            models =
-            listOf(
+            models = listOf(
                 ModelInfo(
                     config = ModelCatalog.QWEN3_0_6B,
                     isDownloaded = false,
                     downloadStatus = DownloadStatus.NotStarted,
                 ),
-            ),
+            ).toImmutableList(),
             selectedModelId = ModelCatalog.QWEN3_0_6B.modelId,
             isLoggedIn = false,
             onAction = {},
@@ -183,7 +184,7 @@ private fun ToolBarPreview_DownloadedSelected() {
                     isDownloaded = true,
                     downloadStatus = DownloadStatus.Completed,
                 ),
-            ),
+            ).toImmutableList(),
             selectedModelId = ModelCatalog.HAMMER2_1_0_5B.modelId,
             isLoggedIn = true,
             onAction = {},
@@ -206,7 +207,7 @@ private fun ToolBarPreview_Downloading() {
                     isDownloaded = false,
                     downloadStatus = DownloadStatus.Downloading(42f),
                 ),
-            ),
+            ).toImmutableList(),
             selectedModelId = ModelCatalog.GEMMA3_1B.modelId,
             isLoggedIn = true,
             onAction = {},

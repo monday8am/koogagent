@@ -1,6 +1,7 @@
 package com.monday8am.koogagent.data
 
 import android.content.Context
+import androidx.core.content.edit
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,12 +25,16 @@ class AuthRepositoryImpl(context: Context) : AuthRepository {
     override val authToken: StateFlow<String?> = _authToken.asStateFlow()
 
     override suspend fun saveToken(token: String) {
-        sharedPreferences.edit().putString(TOKEN_KEY, token).apply()
+        sharedPreferences.edit {
+            putString(TOKEN_KEY, token)
+        }
         _authToken.value = token
     }
 
     override suspend fun clearToken() {
-        sharedPreferences.edit().remove(TOKEN_KEY).apply()
+        sharedPreferences.edit {
+            remove(TOKEN_KEY)
+        }
         _authToken.value = null
     }
 

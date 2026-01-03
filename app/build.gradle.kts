@@ -2,7 +2,7 @@ import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
+    // kotlin.android plugin removed - built into AGP 9.0
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
 }
@@ -72,6 +72,18 @@ android {
     buildFeatures {
         compose = true
     }
+
+    lint {
+        warningsAsErrors = true
+        abortOnError = true
+        checkDependencies = true
+        // Suppress warnings for prototype
+        disable += setOf(
+            "ComposeModifierMissing", // Too strict for prototype
+            "IconDipSize", // Icon density mismatch in xhdpi (not critical for prototype)
+            "AndroidGradlePluginVersion", // Using AGP 9.0 rc2 intentionally
+        )
+    }
 }
 
 dependencies {
@@ -97,11 +109,14 @@ dependencies {
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.kotlinx.collections.immutable)
     implementation(libs.androidx.security.crypto)
 
     implementation(libs.litertlm.android)
     implementation(libs.mediapipe.tasks.genai)
     implementation(libs.localagents.fc)
+
+    lintChecks(libs.compose.lint.checks)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

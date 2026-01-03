@@ -1,6 +1,6 @@
-# CLAUDE.md
+# ARCHITECTURE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Deep technical documentation for the KoogAgent project. This file contains architectural decisions, implementation details, integration patterns, and technical context for AI agents and developers working on this codebase.
 
 ## Project Overview
 

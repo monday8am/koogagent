@@ -33,39 +33,44 @@ import com.monday8am.presentation.testing.TestStatus
 import com.monday8am.presentation.testing.TestUiAction
 import com.monday8am.presentation.testing.TestViewModelImpl
 import com.monday8am.presentation.testing.ValidationResult
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.ImmutableMap
+import kotlinx.collections.immutable.persistentMapOf
+import kotlinx.collections.immutable.toImmutableList
 
 @Composable
-fun TestScreen(modelId: String) {
-    val viewModel: AndroidTestViewModel =
-        viewModel(key = modelId) {
-            val selectedModel = Dependencies.modelRepository.findById(modelId) ?: ModelCatalog.DEFAULT
+fun TestScreen(
+    modelId: String,
+    viewModel: AndroidTestViewModel = viewModel(key = modelId) {
+        val selectedModel = Dependencies.modelRepository.findById(modelId) ?: ModelCatalog.DEFAULT
 
-            val inferenceEngine =
-                InferenceEngineFactory.create(
-                    context = Dependencies.appContext,
-                    inferenceLibrary = selectedModel.inferenceLibrary,
-                    liteRtTools = Dependencies.nativeTools,
-                    mediaPipeTools = Dependencies.mediaPipeTools,
-                )
-
-            val modelPath =
-                (Dependencies.modelDownloadManager as ModelDownloadManagerImpl)
-                    .getModelPath(selectedModel.bundleFilename)
-
-            AndroidTestViewModel(
-                TestViewModelImpl(
-                    selectedModel = selectedModel,
-                    modelPath = modelPath,
-                    inferenceEngine = inferenceEngine,
-                ),
-                selectedModel
+        val inferenceEngine =
+            InferenceEngineFactory.create(
+                context = Dependencies.appContext,
+                inferenceLibrary = selectedModel.inferenceLibrary,
+                liteRtTools = Dependencies.nativeTools,
+                mediaPipeTools = Dependencies.mediaPipeTools,
             )
-        }
+
+        val modelPath =
+            (Dependencies.modelDownloadManager as ModelDownloadManagerImpl)
+                .getModelPath(selectedModel.bundleFilename)
+
+        AndroidTestViewModel(
+            TestViewModelImpl(
+                selectedModel = selectedModel,
+                modelPath = modelPath,
+                inferenceEngine = inferenceEngine,
+            ),
+            selectedModel
+        )
+    }
+) {
 
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     TestContent(
-        frames = state.frames.values,
+        frames = state.frames,
         testStatuses = state.testStatuses,
         selectedModel = state.selectedModel,
         isRunning = state.isRunning,
@@ -78,8 +83,8 @@ fun TestScreen(modelId: String) {
 
 @Composable
 private fun TestContent(
-    frames: Collection<TestResultFrame>,
-    testStatuses: List<TestStatus>,
+    frames: ImmutableMap<String, TestResultFrame>,
+    testStatuses: ImmutableList<TestStatus>,
     selectedModel: ModelConfiguration,
     isRunning: Boolean,
     isInitializing: Boolean,
@@ -148,7 +153,7 @@ private fun ModelInfoCard(model: ModelConfiguration, modifier: Modifier = Modifi
 }
 
 @Composable
-private fun TestResultsList(frames: Collection<TestResultFrame>, modifier: Modifier = Modifier) {
+private fun TestResultsList(frames: ImmutableMap<String, TestResultFrame>, modifier: Modifier = Modifier) {
     val listState = rememberLazyListState()
 
     // Auto-scroll to latest item
@@ -161,11 +166,11 @@ private fun TestResultsList(frames: Collection<TestResultFrame>, modifier: Modif
     LazyColumn(
         state = listState,
         modifier =
-        modifier.fillMaxWidth(),
+            modifier.fillMaxWidth(),
         verticalArrangement = spacedBy(8.dp),
     ) {
         items(
-            items = frames.toList(),
+            items = frames.values.toList(),
             key = { frame -> frame.id },
         ) { frame ->
             when (frame) {
@@ -208,14 +213,13 @@ fun InitializationIndicator(
 private fun TestContentPreview() {
     KoogAgentTheme {
         TestContent(
-            frames =
-            listOf(
-                TestResultFrame.Content(
+            frames = persistentMapOf(
+                "1" to TestResultFrame.Content(
                     testName = "TEST 0: Basic Response",
                     chunk = "",
                     accumulator = "Hello! I'm doing great, thanks for asking!",
                 ),
-                TestResultFrame.Validation(
+                "2" to TestResultFrame.Validation(
                     testName = "TEST 0: Basic Response",
                     result = ValidationResult.Pass("Valid response received"),
                     duration = 1234,
@@ -227,7 +231,7 @@ private fun TestContentPreview() {
                     name = "TEST 0: Basic Response",
                     state = TestStatus.State.PASS,
                 )
-            ),
+            ).toImmutableList(),
             selectedModel = ModelCatalog.DEFAULT,
             isRunning = false,
             isInitializing = true,
