@@ -72,6 +72,16 @@ android {
     buildFeatures {
         compose = true
     }
+
+    lint {
+        warningsAsErrors = true
+        abortOnError = true
+        checkDependencies = true
+        // Compose-specific lint rules
+        disable += setOf(
+            "ComposeModifierMissing", // Too strict for prototype
+        )
+    }
 }
 
 dependencies {
@@ -102,6 +112,8 @@ dependencies {
     implementation(libs.litertlm.android)
     implementation(libs.mediapipe.tasks.genai)
     implementation(libs.localagents.fc)
+
+    lintChecks(libs.compose.lint.checks)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
