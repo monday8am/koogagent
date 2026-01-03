@@ -408,5 +408,34 @@ class ModelSelectorViewModelTest {
         viewModel.dispose()
     }
 
+    @Test
+    fun `ToggleAllGroups should collapse all then expand all`() = runTest {
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.onUiAction(UiAction.SetGroupingMode(GroupingMode.Family))
+        advanceUntilIdle()
+
+        // Initial state: all expanded
+        assertTrue(viewModel.uiState.value.isAllExpanded)
+        assertTrue(viewModel.uiState.value.groupedModels.all { it.isExpanded })
+
+        // Collapse all
+        viewModel.onUiAction(UiAction.ToggleAllGroups)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.isAllExpanded)
+        assertTrue(viewModel.uiState.value.groupedModels.all { !it.isExpanded })
+
+        // Expand all
+        viewModel.onUiAction(UiAction.ToggleAllGroups)
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.isAllExpanded)
+        assertTrue(viewModel.uiState.value.groupedModels.all { it.isExpanded })
+
+        viewModel.dispose()
+    }
+
     // endregion
 }

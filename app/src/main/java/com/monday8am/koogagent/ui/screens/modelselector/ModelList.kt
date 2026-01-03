@@ -25,10 +25,9 @@ import com.monday8am.koogagent.data.InferenceLibrary
 import com.monday8am.koogagent.data.ModelConfiguration
 import com.monday8am.koogagent.ui.theme.KoogAgentTheme
 import com.monday8am.presentation.modelselector.DownloadStatus
+import com.monday8am.presentation.modelselector.ModelGroup
 import com.monday8am.presentation.modelselector.ModelInfo
 import com.monday8am.presentation.modelselector.UiAction
-
-import com.monday8am.presentation.modelselector.ModelGroup
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable

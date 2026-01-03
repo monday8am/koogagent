@@ -7,7 +7,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.UnfoldLess
+import androidx.compose.material.icons.filled.UnfoldMore
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -31,6 +33,8 @@ import com.monday8am.presentation.modelselector.UiAction
 @Composable
 internal fun ModelSelectorHeader(
     statusMessage: String,
+    groupingMode: GroupingMode,
+    isAllExpanded: Boolean,
     onIntent: (UiAction) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -49,23 +53,39 @@ internal fun ModelSelectorHeader(
                 style = MaterialTheme.typography.headlineMedium,
             )
 
-            Box {
-                var expanded by remember { mutableStateOf(false) }
-                IconButton(onClick = { expanded = true }) {
-                    Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Group models")
-                }
-                DropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false }
-                ) {
-                    GroupingMode.entries.forEach { mode ->
-                        DropdownMenuItem(
-                            text = { Text(mode.name) },
-                            onClick = {
-                                onIntent(UiAction.SetGroupingMode(mode))
-                                expanded = false
-                            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (groupingMode != GroupingMode.None) {
+                    IconButton(onClick = { onIntent(UiAction.ToggleAllGroups) }) {
+                        Icon(
+                            imageVector = if (isAllExpanded) Icons.Default.UnfoldLess else Icons.Default.UnfoldMore,
+                            contentDescription = if (isAllExpanded) "Collapse All" else "Expand All",
+                            tint = MaterialTheme.colorScheme.primary
                         )
+                    }
+                }
+
+                Box {
+                    var expanded by remember { mutableStateOf(false) }
+                    IconButton(onClick = { expanded = true }) {
+                        Icon(
+                            Icons.Default.FilterList,
+                            contentDescription = "Group models",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        GroupingMode.entries.forEach { mode ->
+                            DropdownMenuItem(
+                                text = { Text(mode.name) },
+                                onClick = {
+                                    onIntent(UiAction.SetGroupingMode(mode))
+                                    expanded = false
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -87,6 +107,8 @@ private fun ModelSelectorHeaderPreview() {
         Surface {
             ModelSelectorHeader(
                 statusMessage = "Select a model to start chat",
+                groupingMode = GroupingMode.Family,
+                isAllExpanded = true,
                 onIntent = {},
                 modifier = Modifier.padding(16.dp)
             )
