@@ -22,6 +22,7 @@ dependencies {
     implementation(project(":agent"))
 
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.kotlinx.collections.immutable)
 
     // Testing
     testImplementation(kotlin("test"))

@@ -28,11 +28,13 @@ import com.monday8am.presentation.modelselector.DownloadStatus
 import com.monday8am.presentation.modelselector.ModelGroup
 import com.monday8am.presentation.modelselector.ModelInfo
 import com.monday8am.presentation.modelselector.UiAction
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.toImmutableList
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun ModelList(
-    groups: List<ModelGroup>,
+    groups: ImmutableList<ModelGroup>,
     selectedModelId: String?,
     onIntent: (UiAction) -> Unit,
     onSelectModel: (String) -> Unit,
@@ -142,10 +144,10 @@ private fun ModelListPreview() {
                 ModelGroup(
                     id = "group1",
                     title = "Test Group",
-                    models = sampleModels,
+                    models = sampleModels.toImmutableList(),
                     isExpanded = true
                 )
-            ),
+            ).toImmutableList(),
             selectedModelId = sampleModels.first().config.modelId,
             onIntent = {},
             onSelectModel = {}

@@ -6,6 +6,9 @@ import com.monday8am.koogagent.data.InferenceLibrary
 import com.monday8am.koogagent.data.ModelConfiguration
 import com.monday8am.koogagent.data.ModelRepository
 import com.monday8am.koogagent.data.RepositoryState
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -23,12 +26,12 @@ import kotlinx.coroutines.launch
  * UI State for model selector screen
  */
 data class UiState(
-    val models: List<ModelInfo> = emptyList(),
-    val groupedModels: List<ModelGroup> = emptyList(),
+    val models: ImmutableList<ModelInfo> = persistentListOf(),
+    val groupedModels: ImmutableList<ModelGroup> = persistentListOf(),
     val groupingMode: GroupingMode = GroupingMode.None,
     val isAllExpanded: Boolean = true,
     val currentDownload: DownloadInfo? = null,
-    val queuedDownloads: List<String> = emptyList(),
+    val queuedDownloads: ImmutableList<String> = persistentListOf(),
     val statusMessage: String = "Select a model to get started",
     val isLoadingCatalog: Boolean = true,
     val catalogError: String? = null,
@@ -42,7 +45,7 @@ enum class GroupingMode {
     Library
 }
 
-data class ModelGroup(val id: String, val title: String, val models: List<ModelInfo>, val isExpanded: Boolean = true)
+data class ModelGroup(val id: String, val title: String, val models: ImmutableList<ModelInfo>, val isExpanded: Boolean = true)
 
 data class ModelInfo(
     val config: ModelConfiguration,
@@ -251,7 +254,7 @@ class ModelSelectorViewModelImpl(
                 } else {
                     1
                 }
-            }
+            }.toImmutableList()
 
             val groupedModels = groupModels(
                 modelsInfo,
@@ -261,11 +264,11 @@ class ModelSelectorViewModelImpl(
 
             UiState(
                 models = modelsInfo,
-                groupedModels = groupedModels,
+                groupedModels = groupedModels.toImmutableList(),
                 groupingMode = viewModelState.groupingMode,
                 isAllExpanded = viewModelState.collapsedGroupIds.isEmpty(),
                 currentDownload = currentDownload,
-                queuedDownloads = queuedIds,
+                queuedDownloads = queuedIds.toImmutableList(),
                 isLoadingCatalog = false,
                 catalogError = null,
                 isLoggedIn = isLoggedIn,
@@ -305,7 +308,7 @@ class ModelSelectorViewModelImpl(
                     ModelGroup(
                         id = "all",
                         title = "All Models",
-                        models = models,
+                        models = models.toImmutableList(),
                         isExpanded = true
                     )
                 )
@@ -317,7 +320,7 @@ class ModelSelectorViewModelImpl(
                         ModelGroup(
                             id = "family_$family",
                             title = family.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() },
-                            models = groupModels,
+                            models = groupModels.toImmutableList(),
                             isExpanded = !collapsedGroupIds.contains("family_$family")
                         )
                     }
@@ -335,7 +338,7 @@ class ModelSelectorViewModelImpl(
                         ModelGroup(
                             id = "hw_${hardware.name}",
                             title = hardwareName,
-                            models = groupModels,
+                            models = groupModels.toImmutableList(),
                             isExpanded = !collapsedGroupIds.contains("hw_${hardware.name}")
                         )
                     }
@@ -351,7 +354,7 @@ class ModelSelectorViewModelImpl(
                                 InferenceLibrary.LITERT -> "LiteRT (TensorFlow Lite)"
                                 InferenceLibrary.MEDIAPIPE -> "MediaPipe"
                             },
-                            models = groupModels,
+                            models = groupModels.toImmutableList(),
                             isExpanded = !collapsedGroupIds.contains("lib_${library.name}")
                         )
                     }

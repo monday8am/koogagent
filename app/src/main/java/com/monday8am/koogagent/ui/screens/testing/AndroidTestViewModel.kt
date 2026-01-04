@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 
-internal class AndroidTestViewModel(private val impl: TestViewModel, private val selectedModel: ModelConfiguration) :
+class AndroidTestViewModel(private val impl: TestViewModel, private val selectedModel: ModelConfiguration) :
     ViewModel(),
     TestViewModel by impl {
     override val uiState: StateFlow<TestUiState> =

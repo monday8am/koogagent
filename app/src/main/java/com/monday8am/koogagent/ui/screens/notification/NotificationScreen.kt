@@ -49,36 +49,37 @@ import com.monday8am.presentation.notifications.UiAction
 import com.monday8am.presentation.notifications.defaultNotificationContext
 
 @Composable
-fun NotificationScreen(modelId: String) {
-    val viewModel: AndroidNotificationViewModel =
-        viewModel(key = modelId) {
-            val selectedModel = Dependencies.modelRepository.findById(modelId) ?: ModelCatalog.DEFAULT
+fun NotificationScreen(
+    modelId: String,
+    viewModel: AndroidNotificationViewModel = viewModel(key = modelId) {
+        val selectedModel = Dependencies.modelRepository.findById(modelId) ?: ModelCatalog.DEFAULT
 
-            val inferenceEngine =
-                InferenceEngineFactory.create(
-                    context = Dependencies.appContext,
-                    inferenceLibrary = selectedModel.inferenceLibrary,
-                    liteRtTools = Dependencies.nativeTools,
-                    mediaPipeTools = Dependencies.mediaPipeTools,
-                )
-
-            val modelPath =
-                (Dependencies.modelDownloadManager as ModelDownloadManagerImpl)
-                    .getModelPath(selectedModel.bundleFilename)
-
-            AndroidNotificationViewModel(
-                NotificationViewModelImpl(
-                    selectedModel = selectedModel,
-                    modelPath = modelPath,
-                    inferenceEngine = inferenceEngine,
-                    notificationEngine = Dependencies.notificationEngine,
-                    weatherProvider = Dependencies.weatherProvider,
-                    locationProvider = Dependencies.locationProvider,
-                    deviceContextProvider = Dependencies.deviceContextProvider,
-                ),
-                selectedModel
+        val inferenceEngine =
+            InferenceEngineFactory.create(
+                context = Dependencies.appContext,
+                inferenceLibrary = selectedModel.inferenceLibrary,
+                liteRtTools = Dependencies.nativeTools,
+                mediaPipeTools = Dependencies.mediaPipeTools,
             )
-        }
+
+        val modelPath =
+            (Dependencies.modelDownloadManager as ModelDownloadManagerImpl)
+                .getModelPath(selectedModel.bundleFilename)
+
+        AndroidNotificationViewModel(
+            NotificationViewModelImpl(
+                selectedModel = selectedModel,
+                modelPath = modelPath,
+                inferenceEngine = inferenceEngine,
+                notificationEngine = Dependencies.notificationEngine,
+                weatherProvider = Dependencies.weatherProvider,
+                locationProvider = Dependencies.locationProvider,
+                deviceContextProvider = Dependencies.deviceContextProvider,
+            ),
+            selectedModel
+        )
+    }
+) {
 
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
