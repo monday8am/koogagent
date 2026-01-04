@@ -2,6 +2,7 @@ package com.monday8am.presentation.testing
 
 import co.touchlab.kermit.Logger
 import com.monday8am.agent.core.LocalInferenceEngine
+import com.monday8am.koogagent.data.HardwareBackend
 import com.monday8am.koogagent.data.ModelConfiguration
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableMap
@@ -17,11 +18,15 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapConcat
+import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.runningFold
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -43,7 +48,8 @@ data class TestStatus(val name: String, val state: State) {
 }
 
 sealed class TestUiAction {
-    data object RunTests : TestUiAction()
+    data class RunTests(val useGpu: Boolean) : TestUiAction()
+    data class ToggleBackend(val useGpu: Boolean) : TestUiAction()
     data object CancelTests : TestUiAction()
 }
 
@@ -57,60 +63,91 @@ interface TestViewModel {
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class TestViewModelImpl(
-    private val selectedModel: ModelConfiguration,
+    initialModel: ModelConfiguration,
     private val modelPath: String,
     private val inferenceEngine: LocalInferenceEngine,
 ) : TestViewModel {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
-    private val _uiState = MutableStateFlow(
+    private val loadingState = MutableStateFlow<TestRunState>(TestRunState.Idle)
+    private val selectedModel = MutableStateFlow(initialModel)
+    private val testResults = MutableStateFlow(TestResults())
+
+    override val uiState: StateFlow<TestUiState> = combine(
+        loadingState,
+        selectedModel,
+        testResults
+    ) { loadingStateValue, selectedModelValue, testResultsValue ->
         TestUiState(
-            selectedModel = selectedModel,
-            testStatuses =
-            ToolCallingTest.REGRESSION_TEST_SUITE.map {
+            selectedModel = selectedModelValue,
+            isRunning = loadingStateValue is TestRunState.Running || loadingStateValue is TestRunState.Initializing,
+            isInitializing = loadingStateValue is TestRunState.Initializing,
+            frames = testResultsValue.frames,
+            testStatuses = testResultsValue.statuses
+        )
+    }.stateIn(
+        scope = scope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = TestUiState(
+            selectedModel = initialModel,
+            testStatuses = ToolCallingTest.REGRESSION_TEST_SUITE.map {
                 TestStatus(it.name, TestStatus.State.IDLE)
-            }.toImmutableList(),
-        ),
+            }.toImmutableList()
+        )
     )
-    override val uiState: StateFlow<TestUiState> = _uiState.asStateFlow()
 
     private var testJob: Job? = null
+    private var currentTest: ToolCallingTest? = null
 
     override fun onUiAction(uiAction: TestUiAction) {
         when (uiAction) {
-            TestUiAction.RunTests -> runTests()
+            is TestUiAction.RunTests -> runTests(uiAction.useGpu)
             TestUiAction.CancelTests -> cancelTests()
+            is TestUiAction.ToggleBackend -> toggleBackend(uiAction.useGpu)
         }
     }
 
-    private fun runTests() {
-        if (_uiState.value.isRunning) return
-        if (_uiState.value.isInitializing) return
+    private fun toggleBackend(useGpu: Boolean) {
+        val currentModel = selectedModel.value
+        val newBackend = if (useGpu) HardwareBackend.GPU_SUPPORTED else HardwareBackend.CPU_ONLY
 
+        if (currentModel.hardwareAcceleration != newBackend) {
+            val newModel = currentModel.copy(hardwareAcceleration = newBackend)
+            selectedModel.update { newModel }
+            // Critical: Close the session so the next run re-initializes with the new backend
+            inferenceEngine.closeSession()
+        }
+    }
+
+    private fun runTests(useGpu: Boolean) {
+        if (uiState.value.isRunning) return
+
+        // Ensure backend is correct before running
+        toggleBackend(useGpu)
+
+        testJob?.cancel()
         testJob = scope.launch {
-            _uiState.update {
-                it.copy(
-                    isRunning = true,
-                    isInitializing = true,
-                    frames = persistentMapOf(),
-                    testStatuses =
-                    it.testStatuses.map { status ->
-                        status.copy(state = TestStatus.State.IDLE)
-                    }.toImmutableList(),
-                )
-            }
+            loadingState.value = TestRunState.Initializing
+
+            val initialResults = TestResults(
+                statuses = ToolCallingTest.REGRESSION_TEST_SUITE.map {
+                    TestStatus(it.name, TestStatus.State.IDLE)
+                }.toImmutableList()
+            )
+
+            val modelConfig = selectedModel.value
 
             inferenceEngine
                 .initializeAsFlow(
-                    modelConfig = selectedModel,
+                    modelConfig = modelConfig,
                     modelPath = modelPath,
                 ).onEach {
-                    _uiState.update { it.copy(isInitializing = false) }
+                    loadingState.value = TestRunState.Running
                 }.flatMapConcat { engine ->
                     ToolCallingTest(
                         streamPromptExecutor = engine::promptStreaming,
                         resetConversation = engine::resetConversation,
-                    ).runAllTest()
+                    ).also { currentTest = it }.runAllTest()
                 }.catch { throwable ->
                     val errorFrame = TestResultFrame.Validation(
                         testName = "Error",
@@ -120,21 +157,22 @@ class TestViewModelImpl(
                     )
                     Logger.e("Error: ${throwable.message}")
                     emit(errorFrame)
-                }.collect { frame ->
-                    _uiState.update { currentState ->
-                        val updatedFrames = (currentState.frames + (frame.id to frame)).toImmutableMap()
-                        val updatedStatuses = updateTestStatuses(currentState.testStatuses, frame).toImmutableList()
-                        currentState.copy(frames = updatedFrames, testStatuses = updatedStatuses)
-                    }
+                }.runningFold(initialResults) { current, frame ->
+                    TestResults(
+                        frames = (current.frames + (frame.id to frame)).toImmutableMap(),
+                        statuses = updateTestStatuses(current.statuses, frame).toImmutableList()
+                    )
+                }.onCompletion {
+                    loadingState.value = TestRunState.Idle
+                }.collect { results ->
+                    testResults.value = results
                 }
-
-            _uiState.update { it.copy(isRunning = false) }
         }
     }
 
     private fun cancelTests() {
-        testJob?.cancel()
-        _uiState.update { it.copy(isRunning = false, isInitializing = false) }
+        currentTest?.cancel()
+        loadingState.value = TestRunState.Idle
     }
 
     private fun updateTestStatuses(
@@ -151,12 +189,11 @@ class TestViewModelImpl(
             is TestResultFrame.Validation -> {
                 currentStatuses.map {
                     if (it.name == frame.testName) {
-                        val state =
-                            if (frame.result is ValidationResult.Pass) {
-                                TestStatus.State.PASS
-                            } else {
-                                TestStatus.State.FAIL
-                            }
+                        val state = if (frame.result is ValidationResult.Pass) {
+                            TestStatus.State.PASS
+                        } else {
+                            TestStatus.State.FAIL
+                        }
                         it.copy(state = state)
                     } else {
                         it
@@ -173,3 +210,16 @@ class TestViewModelImpl(
         scope.cancel()
     }
 }
+
+private sealed interface TestRunState {
+    data object Idle : TestRunState
+    data object Initializing : TestRunState
+    data object Running : TestRunState
+}
+
+private data class TestResults(
+    val frames: ImmutableMap<String, TestResultFrame> = persistentMapOf(),
+    val statuses: ImmutableList<TestStatus> = ToolCallingTest.REGRESSION_TEST_SUITE.map {
+        TestStatus(it.name, TestStatus.State.IDLE)
+    }.toImmutableList()
+)

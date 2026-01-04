@@ -45,7 +45,12 @@ enum class GroupingMode {
     Library
 }
 
-data class ModelGroup(val id: String, val title: String, val models: ImmutableList<ModelInfo>, val isExpanded: Boolean = true)
+data class ModelGroup(
+    val id: String,
+    val title: String,
+    val models: ImmutableList<ModelInfo>,
+    val isExpanded: Boolean = true
+)
 
 data class ModelInfo(
     val config: ModelConfiguration,
@@ -91,7 +96,10 @@ class ModelSelectorViewModelImpl(
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
-    private data class ViewModelState(val groupingMode: GroupingMode = GroupingMode.None, val collapsedGroupIds: Set<String> = emptySet(),)
+    private data class ViewModelState(
+        val groupingMode: GroupingMode = GroupingMode.None,
+        val collapsedGroupIds: Set<String> = emptySet(),
+    )
 
     private val viewModelState = MutableStateFlow(ViewModelState())
 

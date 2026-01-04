@@ -4,13 +4,16 @@ import co.touchlab.kermit.Logger
 import co.touchlab.kermit.Severity
 import com.monday8am.agent.tools.ToolTrace
 import kotlin.math.abs
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flatMapConcat
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onCompletion
-import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.takeWhile
+import kotlinx.coroutines.flow.transform
 
 /**
  * A single test query with optional description.
@@ -89,92 +92,101 @@ data class TestCase(
  * @param streamPromptExecutor Executes a prompt and streams the response
  * @param resetConversation Resets conversation state between tests
  */
-class ToolCallingTest(private val streamPromptExecutor: (String) -> Flow<String>, private val resetConversation: () -> Result<Unit>) {
+@OptIn(ExperimentalCoroutinesApi::class)
+class ToolCallingTest(private val streamPromptExecutor: (String) -> Flow<String>, private val resetConversation: () -> Result<Unit>,) {
     private val logger = Logger.withTag("ToolCallingTest")
+    private val cancelled = MutableStateFlow(false)
+
+    /**
+     * Cancels the test run gracefully. Tests will stop after the current query completes.
+     */
+    fun cancel() {
+        cancelled.value = true
+    }
 
     /**
      * Runs all predefined tests and emits streaming results.
      */
     fun runAllTest(): Flow<TestResultFrame> {
         Logger.setMinSeverity(Severity.Debug)
+        cancelled.value = false
         return runAllTestsStreaming(REGRESSION_TEST_SUITE)
     }
 
-    private fun runAllTestsStreaming(testCases: List<TestCase>): Flow<TestResultFrame> = flow {
-        for (testCase in testCases) {
-            emit(
-                TestResultFrame.Description(
-                    testName = testCase.name,
-                    description = testCase.description.joinToString("\n"),
-                    systemPrompt = testCase.systemPrompt,
-                ),
-            )
-            for (query in testCase.queries) {
-                emitAll(runSingleQueryStream(testCase = testCase, query = query))
+    private fun runAllTestsStreaming(testCases: List<TestCase>): Flow<TestResultFrame> =
+        testCases.asFlow()
+            .takeWhile { !cancelled.value }
+            .flatMapConcat { testCase -> runTestCase(testCase) }
+            .catch { e ->
+                logger.e(e) { "A failure occurred during the test suite execution" }
+                emit(
+                    TestResultFrame.Validation(
+                        testName = "Test Suite",
+                        result = ValidationResult.Fail("Test suite failed: ${e.message}"),
+                        duration = 0,
+                        fullContent = "",
+                    ),
+                )
             }
-            resetConversation()
-        }
-    }.catch { e ->
-        logger.e(e) { "A failure occurred during the test suite execution" }
+
+    private fun runTestCase(testCase: TestCase): Flow<TestResultFrame> = flow {
         emit(
-            TestResultFrame.Validation(
-                testName = "Test Suite",
-                result = ValidationResult.Fail("Test suite failed: ${e.message}"),
-                duration = 0,
-                fullContent = "",
+            TestResultFrame.Description(
+                testName = testCase.name,
+                description = testCase.description.joinToString("\n"),
+                systemPrompt = testCase.systemPrompt,
             ),
         )
+
+        testCase.queries.asFlow()
+            .takeWhile { !cancelled.value }
+            .flatMapConcat { query -> runSingleQueryStream(testCase, query) }
+            .collect { emit(it) }
+
+        resetConversation()
     }
 
     /**
      * Executes a single query using streaming and returns result frames.
      */
-    private fun runSingleQueryStream(testCase: TestCase, query: TestQuery): Flow<TestResultFrame> {
-        return flow {
-            emit(TestResultFrame.Query(testName = testCase.name, query = query.text))
+    private fun runSingleQueryStream(testCase: TestCase, query: TestQuery): Flow<TestResultFrame> = flow {
+        emit(TestResultFrame.Query(testName = testCase.name, query = query.text))
 
-            val processor = TagProcessor(testCase.name, testCase.parseThinkingTags)
-            var startTime = 0L
+        val processor = TagProcessor(testCase.name, testCase.parseThinkingTags)
+        val startTime = System.currentTimeMillis()
+        val prompt = "${testCase.systemPrompt}\n\n${query.text}"
 
-            val prompt = "${testCase.systemPrompt}\n\n${query.text}"
+        // Clear tool trace before execution
+        ToolTrace.clear()
 
-            // Clear tool trace before execution
-            ToolTrace.clear()
-
-            streamPromptExecutor(prompt)
-                .map { chunk ->
-                    processor.process(chunk)
-                }.onStart {
-                    startTime = System.currentTimeMillis()
-                }.onCompletion { cause ->
-                    if (cause == null) {
-                        val duration = System.currentTimeMillis() - startTime
-                        val finalContent = processor.resultContent
-                        val validationResult = testCase.validator(finalContent)
-                        emit(
-                            TestResultFrame.Validation(
-                                testName = testCase.name,
-                                result = validationResult,
-                                duration = duration,
-                                fullContent = finalContent,
-                            ),
-                        )
-                    }
-                }.catch { e ->
-                    logger.e(e) { "Test failed: ${query.text}" }
+        streamPromptExecutor(prompt)
+            .transform { chunk -> emit(processor.process(chunk)) }
+            .onCompletion { cause ->
+                if (cause == null) {
                     val duration = System.currentTimeMillis() - startTime
+                    val finalContent = processor.resultContent
+                    val validationResult = testCase.validator(finalContent)
                     emit(
                         TestResultFrame.Validation(
                             testName = testCase.name,
-                            result = ValidationResult.Fail("Exception: ${e.message}"),
+                            result = validationResult,
                             duration = duration,
-                            fullContent = processor.resultContent,
+                            fullContent = finalContent,
                         ),
                     )
-                }.collect {
-                    emit(it)
                 }
-        }
+            }.catch { e ->
+                logger.e(e) { "Test failed: ${query.text}" }
+                val duration = System.currentTimeMillis() - startTime
+                emit(
+                    TestResultFrame.Validation(
+                        testName = testCase.name,
+                        result = ValidationResult.Fail("Exception: ${e.message}"),
+                        duration = duration,
+                        fullContent = processor.resultContent,
+                    ),
+                )
+            }.collect { emit(it) }
     }
 
     companion object {

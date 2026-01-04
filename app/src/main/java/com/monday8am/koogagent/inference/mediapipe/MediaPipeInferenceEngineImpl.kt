@@ -28,7 +28,7 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 
-private const val SYSTEM_PROMPT = "You are Hammer, a helpful AI assistant."
+private const val SYSTEM_PROMPT = "You are a helpful AI assistant."
 private const val SYSTEM_ROLE = "system"
 private const val USER_ROLE = "user"
 
@@ -166,6 +166,7 @@ class MediaPipeInferenceEngineImpl(
 private fun createFormatter(modelFamily: String) = when (modelFamily.lowercase()) {
     "gemma3", "gemma" -> GemmaFormatter()
     "hammer2", "hammer" -> HammerFormatter()
+    "smollm", "qwen3", "qwen" -> HammerFormatter() // These use ChatML, HammerFormatter is a good fit
     "llama" -> LlamaFormatter()
     else -> GemmaFormatter() // Default fallback
 }
@@ -232,7 +233,7 @@ private fun createLlmInference(context: Context, modelPath: String, modelConfig:
         LlmInference.LlmInferenceOptions
             .builder()
             .setModelPath(modelPath)
-            .setMaxTokens(modelConfig.defaultMaxOutputTokens)
+            .setMaxTokens(modelConfig.contextLength)
             .setPreferredBackend(backend)
             .build()
     return LlmInference.createFromOptions(context, llmInferenceOptions)
