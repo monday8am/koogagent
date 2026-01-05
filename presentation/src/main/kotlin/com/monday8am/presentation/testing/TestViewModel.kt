@@ -13,7 +13,6 @@ import kotlinx.collections.immutable.toImmutableMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
@@ -108,7 +107,6 @@ class TestViewModelImpl(
         )
     )
 
-    private var testJob: Job? = null
     private var currentTest: ToolCallingTest? = null
 
     override fun onUiAction(uiAction: TestUiAction) {
@@ -129,8 +127,7 @@ class TestViewModelImpl(
             inferenceEngine.closeSession()
         }
 
-        testJob?.cancel()
-        testJob = scope.launch {
+        scope.launch {
             loadingState.value = TestRunState.Initializing
 
             val initialResults = TestResults(
