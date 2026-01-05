@@ -38,6 +38,19 @@ data class TestUiState(
     val testStatuses: ImmutableList<TestStatus> = persistentListOf(),
 )
 
+private sealed interface TestRunState {
+    data object Idle : TestRunState
+    data object Initializing : TestRunState
+    data object Running : TestRunState
+}
+
+private data class TestResults(
+    val frames: ImmutableMap<String, TestResultFrame> = persistentMapOf(),
+    val statuses: ImmutableList<TestStatus> = ToolCallingTest.REGRESSION_TEST_SUITE.map {
+        TestStatus(it.name, TestStatus.State.IDLE)
+    }.toImmutableList()
+)
+
 data class TestStatus(val name: String, val state: State) {
     enum class State {
         IDLE,
@@ -49,7 +62,6 @@ data class TestStatus(val name: String, val state: State) {
 
 sealed class TestUiAction {
     data class RunTests(val useGpu: Boolean) : TestUiAction()
-    data class ToggleBackend(val useGpu: Boolean) : TestUiAction()
     data object CancelTests : TestUiAction()
 }
 
@@ -103,27 +115,19 @@ class TestViewModelImpl(
         when (uiAction) {
             is TestUiAction.RunTests -> runTests(uiAction.useGpu)
             TestUiAction.CancelTests -> cancelTests()
-            is TestUiAction.ToggleBackend -> toggleBackend(uiAction.useGpu)
-        }
-    }
-
-    private fun toggleBackend(useGpu: Boolean) {
-        val currentModel = selectedModel.value
-        val newBackend = if (useGpu) HardwareBackend.GPU_SUPPORTED else HardwareBackend.CPU_ONLY
-
-        if (currentModel.hardwareAcceleration != newBackend) {
-            val newModel = currentModel.copy(hardwareAcceleration = newBackend)
-            selectedModel.update { newModel }
-            // Critical: Close the session so the next run re-initializes with the new backend
-            inferenceEngine.closeSession()
         }
     }
 
     private fun runTests(useGpu: Boolean) {
         if (uiState.value.isRunning) return
 
-        // Ensure backend is correct before running
-        toggleBackend(useGpu)
+        val currentModel = selectedModel.value
+        val newBackend = if (useGpu) HardwareBackend.GPU_SUPPORTED else HardwareBackend.CPU_ONLY
+
+        if (currentModel.hardwareAcceleration != newBackend) {
+            selectedModel.update { currentModel.copy(hardwareAcceleration = newBackend) }
+            inferenceEngine.closeSession()
+        }
 
         testJob?.cancel()
         testJob = scope.launch {
@@ -210,16 +214,3 @@ class TestViewModelImpl(
         scope.cancel()
     }
 }
-
-private sealed interface TestRunState {
-    data object Idle : TestRunState
-    data object Initializing : TestRunState
-    data object Running : TestRunState
-}
-
-private data class TestResults(
-    val frames: ImmutableMap<String, TestResultFrame> = persistentMapOf(),
-    val statuses: ImmutableList<TestStatus> = ToolCallingTest.REGRESSION_TEST_SUITE.map {
-        TestStatus(it.name, TestStatus.State.IDLE)
-    }.toImmutableList()
-)

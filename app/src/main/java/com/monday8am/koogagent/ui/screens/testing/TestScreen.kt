@@ -20,7 +20,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,6 +43,7 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableMap
 import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.collections.immutable.toImmutableList
+import androidx.compose.runtime.saveable.rememberSaveable
 
 @Composable
 fun TestScreen(
@@ -84,7 +84,6 @@ fun TestScreen(
         isInitializing = state.isInitializing,
         onRunTests = { useGpu -> viewModel.onUiAction(TestUiAction.RunTests(useGpu)) },
         onCancelTests = { viewModel.onUiAction(TestUiAction.CancelTests) },
-        onBackendToggle = { useGpu -> viewModel.onUiAction(TestUiAction.ToggleBackend(useGpu)) },
         modifier = Modifier,
     )
 }
@@ -98,10 +97,11 @@ private fun TestContent(
     isInitializing: Boolean,
     onRunTests: (Boolean) -> Unit,
     onCancelTests: () -> Unit,
-    onBackendToggle: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val useGpuBackend = selectedModel.hardwareAcceleration == HardwareBackend.GPU_SUPPORTED
+    var useGpuBackend by rememberSaveable {
+        mutableStateOf(selectedModel.hardwareAcceleration == HardwareBackend.GPU_SUPPORTED)
+    }
 
     Column(
         verticalArrangement = spacedBy(8.dp),
@@ -115,7 +115,7 @@ private fun TestContent(
             model = selectedModel,
             useGpu = useGpuBackend,
             isRunning = isRunning || isInitializing,
-            onBackendToggle = onBackendToggle,
+            onBackendToggle = { useGpuBackend = it },
         )
 
         if (isInitializing) {
@@ -287,7 +287,6 @@ private fun TestContentPreview() {
             isInitializing = true,
             onRunTests = { },
             onCancelTests = { },
-            onBackendToggle = { },
         )
     }
 }
