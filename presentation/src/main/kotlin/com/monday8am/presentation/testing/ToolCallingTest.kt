@@ -11,8 +11,9 @@ import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flatMapConcat
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onCompletion
-import kotlinx.coroutines.flow.transform
+import kotlinx.coroutines.flow.onEach
 
 /**
  * A single test query with optional description.
@@ -118,10 +119,7 @@ class ToolCallingTest(private val streamPromptExecutor: (String) -> Flow<String>
 
     private fun runAllTestsStreaming(testCases: List<TestCase>): Flow<TestResultFrame> =
         testCases.asFlow()
-            .flatMapConcat { testCase ->
-                checkCancellation()
-                runTestCase(testCase)
-            }
+            .flatMapConcat { testCase -> runTestCase(testCase) }
             .catch { e ->
                 if (e is TestCancelledException) throw e
                 logger.e(e) { "A failure occurred during the test suite execution" }
@@ -145,10 +143,7 @@ class ToolCallingTest(private val streamPromptExecutor: (String) -> Flow<String>
         )
 
         testCase.queries.asFlow()
-            .flatMapConcat { query ->
-                checkCancellation()
-                runSingleQueryStream(testCase, query)
-            }
+            .flatMapConcat { query -> runSingleQueryStream(testCase, query) }
             .collect { emit(it) }
 
         resetConversation()
@@ -168,7 +163,8 @@ class ToolCallingTest(private val streamPromptExecutor: (String) -> Flow<String>
         ToolTrace.clear()
 
         streamPromptExecutor(prompt)
-            .transform { chunk -> emit(processor.process(chunk)) }
+            .onEach { checkCancellation() }
+            .map { chunk -> processor.process(chunk) }
             .onCompletion { cause ->
                 if (cause == null) {
                     val duration = System.currentTimeMillis() - startTime
