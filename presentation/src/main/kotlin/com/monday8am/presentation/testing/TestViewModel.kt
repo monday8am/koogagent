@@ -129,29 +129,26 @@ class TestViewModelImpl(
                 }
             }
             .catch { e ->
-                Logger.e("Error: ${e.message}")
-                val errorFrame = TestResultFrame.Validation(
-                    testName = "Error",
-                    result = ValidationResult.Fail("Error: ${e.message}"),
-                    duration = 0,
-                    fullContent = "",
-                )
-                val errorResults = TestResults(
-                    frames = persistentMapOf(errorFrame.id to errorFrame),
-                    statuses = initialResults.statuses
-                )
-                emit(ExecutionState.Running(modelConfig, errorResults))
+                if (e is TestCancelledException) {
+                    emit(ExecutionState.Idle(modelConfig))
+                } else {
+                    Logger.e("Error: ${e.message}")
+                    val errorFrame = TestResultFrame.Validation(
+                        testName = "Error",
+                        result = ValidationResult.Fail("Error: ${e.message}"),
+                        duration = 0,
+                        fullContent = "",
+                    )
+                    val errorResults = TestResults(
+                        frames = persistentMapOf(errorFrame.id to errorFrame),
+                        statuses = initialResults.statuses
+                    )
+                    emit(ExecutionState.Running(modelConfig, errorResults))
+                }
             }
             .collect { emit(it) }
-
-        // Emit idle state when tests complete
-        // emit(ExecutionState.Idle(modelConfig))
     }
 
-    /**
-     * Prepares model configuration with backend selection.
-     * Side effect: closes engine session if backend changes.
-     */
     private fun prepareModelConfig(useGpu: Boolean): ModelConfiguration {
         val currentModel = executionState.value.model
         val newBackend = if (useGpu) HardwareBackend.GPU_SUPPORTED else HardwareBackend.CPU_ONLY
@@ -176,6 +173,7 @@ class TestViewModelImpl(
                 TestStatus(it.name, TestStatus.State.IDLE)
             }.toImmutableList()
         )
+
         is ExecutionState.Initializing -> TestUiState(
             selectedModel = state.model,
             isRunning = true,
@@ -185,6 +183,7 @@ class TestViewModelImpl(
                 TestStatus(it.name, TestStatus.State.IDLE)
             }.toImmutableList()
         )
+
         is ExecutionState.Running -> TestUiState(
             selectedModel = state.model,
             isRunning = true,
@@ -192,6 +191,7 @@ class TestViewModelImpl(
             frames = state.results.frames,
             testStatuses = state.results.statuses
         )
+
         is ExecutionState.Finish -> TestUiState(
             selectedModel = state.model,
             isRunning = false,
@@ -237,10 +237,6 @@ class TestViewModelImpl(
     }
 }
 
-/**
- * Represents the complete execution state of the test runner.
- * Single source of truth for the reactive pipeline.
- */
 private sealed class ExecutionState {
     abstract val model: ModelConfiguration
 

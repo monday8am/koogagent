@@ -12,7 +12,6 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flatMapConcat
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.onCompletion
-import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.flow.transform
 
 /**
@@ -104,6 +103,10 @@ class ToolCallingTest(private val streamPromptExecutor: (String) -> Flow<String>
         cancelled.value = true
     }
 
+    private fun checkCancellation() {
+        if (cancelled.value) throw TestCancelledException()
+    }
+
     /**
      * Runs all predefined tests and emits streaming results.
      */
@@ -115,9 +118,12 @@ class ToolCallingTest(private val streamPromptExecutor: (String) -> Flow<String>
 
     private fun runAllTestsStreaming(testCases: List<TestCase>): Flow<TestResultFrame> =
         testCases.asFlow()
-            .takeWhile { !cancelled.value }
-            .flatMapConcat { testCase -> runTestCase(testCase) }
+            .flatMapConcat { testCase ->
+                checkCancellation()
+                runTestCase(testCase)
+            }
             .catch { e ->
+                if (e is TestCancelledException) throw e
                 logger.e(e) { "A failure occurred during the test suite execution" }
                 emit(
                     TestResultFrame.Validation(
@@ -139,8 +145,10 @@ class ToolCallingTest(private val streamPromptExecutor: (String) -> Flow<String>
         )
 
         testCase.queries.asFlow()
-            .takeWhile { !cancelled.value }
-            .flatMapConcat { query -> runSingleQueryStream(testCase, query) }
+            .flatMapConcat { query ->
+                checkCancellation()
+                runSingleQueryStream(testCase, query)
+            }
             .collect { emit(it) }
 
         resetConversation()
@@ -176,6 +184,7 @@ class ToolCallingTest(private val streamPromptExecutor: (String) -> Flow<String>
                     )
                 }
             }.catch { e ->
+                if (e is TestCancelledException) throw e
                 logger.e(e) { "Test failed: ${query.text}" }
                 val duration = System.currentTimeMillis() - startTime
                 emit(
