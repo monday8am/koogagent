@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.flatMapConcat
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.runningFold
 import kotlinx.coroutines.flow.stateIn
@@ -78,6 +79,7 @@ class TestViewModelImpl(
 
     // UI state derived from ExecutionState
     override val uiState: StateFlow<TestUiState> = executionState
+        .onEach { state -> Logger.d("State: ${state::javaClass.name}") }
         .map { state -> deriveUiState(state) }
         .stateIn(
             scope = scope,
@@ -98,15 +100,15 @@ class TestViewModelImpl(
      */
     private fun executeTests(useGpu: Boolean): Flow<ExecutionState> = flow {
         val modelConfig = prepareModelConfig(useGpu)
-        emit(ExecutionState.Initializing(modelConfig))
-
         val initialResults = TestResults(
             statuses = ToolCallingTest.REGRESSION_TEST_SUITE.map {
                 TestStatus(it.name, TestStatus.State.IDLE)
             }.toImmutableList()
         )
 
-        inferenceEngine.initializeAsFlow(modelConfig, modelPath)
+        inferenceEngine
+            .initializeAsFlow(modelConfig, modelPath)
+            .onStart { emit(ExecutionState.Initializing(modelConfig)) }
             .flatMapConcat { engine ->
                 ToolCallingTest(
                     streamPromptExecutor = engine::promptStreaming,
@@ -119,8 +121,13 @@ class TestViewModelImpl(
                     statuses = updateTestStatuses(current.statuses, frame).toImmutableList()
                 )
             }
-            .map { results -> ExecutionState.Running(modelConfig, results) }
-            .onStart { emit(ExecutionState.Running(modelConfig, initialResults)) }
+            .map { results ->
+                if (results.statuses.last().state in listOf(TestStatus.State.FAIL, TestStatus.State.PASS)) {
+                    ExecutionState.Finish(modelConfig, results)
+                } else {
+                    ExecutionState.Running(modelConfig, results)
+                }
+            }
             .catch { e ->
                 Logger.e("Error: ${e.message}")
                 val errorFrame = TestResultFrame.Validation(
@@ -138,7 +145,7 @@ class TestViewModelImpl(
             .collect { emit(it) }
 
         // Emit idle state when tests complete
-        emit(ExecutionState.Idle(modelConfig))
+        // emit(ExecutionState.Idle(modelConfig))
     }
 
     /**
@@ -181,6 +188,13 @@ class TestViewModelImpl(
         is ExecutionState.Running -> TestUiState(
             selectedModel = state.model,
             isRunning = true,
+            isInitializing = false,
+            frames = state.results.frames,
+            testStatuses = state.results.statuses
+        )
+        is ExecutionState.Finish -> TestUiState(
+            selectedModel = state.model,
+            isRunning = false,
             isInitializing = false,
             frames = state.results.frames,
             testStatuses = state.results.statuses
@@ -233,6 +247,7 @@ private sealed class ExecutionState {
     data class Idle(override val model: ModelConfiguration) : ExecutionState()
     data class Initializing(override val model: ModelConfiguration) : ExecutionState()
     data class Running(override val model: ModelConfiguration, val results: TestResults) : ExecutionState()
+    data class Finish(override val model: ModelConfiguration, val results: TestResults) : ExecutionState()
 }
 
 private data class TestResults(
