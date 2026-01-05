@@ -68,18 +68,14 @@ class TestViewModelImpl(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     private var currentTest: ToolCallingTest? = null
-
-    // Action trigger flow (extraBufferCapacity allows tryEmit to succeed without suspension)
     private val runTestsTrigger = MutableSharedFlow<Boolean>(extraBufferCapacity = 1)
-
-    // Single source of truth: ExecutionState derived from trigger
     private val executionState: StateFlow<ExecutionState> = runTestsTrigger
         .flatMapLatest { useGpu -> executeTests(useGpu) }
         .stateIn(scope, SharingStarted.Eagerly, ExecutionState.Idle(initialModel))
 
     // UI state derived from ExecutionState
     override val uiState: StateFlow<TestUiState> = executionState
-        .onEach { state -> Logger.d("State: ${state::javaClass.name}") }
+        .onEach { state -> Logger.d("State: ${state::class.simpleName}") }
         .map { state -> deriveUiState(state) }
         .stateIn(
             scope = scope,
@@ -143,7 +139,7 @@ class TestViewModelImpl(
                         frames = persistentMapOf(errorFrame.id to errorFrame),
                         statuses = initialResults.statuses
                     )
-                    emit(ExecutionState.Running(modelConfig, errorResults))
+                    emit(ExecutionState.Finish(modelConfig, errorResults))
                 }
             }
             .collect { emit(it) }

@@ -23,6 +23,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.foundation.layout.size
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -103,6 +105,14 @@ private fun TestContent(
         mutableStateOf(selectedModel.hardwareAcceleration == HardwareBackend.GPU_SUPPORTED)
     }
 
+    var isCancelling by rememberSaveable { mutableStateOf(false) }
+
+    LaunchedEffect(isRunning) {
+        if (!isRunning) {
+            isCancelling = false
+        }
+    }
+
     Column(
         verticalArrangement = spacedBy(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -138,12 +148,31 @@ private fun TestContent(
 
         // 4. Run/Cancel Button
         Button(
-            onClick = { if (isRunning) onCancelTests() else onRunTests(useGpuBackend) },
-            enabled = !isInitializing,
+            onClick = {
+                if (isRunning) {
+                    isCancelling = true
+                    onCancelTests()
+                } else {
+                    onRunTests(useGpuBackend)
+                }
+            },
+            enabled = !isInitializing && !isCancelling,
         ) {
-            Text(
-                text = if (isRunning) "Cancel Tests" else "Run Tests",
-            )
+            if (isCancelling) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(16.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
+                Text(
+                    text = "Cancelling...",
+                    modifier = Modifier.padding(start = 8.dp)
+                )
+            } else {
+                Text(
+                    text = if (isRunning) "Cancel Tests" else "Run Tests",
+                )
+            }
         }
     }
 }
