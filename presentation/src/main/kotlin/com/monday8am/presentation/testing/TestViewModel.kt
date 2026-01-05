@@ -16,18 +16,17 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapConcat
-import kotlinx.coroutines.flow.onCompletion
-import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.runningFold
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 
 data class TestUiState(
     val frames: ImmutableMap<String, TestResultFrame> = persistentMapOf(),
@@ -35,19 +34,6 @@ data class TestUiState(
     val isRunning: Boolean = false,
     val isInitializing: Boolean = false,
     val testStatuses: ImmutableList<TestStatus> = persistentListOf(),
-)
-
-private sealed interface TestRunState {
-    data object Idle : TestRunState
-    data object Initializing : TestRunState
-    data object Running : TestRunState
-}
-
-private data class TestResults(
-    val frames: ImmutableMap<String, TestResultFrame> = persistentMapOf(),
-    val statuses: ImmutableList<TestStatus> = ToolCallingTest.REGRESSION_TEST_SUITE.map {
-        TestStatus(it.name, TestStatus.State.IDLE)
-    }.toImmutableList()
 )
 
 data class TestStatus(val name: String, val state: State) {
@@ -80,100 +66,125 @@ class TestViewModelImpl(
 ) : TestViewModel {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
-    private val loadingState = MutableStateFlow<TestRunState>(TestRunState.Idle)
-    private val selectedModel = MutableStateFlow(initialModel)
-    private val testResults = MutableStateFlow(TestResults())
+    private var currentTest: ToolCallingTest? = null
 
-    override val uiState: StateFlow<TestUiState> = combine(
-        loadingState,
-        selectedModel,
-        testResults
-    ) { loadingStateValue, selectedModelValue, testResultsValue ->
-        TestUiState(
-            selectedModel = selectedModelValue,
-            isRunning = loadingStateValue is TestRunState.Running || loadingStateValue is TestRunState.Initializing,
-            isInitializing = loadingStateValue is TestRunState.Initializing,
-            frames = testResultsValue.frames,
-            testStatuses = testResultsValue.statuses
+    // Action trigger flow (extraBufferCapacity allows tryEmit to succeed without suspension)
+    private val runTestsTrigger = MutableSharedFlow<Boolean>(extraBufferCapacity = 1)
+
+    // Single source of truth: ExecutionState derived from trigger
+    private val executionState: StateFlow<ExecutionState> = runTestsTrigger
+        .flatMapLatest { useGpu -> executeTests(useGpu) }
+        .stateIn(scope, SharingStarted.Eagerly, ExecutionState.Idle(initialModel))
+
+    // UI state derived from ExecutionState
+    override val uiState: StateFlow<TestUiState> = executionState
+        .map { state -> deriveUiState(state) }
+        .stateIn(
+            scope = scope,
+            started = SharingStarted.Eagerly,
+            initialValue = deriveUiState(ExecutionState.Idle(initialModel))
         )
-    }.stateIn(
-        scope = scope,
-        started = SharingStarted.WhileSubscribed(5000),
-        initialValue = TestUiState(
-            selectedModel = initialModel,
+
+    override fun onUiAction(uiAction: TestUiAction) {
+        when (uiAction) {
+            is TestUiAction.RunTests -> runTestsTrigger.tryEmit(uiAction.useGpu)
+            TestUiAction.CancelTests -> currentTest?.cancel()
+        }
+    }
+
+    /**
+     * Pure flow transformation: triggers → ExecutionState emissions.
+     * Handles backend configuration, engine initialization, and test execution.
+     */
+    private fun executeTests(useGpu: Boolean): Flow<ExecutionState> = flow {
+        val modelConfig = prepareModelConfig(useGpu)
+        emit(ExecutionState.Initializing(modelConfig))
+
+        val initialResults = TestResults(
+            statuses = ToolCallingTest.REGRESSION_TEST_SUITE.map {
+                TestStatus(it.name, TestStatus.State.IDLE)
+            }.toImmutableList()
+        )
+
+        inferenceEngine.initializeAsFlow(modelConfig, modelPath)
+            .flatMapConcat { engine ->
+                ToolCallingTest(
+                    streamPromptExecutor = engine::promptStreaming,
+                    resetConversation = engine::resetConversation,
+                ).also { currentTest = it }.runAllTest()
+            }
+            .runningFold(initialResults) { current, frame ->
+                TestResults(
+                    frames = (current.frames + (frame.id to frame)).toImmutableMap(),
+                    statuses = updateTestStatuses(current.statuses, frame).toImmutableList()
+                )
+            }
+            .map { results -> ExecutionState.Running(modelConfig, results) }
+            .onStart { emit(ExecutionState.Running(modelConfig, initialResults)) }
+            .catch { e ->
+                Logger.e("Error: ${e.message}")
+                val errorFrame = TestResultFrame.Validation(
+                    testName = "Error",
+                    result = ValidationResult.Fail("Error: ${e.message}"),
+                    duration = 0,
+                    fullContent = "",
+                )
+                val errorResults = TestResults(
+                    frames = persistentMapOf(errorFrame.id to errorFrame),
+                    statuses = initialResults.statuses
+                )
+                emit(ExecutionState.Running(modelConfig, errorResults))
+            }
+            .collect { emit(it) }
+
+        // Emit idle state when tests complete
+        emit(ExecutionState.Idle(modelConfig))
+    }
+
+    /**
+     * Prepares model configuration with backend selection.
+     * Side effect: closes engine session if backend changes.
+     */
+    private fun prepareModelConfig(useGpu: Boolean): ModelConfiguration {
+        val currentModel = executionState.value.model
+        val newBackend = if (useGpu) HardwareBackend.GPU_SUPPORTED else HardwareBackend.CPU_ONLY
+
+        if (currentModel.hardwareAcceleration != newBackend) {
+            inferenceEngine.closeSession()
+        }
+
+        return currentModel.copy(hardwareAcceleration = newBackend)
+    }
+
+    /**
+     * Pure function: derives UI state from execution state.
+     */
+    private fun deriveUiState(state: ExecutionState): TestUiState = when (state) {
+        is ExecutionState.Idle -> TestUiState(
+            selectedModel = state.model,
+            isRunning = false,
+            isInitializing = false,
+            frames = persistentMapOf(),
             testStatuses = ToolCallingTest.REGRESSION_TEST_SUITE.map {
                 TestStatus(it.name, TestStatus.State.IDLE)
             }.toImmutableList()
         )
-    )
-
-    private var currentTest: ToolCallingTest? = null
-
-    override fun onUiAction(uiAction: TestUiAction) {
-        when (uiAction) {
-            is TestUiAction.RunTests -> runTests(uiAction.useGpu)
-            TestUiAction.CancelTests -> cancelTests()
-        }
-    }
-
-    private fun runTests(useGpu: Boolean) {
-        if (uiState.value.isRunning) return
-
-        val currentModel = selectedModel.value
-        val newBackend = if (useGpu) HardwareBackend.GPU_SUPPORTED else HardwareBackend.CPU_ONLY
-
-        if (currentModel.hardwareAcceleration != newBackend) {
-            selectedModel.update { currentModel.copy(hardwareAcceleration = newBackend) }
-            inferenceEngine.closeSession()
-        }
-
-        scope.launch {
-            loadingState.value = TestRunState.Initializing
-
-            val initialResults = TestResults(
-                statuses = ToolCallingTest.REGRESSION_TEST_SUITE.map {
-                    TestStatus(it.name, TestStatus.State.IDLE)
-                }.toImmutableList()
-            )
-
-            val modelConfig = selectedModel.value
-
-            inferenceEngine
-                .initializeAsFlow(
-                    modelConfig = modelConfig,
-                    modelPath = modelPath,
-                ).onEach {
-                    loadingState.value = TestRunState.Running
-                }.flatMapConcat { engine ->
-                    ToolCallingTest(
-                        streamPromptExecutor = engine::promptStreaming,
-                        resetConversation = engine::resetConversation,
-                    ).also { currentTest = it }.runAllTest()
-                }.catch { throwable ->
-                    val errorFrame = TestResultFrame.Validation(
-                        testName = "Error",
-                        result = ValidationResult.Fail("Error: ${throwable.message}"),
-                        duration = 0,
-                        fullContent = "",
-                    )
-                    Logger.e("Error: ${throwable.message}")
-                    emit(errorFrame)
-                }.runningFold(initialResults) { current, frame ->
-                    TestResults(
-                        frames = (current.frames + (frame.id to frame)).toImmutableMap(),
-                        statuses = updateTestStatuses(current.statuses, frame).toImmutableList()
-                    )
-                }.onCompletion {
-                    loadingState.value = TestRunState.Idle
-                }.collect { results ->
-                    testResults.value = results
-                }
-        }
-    }
-
-    private fun cancelTests() {
-        currentTest?.cancel()
-        loadingState.value = TestRunState.Idle
+        is ExecutionState.Initializing -> TestUiState(
+            selectedModel = state.model,
+            isRunning = true,
+            isInitializing = true,
+            frames = persistentMapOf(),
+            testStatuses = ToolCallingTest.REGRESSION_TEST_SUITE.map {
+                TestStatus(it.name, TestStatus.State.IDLE)
+            }.toImmutableList()
+        )
+        is ExecutionState.Running -> TestUiState(
+            selectedModel = state.model,
+            isRunning = true,
+            isInitializing = false,
+            frames = state.results.frames,
+            testStatuses = state.results.statuses
+        )
     }
 
     private fun updateTestStatuses(
@@ -211,3 +222,22 @@ class TestViewModelImpl(
         scope.cancel()
     }
 }
+
+/**
+ * Represents the complete execution state of the test runner.
+ * Single source of truth for the reactive pipeline.
+ */
+private sealed class ExecutionState {
+    abstract val model: ModelConfiguration
+
+    data class Idle(override val model: ModelConfiguration) : ExecutionState()
+    data class Initializing(override val model: ModelConfiguration) : ExecutionState()
+    data class Running(override val model: ModelConfiguration, val results: TestResults) : ExecutionState()
+}
+
+private data class TestResults(
+    val frames: ImmutableMap<String, TestResultFrame> = persistentMapOf(),
+    val statuses: ImmutableList<TestStatus> = ToolCallingTest.REGRESSION_TEST_SUITE.map {
+        TestStatus(it.name, TestStatus.State.IDLE)
+    }.toImmutableList()
+)

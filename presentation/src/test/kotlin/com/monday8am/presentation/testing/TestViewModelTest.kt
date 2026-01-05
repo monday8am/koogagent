@@ -7,7 +7,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -21,7 +21,7 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class TestViewModelTest {
 
-    private val testDispatcher = UnconfinedTestDispatcher()
+    private val testDispatcher = StandardTestDispatcher()
     private lateinit var inferenceEngine: FakeLocalInferenceEngine
     private lateinit var viewModel: TestViewModelImpl
 
@@ -45,6 +45,8 @@ class TestViewModelTest {
     @Test
     fun `initial state is correct`() = runTest {
         backgroundScope.launch(testDispatcher) { viewModel.uiState.collect() }
+        testDispatcher.scheduler.advanceUntilIdle()
+
         val state = viewModel.uiState.value
         assertEquals(
             "Initial backend should be CPU",
@@ -58,20 +60,29 @@ class TestViewModelTest {
     @Test
     fun `RunTests triggers initialization and updates state`() = runTest {
         backgroundScope.launch(testDispatcher) { viewModel.uiState.collect() }
+        testDispatcher.scheduler.advanceUntilIdle()
+
         // Run tests (uses current CPU backend)
         viewModel.onUiAction(TestUiAction.RunTests(useGpu = false))
+        testDispatcher.scheduler.advanceUntilIdle()
 
-        // Depending on UnconfinedTestDispatcher execution, state might be running or idle if fast
-        // Fake engine is sync/fast, so it might finish instantly.
-        // But we can check side effects on fake engine
+        // Fake engine is sync/fast, so it finishes instantly.
+        // Check side effects on fake engine
         assertTrue(inferenceEngine.initializeCalled)
     }
 
     @Test
     fun `RunTests with useGpu updates model`() = runTest {
         backgroundScope.launch(testDispatcher) { viewModel.uiState.collect() }
+        testDispatcher.scheduler.advanceUntilIdle()
+
         // Run tests with GPU toggle
         viewModel.onUiAction(TestUiAction.RunTests(useGpu = true))
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Check side effects first - these tell us if the flow executed
+        assertTrue("Engine should have closeSession called", inferenceEngine.closeSessionCalled)
+        assertTrue("Engine should have initialize called", inferenceEngine.initializeCalled)
 
         val state = viewModel.uiState.value
         assertEquals(
@@ -79,6 +90,5 @@ class TestViewModelTest {
             HardwareBackend.GPU_SUPPORTED,
             state.selectedModel.hardwareAcceleration
         )
-        assertTrue("Engine should contain reset call", inferenceEngine.closeSessionCalled)
     }
 }
