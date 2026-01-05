@@ -34,7 +34,12 @@ internal class FakeLocalInferenceEngine : LocalInferenceEngine {
 
     override fun promptStreaming(prompt: String) = flowOf("Hi!")
 
-    override fun closeSession(): Result<Unit> = Result.success(Unit)
+    var closeSessionCalled = false
+
+    override fun closeSession(): Result<Unit> {
+        closeSessionCalled = true
+        return Result.success(Unit)
+    }
 }
 
 internal class FakeNotificationEngine : NotificationEngine {

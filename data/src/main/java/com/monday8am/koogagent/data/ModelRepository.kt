@@ -23,6 +23,7 @@ interface ModelRepository {
     fun getAllModels(): List<ModelConfiguration>
     fun getByFamily(family: String): List<ModelConfiguration>
     fun getByInferenceLibrary(library: InferenceLibrary): List<ModelConfiguration>
+    fun updateModel(modelId: String, updater: (ModelConfiguration) -> ModelConfiguration)
 }
 
 class ModelRepositoryImpl(
@@ -65,4 +66,16 @@ class ModelRepositoryImpl(
 
     override fun getByInferenceLibrary(library: InferenceLibrary): List<ModelConfiguration> =
         _models.value.filter { it.inferenceLibrary == library }
+
+    override fun updateModel(modelId: String, updater: (ModelConfiguration) -> ModelConfiguration) {
+        val currentModels = _models.value
+        val updatedModels = currentModels.map { model ->
+            if (model.modelId == modelId) {
+                updater(model)
+            } else {
+                model
+            }
+        }
+        _models.value = updatedModels
+    }
 }

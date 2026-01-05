@@ -1,7 +1,9 @@
 package com.monday8am.koogagent.ui.screens.testing
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Arrangement.spacedBy
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -12,17 +14,23 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.foundation.layout.size
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.monday8am.koogagent.Dependencies
+import com.monday8am.koogagent.data.HardwareBackend
 import com.monday8am.koogagent.data.ModelCatalog
 import com.monday8am.koogagent.data.ModelConfiguration
 import com.monday8am.koogagent.download.ModelDownloadManagerImpl
@@ -37,6 +45,7 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableMap
 import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.collections.immutable.toImmutableList
+import androidx.compose.runtime.saveable.rememberSaveable
 
 @Composable
 fun TestScreen(
@@ -58,7 +67,7 @@ fun TestScreen(
 
         AndroidTestViewModel(
             TestViewModelImpl(
-                selectedModel = selectedModel,
+                initialModel = selectedModel,
                 modelPath = modelPath,
                 inferenceEngine = inferenceEngine,
             ),
@@ -75,7 +84,7 @@ fun TestScreen(
         selectedModel = state.selectedModel,
         isRunning = state.isRunning,
         isInitializing = state.isInitializing,
-        onRunTests = { viewModel.onUiAction(TestUiAction.RunTests) },
+        onRunTests = { useGpu -> viewModel.onUiAction(TestUiAction.RunTests(useGpu)) },
         onCancelTests = { viewModel.onUiAction(TestUiAction.CancelTests) },
         modifier = Modifier,
     )
@@ -88,10 +97,22 @@ private fun TestContent(
     selectedModel: ModelConfiguration,
     isRunning: Boolean,
     isInitializing: Boolean,
-    onRunTests: () -> Unit,
+    onRunTests: (Boolean) -> Unit,
     onCancelTests: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var useGpuBackend by rememberSaveable {
+        mutableStateOf(selectedModel.hardwareAcceleration == HardwareBackend.GPU_SUPPORTED)
+    }
+
+    var isCancelling by rememberSaveable { mutableStateOf(false) }
+
+    LaunchedEffect(isRunning) {
+        if (!isRunning) {
+            isCancelling = false
+        }
+    }
+
     Column(
         verticalArrangement = spacedBy(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -100,7 +121,12 @@ private fun TestContent(
             .padding(16.dp),
     ) {
         // 1. Top Card with Model Info
-        ModelInfoCard(model = selectedModel)
+        ModelInfoCard(
+            model = selectedModel,
+            useGpu = useGpuBackend,
+            isRunning = isRunning || isInitializing,
+            onBackendToggle = { useGpuBackend = it },
+        )
 
         if (isInitializing) {
             InitializationIndicator(message = "Initializing model...")
@@ -122,32 +148,85 @@ private fun TestContent(
 
         // 4. Run/Cancel Button
         Button(
-            onClick = if (isRunning) onCancelTests else onRunTests,
-            enabled = !isInitializing,
+            onClick = {
+                if (isRunning) {
+                    isCancelling = true
+                    onCancelTests()
+                } else {
+                    onRunTests(useGpuBackend)
+                }
+            },
+            enabled = !isInitializing && !isCancelling,
         ) {
-            Text(
-                text = if (isRunning) "Cancel Tests" else "Run Tests",
-            )
+            if (isCancelling) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(16.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
+                Text(
+                    text = "Cancelling...",
+                    modifier = Modifier.padding(start = 8.dp)
+                )
+            } else {
+                Text(
+                    text = if (isRunning) "Cancel Tests" else "Run Tests",
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun ModelInfoCard(model: ModelConfiguration, modifier: Modifier = Modifier) {
+private fun ModelInfoCard(
+    model: ModelConfiguration,
+    useGpu: Boolean,
+    onBackendToggle: (Boolean) -> Unit,
+    isRunning: Boolean,
+    modifier: Modifier = Modifier,
+) {
     Card(modifier = modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(
-                text = "Model: ${model.displayName}",
-                style = MaterialTheme.typography.titleMedium,
-            )
-            Text(
-                text = "${model.parameterCount}B params • ${model.contextLength} tokens",
-                style = MaterialTheme.typography.bodySmall,
-            )
-            Text(
-                text = "Library: ${model.inferenceLibrary.name}",
-                style = MaterialTheme.typography.bodySmall,
-            )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Left: Model info
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Model: ${model.displayName}",
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Text(
+                    text = "${model.parameterCount}B params • ${model.contextLength} tokens",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Text(
+                    text = "Library: ${model.inferenceLibrary.name}",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+
+            // Right: CPU/GPU Toggle
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = spacedBy(4.dp)
+            ) {
+                Text(
+                    text = if (useGpu) "GPU" else "CPU",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Switch(
+                    checked = useGpu,
+                    enabled = !isRunning,
+                    onCheckedChange = { isChecked ->
+                        onBackendToggle(isChecked)
+                    }
+                )
+            }
         }
     }
 }
