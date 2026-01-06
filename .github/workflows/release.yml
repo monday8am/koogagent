@@ -74,6 +74,11 @@ jobs:
 
           echo "Keystore verification passed!"
 
+      - name: Decode google-services.json
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: printf '%s' "$GOOGLE_SERVICES_JSON" | base64 -d > app/google-services.json
+
       - name: Run tests
         run: ./gradlew test
 
