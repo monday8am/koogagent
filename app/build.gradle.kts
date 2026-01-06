@@ -5,6 +5,8 @@ plugins {
     // kotlin.android plugin removed - built into AGP 9.0
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.google.services)
+    alias(libs.plugins.firebase.crashlytics)
 }
 
 // Load keystore properties from file or environment variables
@@ -115,6 +117,10 @@ dependencies {
     implementation(libs.litertlm.android)
     implementation(libs.mediapipe.tasks.genai)
     implementation(libs.localagents.fc)
+
+    // Firebase
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.crashlytics)
 
     lintChecks(libs.compose.lint.checks)
 
