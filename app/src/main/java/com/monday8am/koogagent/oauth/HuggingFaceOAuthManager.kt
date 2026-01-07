@@ -11,9 +11,13 @@ import net.openid.appauth.AuthorizationServiceConfiguration
 import net.openid.appauth.ResponseTypeValues
 import co.touchlab.kermit.Logger
 import net.openid.appauth.CodeVerifierUtil
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.launch
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
-import kotlinx.coroutines.suspendCancellableCoroutine
 
 /**
  * Manages HuggingFace OAuth authentication flow using AppAuth library.
@@ -28,6 +32,10 @@ class HuggingFaceOAuthManager(
     )
 
     private val authService = AuthorizationService(context)
+    private val scope = MainScope()
+
+    private val _oAuthResultFlow = MutableSharedFlow<Intent>(extraBufferCapacity = 1)
+    val oAuthResultFlow = _oAuthResultFlow.asSharedFlow()
 
     /**
      * Creates an authorization intent for launching the OAuth flow in Custom Chrome Tab.
@@ -46,6 +54,19 @@ class HuggingFaceOAuthManager(
 
         Logger.d { "Creating authorization intent for client: $clientId" }
         return authService.getAuthorizationRequestIntent(authRequest)
+    }
+
+    /**
+     * Handles incoming intents and checks if they contain an OAuth redirect.
+     * If a redirect is found, it's emitted to the result flow.
+     */
+    fun onHandleIntent(intent: Intent) {
+        if (intent.getBooleanExtra(OAuthRedirectActivity.EXTRA_OAUTH_REDIRECT, false)) {
+            Logger.d { "OAuth redirect detected in intent" }
+            scope.launch {
+                _oAuthResultFlow.emit(intent)
+            }
+        }
     }
 
     /**

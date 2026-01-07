@@ -41,8 +41,6 @@ import kotlinx.coroutines.launch
 fun ModelSelectorScreen(
     onNavigateToNotification: (String) -> Unit,
     onNavigateToTesting: (String) -> Unit,
-    oAuthResultIntent: Intent? = null,
-    onOAuthResultConsumed: () -> Unit = {},
     viewModel: AndroidModelSelectorViewModel = viewModel {
         AndroidModelSelectorViewModel(
             ModelSelectorViewModelImpl(
@@ -62,25 +60,22 @@ fun ModelSelectorScreen(
     var showLogoutDialog by remember { mutableStateOf(false) }
     var isAuthenticating by remember { mutableStateOf(false) }
 
-    // Handle OAuth result when received
-    LaunchedEffect(oAuthResultIntent) {
-        oAuthResultIntent?.let { intent ->
-            scope.launch {
-                isAuthenticating = true
-                try {
-                    val token = oAuthManager.handleAuthorizationResponse(intent)
-                    viewModel.onUiAction(UiAction.SubmitToken(token))
-                    Toast.makeText(context, "Logged in to HuggingFace", Toast.LENGTH_SHORT).show()
-                } catch (e: Exception) {
-                    Toast.makeText(
-                        context,
-                        "Login failed: ${e.message}",
-                        Toast.LENGTH_LONG
-                    ).show()
-                } finally {
-                    isAuthenticating = false
-                    onOAuthResultConsumed()
-                }
+    // Handle OAuth result when received from flow
+    LaunchedEffect(Unit) {
+        oAuthManager.oAuthResultFlow.collect { intent ->
+            isAuthenticating = true
+            try {
+                val token = oAuthManager.handleAuthorizationResponse(intent)
+                viewModel.onUiAction(UiAction.SubmitToken(token))
+                Toast.makeText(context, "Logged in to HuggingFace", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                Toast.makeText(
+                    context,
+                    "Login failed: ${e.message}",
+                    Toast.LENGTH_LONG
+                ).show()
+            } finally {
+                isAuthenticating = false
             }
         }
     }

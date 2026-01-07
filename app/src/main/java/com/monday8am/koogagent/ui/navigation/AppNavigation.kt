@@ -16,8 +16,6 @@ import com.monday8am.koogagent.ui.screens.testing.TestScreen
 fun AppNavigation(
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
-    oAuthResultIntent: Intent? = null,
-    onOAuthResultConsumed: () -> Unit = {},
 ) {
     NavHost(
         navController = navController,
@@ -32,8 +30,6 @@ fun AppNavigation(
                 onNavigateToTesting = { modelId ->
                     navController.navigate(Route.Testing(modelId))
                 },
-                oAuthResultIntent = oAuthResultIntent,
-                onOAuthResultConsumed = onOAuthResultConsumed,
             )
         }
         composable<Route.Notification> { backStackEntry ->
