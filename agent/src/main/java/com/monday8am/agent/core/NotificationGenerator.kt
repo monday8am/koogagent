@@ -17,14 +17,12 @@ class NotificationGenerator(private val agent: NotificationAgent) {
         logger.d { "Built prompt: $prompt" }
 
         return try {
-            val response =
-                agent.generateMessage(
-                    systemPrompt = systemPrompt,
-                    userPrompt = prompt,
-                )
+            val response = agent.generateMessage(systemPrompt = systemPrompt, userPrompt = prompt)
             logger.d { "Agent response: $response" }
             val result = parseResponse(response)
-            logger.i { "Successfully generated notification: title='${result.title}', confidence=${result.confidence}" }
+            logger.i {
+                "Successfully generated notification: title='${result.title}', confidence=${result.confidence}"
+            }
             result
         } catch (e: Exception) {
             logger.e(e) { "Error generating notification: ${e.message}" }
@@ -34,10 +32,13 @@ class NotificationGenerator(private val agent: NotificationAgent) {
         }
     }
 
-    // Consider weather when suggesting meals (e.g., hot soup on cold days, refreshing salads when hot, comfort food when rainy).
-    // If weather information is relevant for this meal type, use the WeatherTool tool first to get current conditions, then tailor your suggestion accordingly.
+    // Consider weather when suggesting meals (e.g., hot soup on cold days, refreshing salads when
+    // hot, comfort food when rainy).
+    // If weather information is relevant for this meal type, use the WeatherTool tool first to get
+    // current conditions, then tailor your suggestion accordingly.
 
-    private fun buildPrompt(context: NotificationContext): String = """
+    private fun buildPrompt(context: NotificationContext): String =
+        """
         Context:
         - Meal type: ${context.mealType}
         - Motivation level: ${context.motivationLevel}
@@ -54,7 +55,8 @@ class NotificationGenerator(private val agent: NotificationAgent) {
         Use the language and suggest a meal or drink based on the country provided and the weather information obtained before.
         ${if (context.alreadyLogged) "The user has already logged something today - encourage them to continue." else "The user has not logged anything today - motivate them to start."}
         Say to user if you used the WeatherTool or not and why
-    """.trimIndent()
+    """
+            .trimIndent()
 
     private fun parseResponse(response: String): NotificationResult {
         val cleanJson = response.removePrefix("```json\n").removeSuffix("\n```")
@@ -77,15 +79,18 @@ class NotificationGenerator(private val agent: NotificationAgent) {
                 }
 
                 MealType.LUNCH -> {
-                    "Lunch time" to "Have you logged your lunch? Try a chickpea salad or grilled fish."
+                    "Lunch time" to
+                        "Have you logged your lunch? Try a chickpea salad or grilled fish."
                 }
 
                 MealType.SNACK -> {
-                    "Healthy snack" to "A light snack is great now: seasonal fruit or a handful of nuts."
+                    "Healthy snack" to
+                        "A light snack is great now: seasonal fruit or a handful of nuts."
                 }
 
                 MealType.DINNER -> {
-                    "Balanced dinner" to "Log your dinner. Options: omelette with salad, vegetable soup."
+                    "Balanced dinner" to
+                        "Log your dinner. Options: omelette with salad, vegetable soup."
                 }
 
                 MealType.WATER -> {

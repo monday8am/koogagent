@@ -30,11 +30,12 @@ class TestViewModelTest {
         Dispatchers.setMain(testDispatcher)
         inferenceEngine = FakeLocalInferenceEngine()
         val config = ModelCatalog.DEFAULT.copy(hardwareAcceleration = HardwareBackend.CPU_ONLY)
-        viewModel = TestViewModelImpl(
-            initialModel = config,
-            modelPath = "/fake/path",
-            inferenceEngine = inferenceEngine
-        )
+        viewModel =
+            TestViewModelImpl(
+                initialModel = config,
+                modelPath = "/fake/path",
+                inferenceEngine = inferenceEngine,
+            )
     }
 
     @After
@@ -49,7 +50,7 @@ class TestViewModelTest {
         assertEquals(
             "Initial backend should be CPU",
             HardwareBackend.CPU_ONLY,
-            state.selectedModel.hardwareAcceleration
+            state.selectedModel.hardwareAcceleration,
         )
         assertFalse(state.isRunning)
         assertFalse(state.isInitializing)
@@ -77,7 +78,7 @@ class TestViewModelTest {
         assertEquals(
             "Backend should switch to GPU",
             HardwareBackend.GPU_SUPPORTED,
-            state.selectedModel.hardwareAcceleration
+            state.selectedModel.hardwareAcceleration,
         )
     }
 

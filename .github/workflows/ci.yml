@@ -35,8 +35,8 @@ jobs:
       - name: Set up HuggingFace OAuth
         run: echo "HF_CLIENT_ID=${{ secrets.HF_CLIENT_ID }}" >> $GITHUB_ENV
 
-      - name: Run ktlint check
-        run: ./gradlew ktlintCheck
+      - name: Run ktfmt check
+        run: ./gradlew ktfmtCheck
 
       - name: Run Compose lint check
         run: ./gradlew :app:lintDebug

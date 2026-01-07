@@ -22,11 +22,13 @@ fun main() = runBlocking {
 
     val weatherProvider = WeatherProviderImpl()
     val locationProvider = MockLocationProvider()
-    val toolRegistry =
-        ToolRegistry {
-            tool(tool = GetWeather(weatherProvider = weatherProvider, locationProvider = locationProvider))
-            tool(tool = GetLocation(locationProvider))
-        }
+    val toolRegistry = ToolRegistry {
+        tool(
+            tool =
+                GetWeather(weatherProvider = weatherProvider, locationProvider = locationProvider)
+        )
+        tool(tool = GetLocation(locationProvider))
+    }
 
     // Get first available Ollama model dynamically
     val client = OllamaClient()
@@ -37,24 +39,19 @@ fun main() = runBlocking {
     }
     logger.i { "Using Ollama model: ${llModel.id}" }
 
-    val agent =
-        NotificationAgent
-            .koog(
-                model = llModel,
-            ).apply {
-                initializeWithTools(toolRegistry)
-            }
+    val agent = NotificationAgent.koog(model = llModel).apply { initializeWithTools(toolRegistry) }
 
     val message =
-        NotificationGenerator(agent = agent).generate(
-            NotificationContext(
-                mealType = MealType.LUNCH,
-                motivationLevel = MotivationLevel.HIGH,
-                alreadyLogged = true,
-                userLocale = "en-US",
-                country = "ES",
-            ),
-        )
+        NotificationGenerator(agent = agent)
+            .generate(
+                NotificationContext(
+                    mealType = MealType.LUNCH,
+                    motivationLevel = MotivationLevel.HIGH,
+                    alreadyLogged = true,
+                    userLocale = "en-US",
+                    country = "ES",
+                )
+            )
 
     logger.i { "Generated notification:" }
     logger.i { "  Title: ${message.title}" }

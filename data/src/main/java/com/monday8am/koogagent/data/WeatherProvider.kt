@@ -1,8 +1,6 @@
 package com.monday8am.koogagent.data
 
-/**
- * Interface for weather providers.
- */
+/** Interface for weather providers. */
 interface WeatherProvider {
     suspend fun getCurrentWeather(latitude: Double, longitude: Double): WeatherCondition?
 }

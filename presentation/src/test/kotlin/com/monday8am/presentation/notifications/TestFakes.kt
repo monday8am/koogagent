@@ -18,12 +18,18 @@ import kotlinx.coroutines.flow.update
 internal class FakeLocalInferenceEngine : LocalInferenceEngine {
     var initializeCalled = false
 
-    override suspend fun initialize(modelConfig: ModelConfiguration, modelPath: String): Result<Unit> {
+    override suspend fun initialize(
+        modelConfig: ModelConfiguration,
+        modelPath: String,
+    ): Result<Unit> {
         initializeCalled = true
         return Result.success(Unit)
     }
 
-    override fun initializeAsFlow(modelConfig: ModelConfiguration, modelPath: String): Flow<LocalInferenceEngine> {
+    override fun initializeAsFlow(
+        modelConfig: ModelConfiguration,
+        modelPath: String,
+    ): Flow<LocalInferenceEngine> {
         initializeCalled = true
         return flowOf(this)
     }
@@ -53,7 +59,8 @@ internal class FakeNotificationEngine : NotificationEngine {
 }
 
 internal class FakeWeatherProvider : WeatherProvider {
-    override suspend fun getCurrentWeather(latitude: Double, longitude: Double) = WeatherCondition.SUNNY
+    override suspend fun getCurrentWeather(latitude: Double, longitude: Double) =
+        WeatherCondition.SUNNY
 }
 
 internal class FakeLocationProvider : LocationProvider {
@@ -67,7 +74,8 @@ internal class FakeDeviceContextProvider : DeviceContextProvider {
 internal class FakeModelDownloadManager(
     private val progressSteps: List<Float> = emptyList(),
     private val shouldFail: Boolean = false,
-    private val modelsStatusFlow: MutableStateFlow<Map<String, ModelDownloadManager.Status>> = MutableStateFlow(emptyMap())
+    private val modelsStatusFlow: MutableStateFlow<Map<String, ModelDownloadManager.Status>> =
+        MutableStateFlow(emptyMap()),
 ) : ModelDownloadManager {
 
     override suspend fun downloadModel(
@@ -80,9 +88,15 @@ internal class FakeModelDownloadManager(
         }
 
         progressSteps.forEach { progress ->
-            modelsStatusFlow.update { it + (bundleFilename to ModelDownloadManager.Status.InProgress(progress)) }
+            modelsStatusFlow.update {
+                it + (bundleFilename to ModelDownloadManager.Status.InProgress(progress))
+            }
         }
-        modelsStatusFlow.update { it + (bundleFilename to ModelDownloadManager.Status.Completed(File("/fake/path/$bundleFilename"))) }
+        modelsStatusFlow.update {
+            it +
+                (bundleFilename to
+                    ModelDownloadManager.Status.Completed(File("/fake/path/$bundleFilename")))
+        }
     }
 
     override val modelsStatus: Flow<Map<String, ModelDownloadManager.Status>>
@@ -92,7 +106,8 @@ internal class FakeModelDownloadManager(
         modelsStatusFlow.update { current ->
             val updated = current.toMutableMap()
             filenames.forEach { filename ->
-                updated[filename] = ModelDownloadManager.Status.Completed(File("/fake/path/$filename"))
+                updated[filename] =
+                    ModelDownloadManager.Status.Completed(File("/fake/path/$filename"))
             }
             updated
         }

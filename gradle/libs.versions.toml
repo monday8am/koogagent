@@ -21,7 +21,6 @@ localagents = "0.1.0"
 navigation = "2.9.6"
 kotlinxSerialization = "1.9.0"
 kotlinx-collections-immutable = "0.4.0"
-ktlint = "14.0.1"
 security-crypto = "1.1.0"
 compose-lint = "1.4.2"
 firebase-bom = "34.7.0"
@@ -74,7 +73,6 @@ kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 jetbrains-kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
-ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }
+ktfmt = { id = "com.ncorti.ktfmt.gradle", version = "0.25.0" }
 google-services = { id = "com.google.gms.google-services", version.ref = "google-services" }
 firebase-crashlytics = { id = "com.google.firebase.crashlytics", version.ref = "firebase-crashlytics-plugin" }
-

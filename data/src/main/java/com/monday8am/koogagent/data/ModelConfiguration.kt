@@ -12,8 +12,8 @@ enum class HardwareBackend {
 }
 
 /**
- * Complete configuration for an on-device language model.
- * This is platform-agnostic metadata that describes what the model is and how to obtain it.
+ * Complete configuration for an on-device language model. This is platform-agnostic metadata that
+ * describes what the model is and how to obtain it.
  *
  * @property modelId Unique identifier (e.g., "qwen3-0.6b-litert-q8-4k")
  * @property displayName Human-readable name (e.g., "Qwen3 0.6B (LiteRT, 4K context)")
@@ -22,7 +22,8 @@ enum class HardwareBackend {
  * @property quantization Quantization format (e.g., "int8", "int4", "fp16")
  * @property contextLength Maximum context window in tokens (e.g., 4096, 1024)
  * @property downloadUrl Remote URL for model download
- * @property bundleFilename Expected filename after download (e.g., "model.litertlm" or "model.task")
+ * @property bundleFilename Expected filename after download (e.g., "model.litertlm" or
+ *   "model.task")
  * @property inferenceLibrary Which inference library to use
  * @property hardwareAcceleration Supported hardware acceleration
  * @property defaultTopK Default top-K sampling parameter
@@ -54,23 +55,22 @@ data class ModelConfiguration(
     val huggingFaceUrl: String? = null,
 ) {
     /**
-     * Model identifier without file extension (used by NotificationAgent).
-     * Examples: "qwen3_0.6b_q8_ekv4096-litert", "gemma3-1b-it-int4-mediapipe" or "gemma3-1b-it-int4-litert"
+     * Model identifier without file extension (used by NotificationAgent). Examples:
+     * "qwen3_0.6b_q8_ekv4096-litert", "gemma3-1b-it-int4-mediapipe" or "gemma3-1b-it-int4-litert"
      */
     val modelId: String
         get() = bundleFilename.substringBeforeLast(".") + "-" + inferenceLibrary.toString()
 
-    /**
-     * Helper to format file size into human readable string.
-     */
+    /** Helper to format file size into human readable string. */
     val readableFileSize: String?
-        get() = fileSizeBytes?.let { bytes ->
-            if (bytes >= 1024 * 1024 * 1024) {
-                val sizeGB = bytes / (1024.0 * 1024.0 * 1024.0)
-                "Size: ${"%.2f".format(sizeGB)} GB"
-            } else {
-                val sizeMB = bytes / (1024 * 1024)
-                "Size: $sizeMB MB"
+        get() =
+            fileSizeBytes?.let { bytes ->
+                if (bytes >= 1024 * 1024 * 1024) {
+                    val sizeGB = bytes / (1024.0 * 1024.0 * 1024.0)
+                    "Size: ${"%.2f".format(sizeGB)} GB"
+                } else {
+                    val sizeMB = bytes / (1024 * 1024)
+                    "Size: $sizeMB MB"
+                }
             }
-        }
 }

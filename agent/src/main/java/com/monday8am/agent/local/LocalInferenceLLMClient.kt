@@ -16,8 +16,8 @@ import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onEach
 
 /**
- * Bridge LLMClient between Koog's agent framework and local native inference.
- * LiteRT-LM or Mediapipe
+ * Bridge LLMClient between Koog's agent framework and local native inference. LiteRT-LM or
+ * Mediapipe
  */
 class LocalInferenceLLMClient(
     private val promptExecutor: suspend (String) -> String?,
@@ -25,18 +25,20 @@ class LocalInferenceLLMClient(
 ) : LLMClient {
     private val logger = Logger.withTag("LiteRTLLMClient")
 
-    override suspend fun execute(prompt: Prompt, model: LLModel, tools: List<ToolDescriptor>): List<Message.Response> {
+    override suspend fun execute(
+        prompt: Prompt,
+        model: LLModel,
+        tools: List<ToolDescriptor>,
+    ): List<Message.Response> {
         val lastUserMessage =
-            if (prompt.messages.first() is Message.System &&
-                prompt.messages.last() is Message.User &&
-                prompt.messages.size == 2
+            if (
+                prompt.messages.first() is Message.System &&
+                    prompt.messages.last() is Message.User &&
+                    prompt.messages.size == 2
             ) {
                 prompt.messages.joinToString { "${it.content}\n" }
             } else {
-                prompt.messages
-                    .filterIsInstance<Message.User>()
-                    .lastOrNull()
-                    ?.content
+                prompt.messages.filterIsInstance<Message.User>().lastOrNull()?.content
                     ?: throw IllegalArgumentException("No user message in prompt")
             }
 
@@ -47,33 +49,30 @@ class LocalInferenceLLMClient(
                 ?: throw IllegalStateException("Local Inference returned null response")
 
         // Return as Koog message
-        return listOf(
-            Message.Assistant(
-                content = response,
-                metaInfo = ResponseMetaInfo.Empty,
-            ),
-        )
+        return listOf(Message.Assistant(content = response, metaInfo = ResponseMetaInfo.Empty))
     }
 
-    override fun executeStreaming(prompt: Prompt, model: LLModel, tools: List<ToolDescriptor>): Flow<StreamFrame> {
+    override fun executeStreaming(
+        prompt: Prompt,
+        model: LLModel,
+        tools: List<ToolDescriptor>,
+    ): Flow<StreamFrame> {
         val executor =
             streamPromptExecutor
                 ?: throw UnsupportedOperationException(
                     "Local Inference client streaming is not configured. " +
-                        "Provide streamPromptExecutor in constructor.",
+                        "Provide streamPromptExecutor in constructor."
                 )
 
         val lastUserMessage =
-            if (prompt.messages.first() is Message.System &&
-                prompt.messages.last() is Message.User &&
-                prompt.messages.size == 2
+            if (
+                prompt.messages.first() is Message.System &&
+                    prompt.messages.last() is Message.User &&
+                    prompt.messages.size == 2
             ) {
                 prompt.messages.joinToString { "${it.content}\n" }
             } else {
-                prompt.messages
-                    .filterIsInstance<Message.User>()
-                    .lastOrNull()
-                    ?.content
+                prompt.messages.filterIsInstance<Message.User>().lastOrNull()?.content
                     ?: throw IllegalArgumentException("No user message in prompt")
             }
 
@@ -81,9 +80,8 @@ class LocalInferenceLLMClient(
 
         return executor(lastUserMessage)
             .onEach { logger.d { it } }
-            .map<String, StreamFrame> { chunk ->
-                StreamFrame.Append(text = chunk)
-            }.onCompletion { error ->
+            .map<String, StreamFrame> { chunk -> StreamFrame.Append(text = chunk) }
+            .onCompletion { error ->
                 logger.d { "Streaming ended: $error" }
                 if (error == null) {
                     emit(StreamFrame.End(finishReason = "stop"))
@@ -94,10 +92,11 @@ class LocalInferenceLLMClient(
     override suspend fun moderate(prompt: Prompt, model: LLModel): ModerationResult =
         throw UnsupportedOperationException(
             "Local Inference client does not support moderation. " +
-                "Implement content filtering in your application layer if needed.",
+                "Implement content filtering in your application layer if needed."
         )
 
-    override fun llmProvider(): LLMProvider = object : LLMProvider("local-inference", "Local Inference") {}
+    override fun llmProvider(): LLMProvider =
+        object : LLMProvider("local-inference", "Local Inference") {}
 
     override fun close() {
         // No resources to clean up - client is stateless

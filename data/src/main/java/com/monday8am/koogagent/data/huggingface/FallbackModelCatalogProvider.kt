@@ -8,8 +8,8 @@ import com.monday8am.koogagent.data.ModelConfiguration
 /**
  * Wraps a primary provider with a fallback to hardcoded catalog.
  *
- * If the primary provider fails (e.g., network error), returns the fallback models.
- * This ensures the app always has some models available.
+ * If the primary provider fails (e.g., network error), returns the fallback models. This ensures
+ * the app always has some models available.
  */
 class FallbackModelCatalogProvider(
     private val primary: ModelCatalogProvider,

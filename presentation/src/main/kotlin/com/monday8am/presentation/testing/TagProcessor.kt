@@ -19,7 +19,8 @@ internal class TagProcessor(private val testName: String, private val parseTags:
     private var thinkingTagType: String? = null // Track which thinking tag type is being used
 
     /** The content accumulated for validation (after stripping tags if enabled) */
-    val resultContent: String get() = currentBlock.toString()
+    val resultContent: String
+        get() = currentBlock.toString()
 
     fun process(chunk: String): TestResultFrame {
         currentBlock.append(chunk)
@@ -51,11 +52,12 @@ internal class TagProcessor(private val testName: String, private val parseTags:
 
             ParserState.Thinking -> {
                 // Check for corresponding closing tag
-                val closingTag = when (thinkingTagType) {
-                    "<thinking>" -> "</thinking>"
-                    "<think>" -> "</think>"
-                    else -> "</think>" // Fallback
-                }
+                val closingTag =
+                    when (thinkingTagType) {
+                        "<thinking>" -> "</thinking>"
+                        "<think>" -> "</think>"
+                        else -> "</think>" // Fallback
+                    }
 
                 if (lookBack.contains(closingTag)) {
                     state = ParserState.Content
@@ -73,7 +75,8 @@ internal class TagProcessor(private val testName: String, private val parseTags:
         }
 
         return when (state) {
-            ParserState.Thinking -> TestResultFrame.Thinking(testName, chunk, currentBlock.toString())
+            ParserState.Thinking ->
+                TestResultFrame.Thinking(testName, chunk, currentBlock.toString())
             ParserState.ToolCall -> TestResultFrame.Tool(testName, chunk, currentBlock.toString())
             ParserState.Content -> TestResultFrame.Content(testName, chunk, currentBlock.toString())
         }

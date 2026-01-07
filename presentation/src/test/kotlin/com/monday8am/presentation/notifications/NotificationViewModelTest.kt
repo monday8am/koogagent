@@ -17,8 +17,8 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 
 /**
- * Unit tests for NotificationViewModelImpl, focusing on the reduce function.
- * These tests verify that state transitions are correct and LogMessage types are properly set.
+ * Unit tests for NotificationViewModelImpl, focusing on the reduce function. These tests verify
+ * that state transitions are correct and LogMessage types are properly set.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class NotificationViewModelTest {
@@ -62,15 +62,16 @@ class NotificationViewModelTest {
         weatherProvider: FakeWeatherProvider = FakeWeatherProvider(),
         locationProvider: FakeLocationProvider = FakeLocationProvider(),
         deviceContextProvider: FakeDeviceContextProvider = FakeDeviceContextProvider(),
-    ): NotificationViewModelImpl = NotificationViewModelImpl(
-        selectedModel = testModel,
-        modelPath = testModelPath,
-        inferenceEngine = inferenceEngine,
-        notificationEngine = notificationEngine,
-        weatherProvider = weatherProvider,
-        locationProvider = locationProvider,
-        deviceContextProvider = deviceContextProvider,
-    )
+    ): NotificationViewModelImpl =
+        NotificationViewModelImpl(
+            selectedModel = testModel,
+            modelPath = testModelPath,
+            inferenceEngine = inferenceEngine,
+            notificationEngine = notificationEngine,
+            weatherProvider = weatherProvider,
+            locationProvider = locationProvider,
+            deviceContextProvider = deviceContextProvider,
+        )
 
     @Test
     fun `reduce with ShowNotification Loading should set InitializingModel message`() {

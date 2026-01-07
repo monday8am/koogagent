@@ -8,14 +8,16 @@ import kotlinx.serialization.builtins.serializer
 class GetLocation(private val locationProvider: LocationProvider) :
     SimpleTool<Unit>(
         name = "GetLocation",
-        description = "No arguments required. Get the user's current location in latitude and longitude format",
+        description =
+            "No arguments required. Get the user's current location in latitude and longitude format",
         argsSerializer = Unit.serializer(),
     ) {
-    override suspend fun execute(args: Unit): String = try {
-        val result = locationProvider.getLocation()
-        "latitude ${result.latitude}, longitude: ${result.longitude}"
-    } catch (e: Exception) {
-        logger.e { "GetLocation: Error fetching location: ${e.message}" }
-        "location: error - ${e.message}"
-    }
+    override suspend fun execute(args: Unit): String =
+        try {
+            val result = locationProvider.getLocation()
+            "latitude ${result.latitude}, longitude: ${result.longitude}"
+        } catch (e: Exception) {
+            logger.e { "GetLocation: Error fetching location: ${e.message}" }
+            "location: error - ${e.message}"
+        }
 }

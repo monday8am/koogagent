@@ -28,14 +28,13 @@ suspend fun main() {
 
         val conversationConfig =
             ConversationConfig(
-                systemMessage = Message.of("You are Qwen, created by Alibaba Cloud. You are a helpful assistant."),
-                tools = listOf(NativeLocationTools()), // Native LiteRT-LM tools with @Tool annotations
-                samplerConfig =
-                SamplerConfig(
-                    topK = 40,
-                    topP = 0.85,
-                    temperature = 0.2,
-                ),
+                systemMessage =
+                    Message.of(
+                        "You are Qwen, created by Alibaba Cloud. You are a helpful assistant."
+                    ),
+                tools =
+                    listOf(NativeLocationTools()), // Native LiteRT-LM tools with @Tool annotations
+                samplerConfig = SamplerConfig(topK = 40, topP = 0.85, temperature = 0.2),
             )
 
         engine.createConversation(conversationConfig = conversationConfig).use { conversation ->
@@ -48,7 +47,10 @@ suspend fun main() {
 }
 
 class NativeLocationTools {
-    @Tool(description = "No arguments required. Get the user's current location in latitude and longitude format")
+    @Tool(
+        description =
+            "No arguments required. Get the user's current location in latitude and longitude format"
+    )
     fun get_location(): String {
         val result = """{"latitude": 40.4168, "longitude": -3.7038}"""
         return result

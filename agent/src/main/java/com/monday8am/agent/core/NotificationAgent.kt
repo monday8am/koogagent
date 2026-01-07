@@ -11,9 +11,7 @@ import ai.koog.prompt.llm.LLModel
 import co.touchlab.kermit.Logger
 import com.monday8am.agent.local.LocalInferenceLLMClient
 
-/**
- * Agent backend type determines which executor and configuration to use.
- */
+/** Agent backend type determines which executor and configuration to use. */
 enum class AgentBackend {
     /** Local inference (LiteRT-LM, etc.) - requires promptExecutor and toolFormat */
     LOCAL,
@@ -33,7 +31,8 @@ enum class AgentBackend {
  * - LiteRT-LM: Uses @Tool annotations and model-specific processors
  * - MediaPipe: Uses HammerFormatter with protobuf Tool objects
  */
-class NotificationAgent private constructor(
+class NotificationAgent
+private constructor(
     private val backend: AgentBackend,
     private val promptExecutor: (suspend (String) -> String?)?,
     private val model: LLModel,
@@ -54,37 +53,36 @@ class NotificationAgent private constructor(
             promptExecutor: suspend (String) -> String?,
             modelId: String,
             modelProvider: LLMProvider = LLMProvider.Google,
-        ) = NotificationAgent(
-            backend = AgentBackend.LOCAL,
-            promptExecutor = promptExecutor,
-            model =
-            LLModel(
-                provider = modelProvider,
-                id = modelId,
-                capabilities =
-                listOf(
-                    LLMCapability.Temperature,
-                    LLMCapability.Tools,
-                    LLMCapability.Schema.JSON.Standard,
-                ),
-                maxOutputTokens = 1024L, // Metadata only, actual value from ModelConfiguration
-                contextLength = 4096L, // Metadata only, actual value from ModelConfiguration
-            ),
-        )
+        ) =
+            NotificationAgent(
+                backend = AgentBackend.LOCAL,
+                promptExecutor = promptExecutor,
+                model =
+                    LLModel(
+                        provider = modelProvider,
+                        id = modelId,
+                        capabilities =
+                            listOf(
+                                LLMCapability.Temperature,
+                                LLMCapability.Tools,
+                                LLMCapability.Schema.JSON.Standard,
+                            ),
+                        maxOutputTokens =
+                            1024L, // Metadata only, actual value from ModelConfiguration
+                        contextLength = 4096L, // Metadata only, actual value from ModelConfiguration
+                    ),
+            )
 
         /**
          * Creates an agent using Koog framework's built-in executors (e.g., Ollama).
          *
-         * This mirrors AIAgent's API by accepting an LLModel directly, avoiding
-         * the need to rebuild model information that's already available.
+         * This mirrors AIAgent's API by accepting an LLModel directly, avoiding the need to rebuild
+         * model information that's already available.
          *
          * @param model LLModel instance (typically from OllamaClient.getModels().toLLModel())
          */
-        fun koog(model: LLModel) = NotificationAgent(
-            backend = AgentBackend.KOOG,
-            promptExecutor = null,
-            model = model,
-        )
+        fun koog(model: LLModel) =
+            NotificationAgent(backend = AgentBackend.KOOG, promptExecutor = null, model = model)
     }
 
     private var registry: ToolRegistry? = null
@@ -106,14 +104,13 @@ class NotificationAgent private constructor(
      * @param userPrompt User's input message
      * @return Generated response text
      */
-    suspend fun generateMessage(systemPrompt: String, userPrompt: String): String = try {
-        getAIAgent(systemPrompt = systemPrompt).run(
-            agentInput = userPrompt,
-        )
-    } catch (e: Exception) {
-        logger.e("Error generating message", e)
-        "Error generating message"
-    }
+    suspend fun generateMessage(systemPrompt: String, userPrompt: String): String =
+        try {
+            getAIAgent(systemPrompt = systemPrompt).run(agentInput = userPrompt)
+        } catch (e: Exception) {
+            logger.e("Error generating message", e)
+            "Error generating message"
+        }
 
     private fun getAIAgent(systemPrompt: String): AIAgent<String, String> {
         logger.d { "Using backend: $backend, model: ${model.id}" }
@@ -141,7 +138,8 @@ class NotificationAgent private constructor(
     }
 
     private fun createLLMClient(): LLMClient {
-        val executor = requireNotNull(promptExecutor) { "promptExecutor required for LOCAL backend" }
+        val executor =
+            requireNotNull(promptExecutor) { "promptExecutor required for LOCAL backend" }
         return LocalInferenceLLMClient(promptExecutor = executor)
     }
 }

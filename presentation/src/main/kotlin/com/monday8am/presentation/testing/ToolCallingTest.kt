@@ -15,14 +15,10 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onEach
 
-/**
- * A single test query with optional description.
- */
+/** A single test query with optional description. */
 data class TestQuery(val text: String, val description: String? = null)
 
-/**
- * Validation result for a test case.
- */
+/** Validation result for a test case. */
 sealed class ValidationResult {
     data class Pass(val message: String) : ValidationResult()
 
@@ -30,14 +26,18 @@ sealed class ValidationResult {
 }
 
 /**
- * Streaming test result frames emitted during test execution.
- * Used by UI to show real-time progress.
+ * Streaming test result frames emitted during test execution. Used by UI to show real-time
+ * progress.
  */
 sealed interface TestResultFrame {
     val testName: String
     val id: String
 
-    data class Description(override val testName: String, val description: String, val systemPrompt: String) : TestResultFrame {
+    data class Description(
+        override val testName: String,
+        val description: String,
+        val systemPrompt: String,
+    ) : TestResultFrame {
         override val id: String = "$testName-description"
     }
 
@@ -45,20 +45,27 @@ sealed interface TestResultFrame {
         override val id: String = "$testName-query"
     }
 
-    data class Tool(override val testName: String, val content: String, val accumulator: String) : TestResultFrame {
+    data class Tool(override val testName: String, val content: String, val accumulator: String) :
+        TestResultFrame {
         override val id: String = "$testName-tool"
     }
 
-    data class Content(override val testName: String, val chunk: String, val accumulator: String) : TestResultFrame {
+    data class Content(override val testName: String, val chunk: String, val accumulator: String) :
+        TestResultFrame {
         override val id: String = "$testName-content"
     }
 
-    data class Thinking(override val testName: String, val chunk: String, val accumulator: String) : TestResultFrame {
+    data class Thinking(override val testName: String, val chunk: String, val accumulator: String) :
+        TestResultFrame {
         override val id: String = "$testName-thinking"
     }
 
-    data class Validation(override val testName: String, val result: ValidationResult, val duration: Long, val fullContent: String) :
-        TestResultFrame {
+    data class Validation(
+        override val testName: String,
+        val result: ValidationResult,
+        val duration: Long,
+        val fullContent: String,
+    ) : TestResultFrame {
         override val id: String = "$testName-validation"
     }
 }
@@ -71,7 +78,8 @@ sealed interface TestResultFrame {
  * @property queries List of prompts to send to the model
  * @property systemPrompt System-level instructions
  * @property validator Function to validate model output
- * @property parseThinkingTags Whether to parse thinking tags (<think>/<thinking>) and <tool_call> tags (default: true)
+ * @property parseThinkingTags Whether to parse thinking tags (<think>/<thinking>) and <tool_call>
+ *   tags (default: true)
  */
 data class TestCase(
     val name: String,
@@ -85,21 +93,21 @@ data class TestCase(
 /**
  * Framework-agnostic test runner for LLM inference.
  *
- * Uses promptExecutor and streamPromptExecutor directly without any intermediate
- * framework layers. Tools are configured at the platform layer (LiteRT-LM/MediaPipe),
- * tests just validate output.
+ * Uses promptExecutor and streamPromptExecutor directly without any intermediate framework layers.
+ * Tools are configured at the platform layer (LiteRT-LM/MediaPipe), tests just validate output.
  *
  * @param streamPromptExecutor Executes a prompt and streams the response
  * @param resetConversation Resets conversation state between tests
  */
 @OptIn(ExperimentalCoroutinesApi::class)
-class ToolCallingTest(private val streamPromptExecutor: (String) -> Flow<String>, private val resetConversation: () -> Result<Unit>,) {
+class ToolCallingTest(
+    private val streamPromptExecutor: (String) -> Flow<String>,
+    private val resetConversation: () -> Result<Unit>,
+) {
     private val logger = Logger.withTag("ToolCallingTest")
     private val cancelled = MutableStateFlow(false)
 
-    /**
-     * Cancels the test run gracefully. Tests will stop after the current query completes.
-     */
+    /** Cancels the test run gracefully. Tests will stop after the current query completes. */
     fun cancel() {
         cancelled.value = true
     }
@@ -108,9 +116,7 @@ class ToolCallingTest(private val streamPromptExecutor: (String) -> Flow<String>
         if (cancelled.value) throw TestCancelledException()
     }
 
-    /**
-     * Runs all predefined tests and emits streaming results.
-     */
+    /** Runs all predefined tests and emits streaming results. */
     fun runAllTest(): Flow<TestResultFrame> {
         Logger.setMinSeverity(Severity.Debug)
         cancelled.value = false
@@ -118,7 +124,8 @@ class ToolCallingTest(private val streamPromptExecutor: (String) -> Flow<String>
     }
 
     private fun runAllTestsStreaming(testCases: List<TestCase>): Flow<TestResultFrame> =
-        testCases.asFlow()
+        testCases
+            .asFlow()
             .flatMapConcat { testCase -> runTestCase(testCase) }
             .catch { e ->
                 if (e is TestCancelledException) throw e
@@ -129,7 +136,7 @@ class ToolCallingTest(private val streamPromptExecutor: (String) -> Flow<String>
                         result = ValidationResult.Fail("Test suite failed: ${e.message}"),
                         duration = 0,
                         fullContent = "",
-                    ),
+                    )
                 )
             }
 
@@ -139,60 +146,62 @@ class ToolCallingTest(private val streamPromptExecutor: (String) -> Flow<String>
                 testName = testCase.name,
                 description = testCase.description.joinToString("\n"),
                 systemPrompt = testCase.systemPrompt,
-            ),
+            )
         )
 
-        testCase.queries.asFlow()
+        testCase.queries
+            .asFlow()
             .flatMapConcat { query -> runSingleQueryStream(testCase, query) }
             .collect { emit(it) }
 
         resetConversation()
     }
 
-    /**
-     * Executes a single query using streaming and returns result frames.
-     */
-    private fun runSingleQueryStream(testCase: TestCase, query: TestQuery): Flow<TestResultFrame> = flow {
-        emit(TestResultFrame.Query(testName = testCase.name, query = query.text))
+    /** Executes a single query using streaming and returns result frames. */
+    private fun runSingleQueryStream(testCase: TestCase, query: TestQuery): Flow<TestResultFrame> =
+        flow {
+            emit(TestResultFrame.Query(testName = testCase.name, query = query.text))
 
-        val processor = TagProcessor(testCase.name, testCase.parseThinkingTags)
-        val startTime = System.currentTimeMillis()
-        val prompt = "${testCase.systemPrompt}\n\n${query.text}"
+            val processor = TagProcessor(testCase.name, testCase.parseThinkingTags)
+            val startTime = System.currentTimeMillis()
+            val prompt = "${testCase.systemPrompt}\n\n${query.text}"
 
-        // Clear tool trace before execution
-        ToolTrace.clear()
+            // Clear tool trace before execution
+            ToolTrace.clear()
 
-        streamPromptExecutor(prompt)
-            .onEach { checkCancellation() }
-            .map { chunk -> processor.process(chunk) }
-            .onCompletion { cause ->
-                if (cause == null) {
+            streamPromptExecutor(prompt)
+                .onEach { checkCancellation() }
+                .map { chunk -> processor.process(chunk) }
+                .onCompletion { cause ->
+                    if (cause == null) {
+                        val duration = System.currentTimeMillis() - startTime
+                        val finalContent = processor.resultContent
+                        val validationResult = testCase.validator(finalContent)
+                        emit(
+                            TestResultFrame.Validation(
+                                testName = testCase.name,
+                                result = validationResult,
+                                duration = duration,
+                                fullContent = finalContent,
+                            )
+                        )
+                    }
+                }
+                .catch { e ->
+                    if (e is TestCancelledException) throw e
+                    logger.e(e) { "Test failed: ${query.text}" }
                     val duration = System.currentTimeMillis() - startTime
-                    val finalContent = processor.resultContent
-                    val validationResult = testCase.validator(finalContent)
                     emit(
                         TestResultFrame.Validation(
                             testName = testCase.name,
-                            result = validationResult,
+                            result = ValidationResult.Fail("Exception: ${e.message}"),
                             duration = duration,
-                            fullContent = finalContent,
-                        ),
+                            fullContent = processor.resultContent,
+                        )
                     )
                 }
-            }.catch { e ->
-                if (e is TestCancelledException) throw e
-                logger.e(e) { "Test failed: ${query.text}" }
-                val duration = System.currentTimeMillis() - startTime
-                emit(
-                    TestResultFrame.Validation(
-                        testName = testCase.name,
-                        result = ValidationResult.Fail("Exception: ${e.message}"),
-                        duration = duration,
-                        fullContent = processor.resultContent,
-                    ),
-                )
-            }.collect { emit(it) }
-    }
+                .collect { emit(it) }
+        }
 
     companion object {
         val REGRESSION_TEST_SUITE =
@@ -213,26 +222,37 @@ class ToolCallingTest(private val streamPromptExecutor: (String) -> Flow<String>
                 ),
                 TestCase(
                     name = "TEST 1: Location Query",
-                    description = listOf("Expects model to use location tool. 'get_location' should be called."),
+                    description =
+                        listOf(
+                            "Expects model to use location tool. 'get_location' should be called."
+                        ),
                     queries = listOf(TestQuery("Where am I located?")),
                     systemPrompt = "You are a helpful assistant with access to location tools.",
                     validator = { _ ->
                         if (ToolTrace.calls.any { it.name == "get_location" }) {
                             ValidationResult.Pass("get_location tool called")
                         } else {
-                            ValidationResult.Fail("get_location tool NOT called. Calls: ${ToolTrace.calls.map { it.name }}")
+                            ValidationResult.Fail(
+                                "get_location tool NOT called. Calls: ${ToolTrace.calls.map { it.name }}"
+                            )
                         }
                     },
                 ),
                 TestCase(
                     name = "TEST 2: Weather Query (Sequential)",
-                    description = listOf("Expects weather check for current location. Should call get_location then get_weather."),
+                    description =
+                        listOf(
+                            "Expects weather check for current location. Should call get_location then get_weather."
+                        ),
                     queries = listOf(TestQuery("What's the weather like here?")),
-                    systemPrompt = "You are a weather assistant with access to weather tools. " +
-                        "First you should call get_location to get the location, and then call get_weather with the obtained location.",
+                    systemPrompt =
+                        "You are a weather assistant with access to weather tools. " +
+                            "First you should call get_location to get the location, and then call get_weather with the obtained location.",
                     validator = { _ ->
                         val callNames = ToolTrace.calls.map { it.name }
-                        if (callNames.contains("get_location") && callNames.contains("get_weather")) {
+                        if (
+                            callNames.contains("get_location") && callNames.contains("get_weather")
+                        ) {
                             ValidationResult.Pass("get_location and get_weather tools called")
                         } else {
                             ValidationResult.Fail("Missing tool calls. Calls: $callNames")
@@ -250,12 +270,18 @@ class ToolCallingTest(private val streamPromptExecutor: (String) -> Flow<String>
                             val lat = weatherCall.args["latitude"] as? Double ?: 0.0
                             val lon = weatherCall.args["longitude"] as? Double ?: 0.0
                             if (abs(lat - 35.6) < 0.1 && abs(lon - 139.7) < 0.1) {
-                                ValidationResult.Pass("get_weather tool called with correct Tokyo coordinates")
+                                ValidationResult.Pass(
+                                    "get_weather tool called with correct Tokyo coordinates"
+                                )
                             } else {
-                                ValidationResult.Fail("get_weather called with wrong coordinates: lat=$lat, lon=$lon")
+                                ValidationResult.Fail(
+                                    "get_weather called with wrong coordinates: lat=$lat, lon=$lon"
+                                )
                             }
                         } else {
-                            ValidationResult.Fail("get_weather tool NOT called. Calls: ${ToolTrace.calls.map { it.name }}")
+                            ValidationResult.Fail(
+                                "get_weather tool NOT called. Calls: ${ToolTrace.calls.map { it.name }}"
+                            )
                         }
                     },
                 ),
@@ -268,7 +294,9 @@ class ToolCallingTest(private val streamPromptExecutor: (String) -> Flow<String>
                         if (ToolTrace.calls.isEmpty()) {
                             ValidationResult.Pass("No tools called")
                         } else {
-                            ValidationResult.Fail("Unexpected tool calls: ${ToolTrace.calls.map { it.name }}")
+                            ValidationResult.Fail(
+                                "Unexpected tool calls: ${ToolTrace.calls.map { it.name }}"
+                            )
                         }
                     },
                 ),
@@ -281,40 +309,61 @@ class ToolCallingTest(private val streamPromptExecutor: (String) -> Flow<String>
                         if (ToolTrace.calls.isEmpty() && result.isNotBlank()) {
                             ValidationResult.Pass("Chat response received without tool usage")
                         } else {
-                            ValidationResult.Fail("Failed. Calls: ${ToolTrace.calls}, Result: $result")
+                            ValidationResult.Fail(
+                                "Failed. Calls: ${ToolTrace.calls}, Result: $result"
+                            )
                         }
                     },
                 ),
                 TestCase(
                     name = "TEST 6: Parallel Tool Calls",
-                    description = listOf(
-                        "Expects multiple get_weather calls for different cities.",
-                        "Model should call get_weather at least twice.",
-                    ),
-                    queries = listOf(TestQuery("What's the weather in Tokyo (lat 35.6, lon 139.7) and Paris (lat 48.8, lon 2.3)?")),
-                    systemPrompt = "You are a weather assistant. When asked about weather in multiple locations, " +
-                        "call get_weather for each location.",
+                    description =
+                        listOf(
+                            "Expects multiple get_weather calls for different cities.",
+                            "Model should call get_weather at least twice.",
+                        ),
+                    queries =
+                        listOf(
+                            TestQuery(
+                                "What's the weather in Tokyo (lat 35.6, lon 139.7) and Paris (lat 48.8, lon 2.3)?"
+                            )
+                        ),
+                    systemPrompt =
+                        "You are a weather assistant. When asked about weather in multiple locations, " +
+                            "call get_weather for each location.",
                     validator = { _ ->
                         val weatherCalls = ToolTrace.calls.filter { it.name == "get_weather" }
                         if (weatherCalls.size >= 2) {
-                            val hasTokyo = weatherCalls.any {
-                                val lat = it.args["latitude"] as? Double ?: 0.0
-                                val lon = it.args["longitude"] as? Double ?: 0.0
-                                abs(lat - 35.6) < 0.1 && abs(lon - 139.7) < 0.1
-                            }
-                            val hasParis = weatherCalls.any {
-                                val lat = it.args["latitude"] as? Double ?: 0.0
-                                val lon = it.args["longitude"] as? Double ?: 0.0
-                                abs(lat - 48.8) < 0.1 && abs(lon - 2.3) < 0.1
-                            }
+                            val hasTokyo =
+                                weatherCalls.any {
+                                    val lat = it.args["latitude"] as? Double ?: 0.0
+                                    val lon = it.args["longitude"] as? Double ?: 0.0
+                                    abs(lat - 35.6) < 0.1 && abs(lon - 139.7) < 0.1
+                                }
+                            val hasParis =
+                                weatherCalls.any {
+                                    val lat = it.args["latitude"] as? Double ?: 0.0
+                                    val lon = it.args["longitude"] as? Double ?: 0.0
+                                    abs(lat - 48.8) < 0.1 && abs(lon - 2.3) < 0.1
+                                }
 
                             when {
-                                hasTokyo && hasParis -> ValidationResult.Pass("Multiple get_weather calls made with correct coordinates")
-                                hasTokyo -> ValidationResult.Fail("Paris coordinates not found. Calls: ${weatherCalls.map { it.args }}")
-                                hasParis -> ValidationResult.Fail("Tokyo coordinates not found. Calls: ${weatherCalls.map { it.args }}")
-                                else -> ValidationResult.Fail(
-                                    "Coordinates for Tokyo and Paris not found. Calls: ${weatherCalls.map { it.args }}"
-                                )
+                                hasTokyo && hasParis ->
+                                    ValidationResult.Pass(
+                                        "Multiple get_weather calls made with correct coordinates"
+                                    )
+                                hasTokyo ->
+                                    ValidationResult.Fail(
+                                        "Paris coordinates not found. Calls: ${weatherCalls.map { it.args }}"
+                                    )
+                                hasParis ->
+                                    ValidationResult.Fail(
+                                        "Tokyo coordinates not found. Calls: ${weatherCalls.map { it.args }}"
+                                    )
+                                else ->
+                                    ValidationResult.Fail(
+                                        "Coordinates for Tokyo and Paris not found. Calls: ${weatherCalls.map { it.args }}"
+                                    )
                             }
                         } else {
                             ValidationResult.Fail(

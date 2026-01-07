@@ -85,11 +85,10 @@ class NotificationViewModelImpl(
 ) : NotificationViewModel {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
-    private val toolRegistry =
-        ToolRegistry {
-            tool(tool = GetWeatherFromLocation(weatherProvider))
-            tool(tool = GetLocation(locationProvider))
-        }
+    private val toolRegistry = ToolRegistry {
+        tool(tool = GetWeatherFromLocation(weatherProvider))
+        tool(tool = GetLocation(locationProvider))
+    }
 
     internal val userActions = MutableSharedFlow<UiAction>(replay = 0)
 
@@ -125,12 +124,15 @@ class NotificationViewModelImpl(
                         if (action is UiAction.ShowNotification) {
                             emit(ActionState.Loading)
                         }
-                    }.catch { throwable -> emit(ActionState.Error(throwable)) }
+                    }
+                    .catch { throwable -> emit(ActionState.Error(throwable)) }
                     .map { actionState -> action to actionState }
-            }.flowOn(Dispatchers.IO)
+            }
+            .flowOn(Dispatchers.IO)
             .scan(UiState(selectedModel = selectedModel)) { previousState, (action, actionState) ->
                 reduce(state = previousState, action = action, actionState = actionState)
-            }.distinctUntilChanged()
+            }
+            .distinctUntilChanged()
             .onEach { state ->
                 // Side effects!
                 if (state.notification != null) {
@@ -139,9 +141,7 @@ class NotificationViewModelImpl(
             }
 
     override fun onUiAction(uiAction: UiAction) {
-        scope.launch {
-            userActions.emit(uiAction)
-        }
+        scope.launch { userActions.emit(uiAction) }
     }
 
     override fun dispose() {
@@ -149,59 +149,68 @@ class NotificationViewModelImpl(
         scope.cancel()
     }
 
-    internal fun reduce(state: UiState, action: UiAction, actionState: ActionState): UiState = when (actionState) {
-        is ActionState.Loading -> {
-            when (action) {
-                UiAction.ShowNotification -> state.copy(statusMessage = LogMessage.InitializingModel)
-                else -> state
+    internal fun reduce(state: UiState, action: UiAction, actionState: ActionState): UiState =
+        when (actionState) {
+            is ActionState.Loading -> {
+                when (action) {
+                    UiAction.ShowNotification ->
+                        state.copy(statusMessage = LogMessage.InitializingModel)
+                    else -> state
+                }
+            }
+
+            is ActionState.Success -> {
+                when (action) {
+                    is UiAction.ShowNotification -> {
+                        createNotification(
+                            promptExecutor = inferenceEngine::prompt,
+                            context = state.context,
+                        )
+                        state.copy(
+                            statusMessage = LogMessage.PromptingWithContext(state.context.formatted)
+                        )
+                    }
+
+                    is UiAction.NotificationReady -> {
+                        state.copy(
+                            statusMessage =
+                                LogMessage.NotificationGenerated(action.content.formatted),
+                            notification = action.content,
+                        )
+                    }
+
+                    is UiAction.UpdateContext -> {
+                        state.copy(context = action.context)
+                    }
+
+                    is UiAction.Initialize -> {
+                        state.copy(
+                            statusMessage = LogMessage.WelcomeModelReady(selectedModel.displayName)
+                        )
+                    }
+                }
+            }
+
+            is ActionState.Error -> {
+                state.copy(
+                    statusMessage =
+                        LogMessage.Error(actionState.throwable.message ?: "Unknown error")
+                )
             }
         }
 
-        is ActionState.Success -> {
-            when (action) {
-                is UiAction.ShowNotification -> {
-                    createNotification(promptExecutor = inferenceEngine::prompt, context = state.context)
-                    state.copy(statusMessage = LogMessage.PromptingWithContext(state.context.formatted))
-                }
-
-                is UiAction.NotificationReady -> {
-                    state.copy(
-                        statusMessage = LogMessage.NotificationGenerated(action.content.formatted),
-                        notification = action.content,
-                    )
-                }
-
-                is UiAction.UpdateContext -> {
-                    state.copy(context = action.context)
-                }
-
-                is UiAction.Initialize -> {
-                    state.copy(
-                        statusMessage = LogMessage.WelcomeModelReady(selectedModel.displayName),
-                    )
-                }
-            }
-        }
-
-        is ActionState.Error -> {
-            state.copy(statusMessage = LogMessage.Error(actionState.throwable.message ?: "Unknown error"))
-        }
-    }
-
-    private fun createNotification(promptExecutor: suspend (String) -> Result<String>, context: NotificationContext) {
+    private fun createNotification(
+        promptExecutor: suspend (String) -> Result<String>,
+        context: NotificationContext,
+    ) {
         scope.launch {
             val deviceContext = deviceContextProvider.getDeviceContext()
             val notificationContext =
-                context.copy(
-                    userLocale = deviceContext.language,
-                    country = deviceContext.country,
-                )
+                context.copy(userLocale = deviceContext.language, country = deviceContext.country)
 
             val agent =
                 NotificationAgent.local(
-                    promptExecutor = { prompt ->
-                        promptExecutor(prompt).getOrThrow()
-                    },
+                    promptExecutor = { prompt -> promptExecutor(prompt).getOrThrow() },
                     modelId = selectedModel.modelId,
                 )
             agent.initializeWithTools(toolRegistry = toolRegistry)
