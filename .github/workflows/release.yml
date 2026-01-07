@@ -79,6 +79,9 @@ jobs:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: printf '%s' "$GOOGLE_SERVICES_JSON" | base64 -d > app/google-services.json
 
+      - name: Set up HuggingFace OAuth
+        run: echo "HF_CLIENT_ID=${{ secrets.HF_CLIENT_ID }}" >> $GITHUB_ENV
+
       - name: Run tests
         run: ./gradlew test
 
