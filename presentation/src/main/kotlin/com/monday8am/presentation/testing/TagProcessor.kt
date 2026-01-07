@@ -8,10 +8,15 @@ internal enum class ParserState {
 
 /**
  * Internal processor to handle tag-based streaming state.
+ *
+ * Supports multiple thinking tag formats:
+ * - Qwen models: <think> ... </think>
+ * - DeepSeek models: <thinking> ... </thinking>
  */
 internal class TagProcessor(private val testName: String, private val parseTags: Boolean) {
     private val currentBlock = StringBuilder()
     private var state = ParserState.Content
+    private var thinkingTagType: String? = null // Track which thinking tag type is being used
 
     /** The content accumulated for validation (after stripping tags if enabled) */
     val resultContent: String get() = currentBlock.toString()
@@ -25,12 +30,18 @@ internal class TagProcessor(private val testName: String, private val parseTags:
 
         // Simple state machine to detect tags. Using a window to handle split tokens.
         // We check the tail of currentBlock for state transitions.
-        val lookBack = currentBlock.takeLast(20).toString()
+        val lookBack = currentBlock.takeLast(25).toString()
 
         when (state) {
             ParserState.Content -> {
-                if (lookBack.contains("<think>")) {
+                // Check for thinking tags (DeepSeek uses <thinking>, Qwen uses <think>)
+                if (lookBack.contains("<thinking>")) {
                     state = ParserState.Thinking
+                    thinkingTagType = "<thinking>"
+                    stripTag("<thinking>")
+                } else if (lookBack.contains("<think>")) {
+                    state = ParserState.Thinking
+                    thinkingTagType = "<think>"
                     stripTag("<think>")
                 } else if (lookBack.contains("<tool_call")) {
                     state = ParserState.ToolCall
@@ -39,9 +50,17 @@ internal class TagProcessor(private val testName: String, private val parseTags:
             }
 
             ParserState.Thinking -> {
-                if (lookBack.contains("</think>")) {
+                // Check for corresponding closing tag
+                val closingTag = when (thinkingTagType) {
+                    "<thinking>" -> "</thinking>"
+                    "<think>" -> "</think>"
+                    else -> "</think>" // Fallback
+                }
+
+                if (lookBack.contains(closingTag)) {
                     state = ParserState.Content
-                    stripTag("</think>", clearBefore = true)
+                    stripTag(closingTag, clearBefore = true)
+                    thinkingTagType = null
                 }
             }
 

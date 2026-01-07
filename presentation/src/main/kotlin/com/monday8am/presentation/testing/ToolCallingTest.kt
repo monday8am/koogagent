@@ -71,7 +71,7 @@ sealed interface TestResultFrame {
  * @property queries List of prompts to send to the model
  * @property systemPrompt System-level instructions
  * @property validator Function to validate model output
- * @property parseThinkingTags Whether to parse <think> and <tool_call> tags (default: true)
+ * @property parseThinkingTags Whether to parse thinking tags (<think>/<thinking>) and <tool_call> tags (default: true)
  */
 data class TestCase(
     val name: String,
