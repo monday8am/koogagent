@@ -28,7 +28,7 @@ import kotlinx.coroutines.launch
 data class UiState(
     val models: ImmutableList<ModelInfo> = persistentListOf(),
     val groupedModels: ImmutableList<ModelGroup> = persistentListOf(),
-    val groupingMode: GroupingMode = GroupingMode.None,
+    val groupingMode: GroupingMode = GroupingMode.Family,
     val isAllExpanded: Boolean = true,
     val currentDownload: DownloadInfo? = null,
     val queuedDownloads: ImmutableList<String> = persistentListOf(),
@@ -42,7 +42,8 @@ enum class GroupingMode {
     None,
     Family,
     Hardware,
-    Library
+    Library,
+    Access,
 }
 
 data class ModelGroup(val id: String, val title: String, val models: ImmutableList<ModelInfo>, val isExpanded: Boolean = true)
@@ -91,7 +92,10 @@ class ModelSelectorViewModelImpl(
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
-    private data class ViewModelState(val groupingMode: GroupingMode = GroupingMode.None, val collapsedGroupIds: Set<String> = emptySet(),)
+    private data class ViewModelState(
+        val groupingMode: GroupingMode = GroupingMode.Family,
+        val collapsedGroupIds: Set<String> = emptySet(),
+    )
 
     private val viewModelState = MutableStateFlow(ViewModelState())
 
@@ -245,15 +249,6 @@ class ModelSelectorViewModelImpl(
                     downloadStatus = downloadStatus,
                     isGated = config.isGated
                 )
-            }.sortedBy {
-                if (it.downloadStatus is DownloadStatus.Downloading ||
-                    it.downloadStatus is DownloadStatus.Queued ||
-                    it.downloadStatus is DownloadStatus.Completed
-                ) {
-                    0
-                } else {
-                    1
-                }
             }.toImmutableList()
 
             val groupedModels = groupModels(
@@ -356,6 +351,23 @@ class ModelSelectorViewModelImpl(
                             },
                             models = groupModels.toImmutableList(),
                             isExpanded = !collapsedGroupIds.contains("lib_${library.name}")
+                        )
+                    }
+                    .sortedBy { it.title }
+            }
+
+            GroupingMode.Access -> {
+                models.groupBy { it.config.isGated }
+                    .map { (isGated, groupModels) ->
+                        ModelGroup(
+                            id = "acc_$isGated",
+                            title = if (isGated) {
+                                "Need HF token"
+                            } else {
+                                "Free for all"
+                            },
+                            models = groupModels.toImmutableList(),
+                            isExpanded = !collapsedGroupIds.contains("acc_$isGated")
                         )
                     }
                     .sortedBy { it.title }

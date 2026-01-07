@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PersonOff
 import androidx.compose.material.icons.filled.UnfoldLess
 import androidx.compose.material.icons.filled.UnfoldMore
 import androidx.compose.material3.DropdownMenu
@@ -35,7 +37,10 @@ internal fun ModelSelectorHeader(
     statusMessage: String,
     groupingMode: GroupingMode,
     isAllExpanded: Boolean,
+    isLoggedIn: Boolean,
     onIntent: (UiAction) -> Unit,
+    onLoginClick: () -> Unit,
+    onLogoutClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -54,6 +59,20 @@ internal fun ModelSelectorHeader(
             )
 
             Row(verticalAlignment = Alignment.CenterVertically) {
+                // User login/logout button
+                IconButton(
+                    onClick = { if (isLoggedIn) onLogoutClick() else onLoginClick() }
+                ) {
+                    Icon(
+                        imageVector = if (isLoggedIn) Icons.Default.Person else Icons.Default.PersonOff,
+                        contentDescription = if (isLoggedIn) "Logout from HuggingFace" else "Login to HuggingFace",
+                        tint = if (isLoggedIn)
+                            MaterialTheme.colorScheme.primary
+                        else
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
                 if (groupingMode != GroupingMode.None) {
                     IconButton(onClick = { onIntent(UiAction.ToggleAllGroups) }) {
                         Icon(
@@ -109,7 +128,10 @@ private fun ModelSelectorHeaderPreview() {
                 statusMessage = "Select a model to start chat",
                 groupingMode = GroupingMode.Family,
                 isAllExpanded = true,
+                isLoggedIn = false,
                 onIntent = {},
+                onLoginClick = {},
+                onLogoutClick = {},
                 modifier = Modifier.padding(16.dp)
             )
         }
