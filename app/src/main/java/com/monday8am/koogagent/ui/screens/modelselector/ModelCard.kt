@@ -56,23 +56,24 @@ internal fun ModelCard(
     val context = LocalContext.current
     val backgroundColor =
         when {
+            isSelected -> MaterialTheme.colorScheme.primaryContainer
             modelInfo.isDownloaded -> MaterialTheme.colorScheme.primaryContainer
             else -> MaterialTheme.colorScheme.surfaceVariant
         }
 
     Card(
         modifier =
-        modifier
-            .fillMaxWidth()
-            .clickable(true) { onSelectClick() },
+            modifier
+                .fillMaxWidth()
+                .clickable(true) { onSelectClick() },
         colors = CardDefaults.cardColors(containerColor = backgroundColor),
         border = if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
     ) {
         Row(
             modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+                Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             // Left: Model info
@@ -234,11 +235,11 @@ private fun ModelCardPreview_NotDownloaded() {
     KoogAgentTheme {
         ModelCard(
             modelInfo =
-            ModelInfo(
-                config = ModelCatalog.QWEN3_0_6B,
-                isDownloaded = false,
-                downloadStatus = DownloadStatus.NotStarted,
-            ),
+                ModelInfo(
+                    config = ModelCatalog.QWEN3_0_6B,
+                    isDownloaded = false,
+                    downloadStatus = DownloadStatus.NotStarted,
+                ),
             isSelected = false,
             onDownloadClick = {},
             onSelectClick = {},
@@ -252,11 +253,11 @@ private fun ModelCardPreview_Downloading() {
     KoogAgentTheme {
         ModelCard(
             modelInfo =
-            ModelInfo(
-                config = ModelCatalog.GEMMA3_1B,
-                isDownloaded = false,
-                downloadStatus = DownloadStatus.Downloading(42f),
-            ),
+                ModelInfo(
+                    config = ModelCatalog.GEMMA3_1B,
+                    isDownloaded = false,
+                    downloadStatus = DownloadStatus.Downloading(42f),
+                ),
             isSelected = false,
             onDownloadClick = {},
             onSelectClick = {},
@@ -270,11 +271,11 @@ private fun ModelCardPreview_Queued() {
     KoogAgentTheme {
         ModelCard(
             modelInfo =
-            ModelInfo(
-                config = ModelCatalog.GEMMA3_1B,
-                isDownloaded = false,
-                downloadStatus = DownloadStatus.Queued,
-            ),
+                ModelInfo(
+                    config = ModelCatalog.GEMMA3_1B,
+                    isDownloaded = false,
+                    downloadStatus = DownloadStatus.Queued,
+                ),
             isSelected = false,
             onDownloadClick = {},
             onSelectClick = {},
@@ -288,11 +289,11 @@ private fun ModelCardPreview_DownloadedSelected() {
     KoogAgentTheme {
         ModelCard(
             modelInfo =
-            ModelInfo(
-                config = ModelCatalog.HAMMER2_1_0_5B,
-                isDownloaded = true,
-                downloadStatus = DownloadStatus.Completed,
-            ),
+                ModelInfo(
+                    config = ModelCatalog.HAMMER2_1_0_5B,
+                    isDownloaded = true,
+                    downloadStatus = DownloadStatus.Completed,
+                ),
             isSelected = true,
             onDownloadClick = {},
             onSelectClick = {},
@@ -306,11 +307,11 @@ private fun ModelCardPreview_Failed() {
     KoogAgentTheme {
         ModelCard(
             modelInfo =
-            ModelInfo(
-                config = ModelCatalog.HAMMER2_1_0_5B,
-                isDownloaded = false,
-                downloadStatus = DownloadStatus.Failed("Network error"),
-            ),
+                ModelInfo(
+                    config = ModelCatalog.HAMMER2_1_0_5B,
+                    isDownloaded = false,
+                    downloadStatus = DownloadStatus.Failed("Network error"),
+                ),
             isSelected = false,
             onDownloadClick = {},
             onSelectClick = {},
@@ -324,12 +325,12 @@ private fun ModelCardPreview_Gated() {
     KoogAgentTheme {
         ModelCard(
             modelInfo =
-            ModelInfo(
-                config = ModelCatalog.GEMMA3_1B,
-                isDownloaded = false,
-                downloadStatus = DownloadStatus.NotStarted,
-                isGated = true,
-            ),
+                ModelInfo(
+                    config = ModelCatalog.GEMMA3_1B,
+                    isDownloaded = false,
+                    downloadStatus = DownloadStatus.NotStarted,
+                    isGated = true,
+                ),
             isSelected = false,
             onDownloadClick = {},
             onSelectClick = {},
