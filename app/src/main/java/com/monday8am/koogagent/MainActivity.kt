@@ -44,4 +44,11 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         Dependencies.oAuthManager.onHandleIntent(intent)
     }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        if (isFinishing) {
+            Dependencies.dispose()
+        }
+    }
 }

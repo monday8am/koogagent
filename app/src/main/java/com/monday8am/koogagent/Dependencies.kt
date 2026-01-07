@@ -56,11 +56,24 @@ object Dependencies {
         AuthRepositoryImpl(appContext)
     }
 
-    val oAuthManager: HuggingFaceOAuthManager by lazy {
-        HuggingFaceOAuthManager(
-            context = appContext,
-            clientId = BuildConfig.HF_CLIENT_ID,
-        )
+    private var _oAuthManager: HuggingFaceOAuthManager? = null
+    val oAuthManager: HuggingFaceOAuthManager
+        get() {
+            if (_oAuthManager == null) {
+                _oAuthManager = HuggingFaceOAuthManager(
+                    context = appContext,
+                    clientId = BuildConfig.HF_CLIENT_ID,
+                )
+            }
+            return _oAuthManager!!
+        }
+
+    /**
+     * Disposes of resources that should be cleaned up when the activity is finishing.
+     */
+    fun dispose() {
+        _oAuthManager?.dispose()
+        _oAuthManager = null
     }
 
     val modelCatalogProvider: ModelCatalogProvider by lazy {

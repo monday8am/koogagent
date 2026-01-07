@@ -367,23 +367,24 @@ class ModelSelectorViewModelTest {
         val viewModel = createViewModel()
         advanceUntilIdle()
 
-        // Default mode is None
+        // Default mode is Family
+        val stateFamily = viewModel.uiState.value
+        assertEquals(GroupingMode.Family, stateFamily.groupingMode)
+        // model1 is Qwen3, model2 is Gemma3 => 2 families.
+        assertEquals(2, stateFamily.groupedModels.size)
+        assertEquals("family_gemma3", stateFamily.groupedModels.first().id)
+
+        // Switch to None
+        viewModel.onUiAction(UiAction.SetGroupingMode(GroupingMode.None))
+        advanceUntilIdle()
+
         val stateNone = viewModel.uiState.value
         assertEquals(GroupingMode.None, stateNone.groupingMode)
         assertEquals(1, stateNone.groupedModels.size)
         assertEquals("all", stateNone.groupedModels.first().id)
 
-        // Switch to Family
-        viewModel.onUiAction(UiAction.SetGroupingMode(GroupingMode.Family))
-        advanceUntilIdle()
-
-        val stateFamily = viewModel.uiState.value
-        assertEquals(GroupingMode.Family, stateFamily.groupingMode)
-        // model1 is Qwen3, model2 is Gemma3 => 2 families.
-        assertEquals(2, stateFamily.groupedModels.size)
-
         // Verify groups are populated
-        assertTrue(stateFamily.groupedModels.all { it.models.isNotEmpty() })
+        assertTrue(stateNone.groupedModels.all { it.models.isNotEmpty() })
 
         viewModel.dispose()
     }

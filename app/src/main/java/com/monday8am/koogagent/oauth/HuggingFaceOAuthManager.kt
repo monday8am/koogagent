@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.cancel
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
@@ -129,5 +130,6 @@ class HuggingFaceOAuthManager(
      */
     fun dispose() {
         authService.dispose()
+        scope.cancel()
     }
 }
