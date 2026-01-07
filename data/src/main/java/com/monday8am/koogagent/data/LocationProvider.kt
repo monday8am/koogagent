@@ -1,8 +1,8 @@
 package com.monday8am.koogagent.data
 
 /**
- * Interface for location providers.
- * Implementations can use Android LocationManager, mock data, or other sources.
+ * Interface for location providers. Implementations can use Android LocationManager, mock data, or
+ * other sources.
  */
 interface LocationProvider {
     suspend fun getLocation(): Location

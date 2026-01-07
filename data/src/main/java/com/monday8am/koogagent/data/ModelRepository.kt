@@ -10,25 +10,34 @@ import org.jetbrains.annotations.VisibleForTesting
 
 sealed interface RepositoryState {
     data object Idle : RepositoryState
+
     data object Loading : RepositoryState
+
     data class Success(val models: List<ModelConfiguration>) : RepositoryState
+
     data class Error(val message: String) : RepositoryState
 }
 
 interface ModelRepository {
     val models: StateFlow<List<ModelConfiguration>>
     val loadingState: StateFlow<RepositoryState>
+
     suspend fun refreshModels()
+
     fun findById(modelId: String): ModelConfiguration?
+
     fun getAllModels(): List<ModelConfiguration>
+
     fun getByFamily(family: String): List<ModelConfiguration>
+
     fun getByInferenceLibrary(library: InferenceLibrary): List<ModelConfiguration>
+
     fun updateModel(modelId: String, updater: (ModelConfiguration) -> ModelConfiguration)
 }
 
 class ModelRepositoryImpl(
     private val modelCatalogProvider: ModelCatalogProvider,
-    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : ModelRepository {
     private val _models = MutableStateFlow<List<ModelConfiguration>>(emptyList())
     override val models: StateFlow<List<ModelConfiguration>> = _models.asStateFlow()
@@ -69,13 +78,14 @@ class ModelRepositoryImpl(
 
     override fun updateModel(modelId: String, updater: (ModelConfiguration) -> ModelConfiguration) {
         val currentModels = _models.value
-        val updatedModels = currentModels.map { model ->
-            if (model.modelId == modelId) {
-                updater(model)
-            } else {
-                model
+        val updatedModels =
+            currentModels.map { model ->
+                if (model.modelId == modelId) {
+                    updater(model)
+                } else {
+                    model
+                }
             }
-        }
         _models.value = updatedModels
     }
 }

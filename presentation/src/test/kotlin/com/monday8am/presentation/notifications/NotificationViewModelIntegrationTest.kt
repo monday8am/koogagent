@@ -24,8 +24,8 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 
 /**
- * Integration tests for NotificationViewModelImpl.
- * These tests verify the end-to-end Flow pipeline and state management.
+ * Integration tests for NotificationViewModelImpl. These tests verify the end-to-end Flow pipeline
+ * and state management.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class NotificationViewModelIntegrationTest {
@@ -86,69 +86,71 @@ class NotificationViewModelIntegrationTest {
     }
 
     @Ignore("Outdated!")
-    fun `ShowNotification action should initialize engine and set PromptingWithContext message`() = runTest {
-        val inferenceEngine = FakeLocalInferenceEngine()
-        val viewModel = createViewModel(inferenceEngine = inferenceEngine)
+    fun `ShowNotification action should initialize engine and set PromptingWithContext message`() =
+        runTest {
+            val inferenceEngine = FakeLocalInferenceEngine()
+            val viewModel = createViewModel(inferenceEngine = inferenceEngine)
 
-        viewModel.uiState.test {
-            skipInitialState()
-            awaitItem() // Skip WelcomeModelReady item
+            viewModel.uiState.test {
+                skipInitialState()
+                awaitItem() // Skip WelcomeModelReady item
 
-            // Trigger notification
-            viewModel.onUiAction(UiAction.ShowNotification)
+                // Trigger notification
+                viewModel.onUiAction(UiAction.ShowNotification)
 
-            // Should first emit InitializingModel during loading
-            val loadingState = awaitItem()
-            assertEquals(LogMessage.InitializingModel, loadingState.statusMessage)
+                // Should first emit InitializingModel during loading
+                val loadingState = awaitItem()
+                assertEquals(LogMessage.InitializingModel, loadingState.statusMessage)
 
-            // Then should emit PromptingWithContext after initialization
-            val promptingState = awaitItem()
-            assertTrue(promptingState.statusMessage is LogMessage.PromptingWithContext)
+                // Then should emit PromptingWithContext after initialization
+                val promptingState = awaitItem()
+                assertTrue(promptingState.statusMessage is LogMessage.PromptingWithContext)
 
-            // Verify engine was initialized
-            assertTrue(inferenceEngine.initializeCalled)
+                // Verify engine was initialized
+                assertTrue(inferenceEngine.initializeCalled)
+            }
+
+            viewModel.dispose()
         }
-
-        viewModel.dispose()
-    }
 
     @Test
-    fun `NotificationReady action should update notification in state and trigger side effect`() = runTest {
-        val notificationEngine = FakeNotificationEngine()
-        val viewModel = createViewModel(notificationEngine = notificationEngine)
+    fun `NotificationReady action should update notification in state and trigger side effect`() =
+        runTest {
+            val notificationEngine = FakeNotificationEngine()
+            val viewModel = createViewModel(notificationEngine = notificationEngine)
 
-        val testNotification =
-            NotificationResult(
-                title = "Healthy Breakfast",
-                body = "Time for oats!",
-                language = "en",
-                confidence = 0.9,
-                isFallback = false,
-            )
+            val testNotification =
+                NotificationResult(
+                    title = "Healthy Breakfast",
+                    body = "Time for oats!",
+                    language = "en",
+                    confidence = 0.9,
+                    isFallback = false,
+                )
 
-        viewModel.uiState.test {
-            skipInitialState() // Skip initial emission
-            awaitItem() // Skip WelcomeModelReady item
+            viewModel.uiState.test {
+                skipInitialState() // Skip initial emission
+                awaitItem() // Skip WelcomeModelReady item
 
-            // Trigger notification ready
-            viewModel.onUiAction(UiAction.NotificationReady(testNotification))
+                // Trigger notification ready
+                viewModel.onUiAction(UiAction.NotificationReady(testNotification))
 
-            // Should emit state with notification
-            val notificationState = awaitItem()
-            assertTrue(notificationState.statusMessage is LogMessage.NotificationGenerated)
-            assertNotNull(notificationState.notification)
-            assertEquals(testNotification, notificationState.notification)
+                // Should emit state with notification
+                val notificationState = awaitItem()
+                assertTrue(notificationState.statusMessage is LogMessage.NotificationGenerated)
+                assertNotNull(notificationState.notification)
+                assertEquals(testNotification, notificationState.notification)
 
-            // Give time for side effect to execute
-            testDispatcher.scheduler.advanceUntilIdle()
+                // Give time for side effect to execute
+                testDispatcher.scheduler.advanceUntilIdle()
 
-            // Verify notification engine was called
-            assertTrue(notificationEngine.showNotificationCalled)
-            assertEquals(testNotification, notificationEngine.lastNotification)
+                // Verify notification engine was called
+                assertTrue(notificationEngine.showNotificationCalled)
+                assertEquals(testNotification, notificationEngine.lastNotification)
+            }
+
+            viewModel.dispose()
         }
-
-        viewModel.dispose()
-    }
 
     @Test
     fun `Error during initialization should emit Error message`() = runTest {
@@ -157,9 +159,10 @@ class NotificationViewModelIntegrationTest {
                 override fun initializeAsFlow(
                     modelConfig: com.monday8am.koogagent.data.ModelConfiguration,
                     modelPath: String,
-                ) = kotlinx.coroutines.flow.flow<LocalInferenceEngine> {
-                    throw Exception("Initialization failed")
-                }
+                ) =
+                    kotlinx.coroutines.flow.flow<LocalInferenceEngine> {
+                        throw Exception("Initialization failed")
+                    }
             }
         val viewModel = createViewModel(inferenceEngine = failingEngine)
 
@@ -189,13 +192,14 @@ class NotificationViewModelIntegrationTest {
         weatherProvider: WeatherProvider = FakeWeatherProvider(),
         locationProvider: LocationProvider = FakeLocationProvider(),
         deviceContextProvider: DeviceContextProvider = FakeDeviceContextProvider(),
-    ): NotificationViewModelImpl = NotificationViewModelImpl(
-        selectedModel = ModelCatalog.DEFAULT,
-        modelPath = testModelPath,
-        inferenceEngine = inferenceEngine,
-        notificationEngine = notificationEngine,
-        weatherProvider = weatherProvider,
-        locationProvider = locationProvider,
-        deviceContextProvider = deviceContextProvider,
-    )
+    ): NotificationViewModelImpl =
+        NotificationViewModelImpl(
+            selectedModel = ModelCatalog.DEFAULT,
+            modelPath = testModelPath,
+            inferenceEngine = inferenceEngine,
+            notificationEngine = notificationEngine,
+            weatherProvider = weatherProvider,
+            locationProvider = locationProvider,
+            deviceContextProvider = deviceContextProvider,
+        )
 }

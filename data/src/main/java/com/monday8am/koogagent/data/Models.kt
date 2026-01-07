@@ -1,10 +1,26 @@
 package com.monday8am.koogagent.data
 
-enum class WeatherCondition { SUNNY, CLOUDY, RAINY, HOT, COLD }
+enum class WeatherCondition {
+    SUNNY,
+    CLOUDY,
+    RAINY,
+    HOT,
+    COLD,
+}
 
-enum class MealType { BREAKFAST, LUNCH, DINNER, SNACK, WATER }
+enum class MealType {
+    BREAKFAST,
+    LUNCH,
+    DINNER,
+    SNACK,
+    WATER,
+}
 
-enum class MotivationLevel { LOW, MEDIUM, HIGH }
+enum class MotivationLevel {
+    LOW,
+    MEDIUM,
+    HIGH,
+}
 
 data class DeviceContext(val country: String, val language: String)
 
@@ -16,7 +32,8 @@ data class NotificationContext(
     val country: String = "ES",
 ) {
     val formatted: String
-        get() = "MealType: $mealType\nMotivationLevel: $motivationLevel\nAlreadyLogged: $alreadyLogged"
+        get() =
+            "MealType: $mealType\nMotivationLevel: $motivationLevel\nAlreadyLogged: $alreadyLogged"
 }
 
 data class NotificationResult(

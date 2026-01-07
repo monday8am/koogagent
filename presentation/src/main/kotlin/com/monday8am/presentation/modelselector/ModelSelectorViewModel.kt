@@ -22,9 +22,7 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-/**
- * UI State for model selector screen
- */
+/** UI State for model selector screen */
 data class UiState(
     val models: ImmutableList<ModelInfo> = persistentListOf(),
     val groupedModels: ImmutableList<ModelGroup> = persistentListOf(),
@@ -46,7 +44,12 @@ enum class GroupingMode {
     Access,
 }
 
-data class ModelGroup(val id: String, val title: String, val models: ImmutableList<ModelInfo>, val isExpanded: Boolean = true)
+data class ModelGroup(
+    val id: String,
+    val title: String,
+    val models: ImmutableList<ModelInfo>,
+    val isExpanded: Boolean = true,
+)
 
 data class ModelInfo(
     val config: ModelConfiguration,
@@ -59,27 +62,41 @@ data class DownloadInfo(val modelId: String, val progress: Float)
 
 sealed interface DownloadStatus {
     data object NotStarted : DownloadStatus
+
     data object Queued : DownloadStatus
+
     data class Downloading(val progress: Float) : DownloadStatus
+
     data object Completed : DownloadStatus
+
     data class Failed(val error: String) : DownloadStatus
 }
 
 sealed class UiAction {
     data class DownloadModel(val modelId: String) : UiAction()
+
     data object CancelCurrentDownload : UiAction()
+
     data class DeleteModel(val modelId: String) : UiAction()
+
     data class SubmitToken(val token: String) : UiAction()
+
     data object Logout : UiAction()
+
     data class SetGroupingMode(val mode: GroupingMode) : UiAction()
+
     data class ToggleGroup(val groupId: String) : UiAction()
+
     data object ToggleAllGroups : UiAction()
+
     internal data object Initialize : UiAction()
 }
 
 interface ModelSelectorViewModel {
     val uiState: StateFlow<UiState>
+
     fun onUiAction(action: UiAction)
+
     fun dispose()
 }
 
@@ -99,21 +116,22 @@ class ModelSelectorViewModelImpl(
 
     private val viewModelState = MutableStateFlow(ViewModelState())
 
-    override val uiState: StateFlow<UiState> = combine(
-        modelRepository.loadingState,
-        modelDownloadManager.modelsStatus,
-        authRepository.authToken,
-        viewModelState,
-    ) { loadingState, modelsStatus, authToken, viewModelState ->
-        deriveUiState(
-            loadingState = loadingState,
-            modelsStatus = modelsStatus,
-            isLoggedIn = authToken != null,
-            viewModelState = viewModelState
-        )
-    }
-        .flowOn(ioDispatcher)
-        .stateIn(scope, SharingStarted.Eagerly, UiState())
+    override val uiState: StateFlow<UiState> =
+        combine(
+                modelRepository.loadingState,
+                modelDownloadManager.modelsStatus,
+                authRepository.authToken,
+                viewModelState,
+            ) { loadingState, modelsStatus, authToken, viewModelState ->
+                deriveUiState(
+                    loadingState = loadingState,
+                    modelsStatus = modelsStatus,
+                    isLoggedIn = authToken != null,
+                    viewModelState = viewModelState,
+                )
+            }
+            .flowOn(ioDispatcher)
+            .stateIn(scope, SharingStarted.Eagerly, UiState())
 
     init {
         loadCatalog()
@@ -138,9 +156,7 @@ class ModelSelectorViewModelImpl(
     }
 
     private fun loadCatalog() {
-        scope.launch {
-            modelRepository.refreshModels()
-        }
+        scope.launch { modelRepository.refreshModels() }
     }
 
     private fun startDownload(modelId: String) {
@@ -149,7 +165,7 @@ class ModelSelectorViewModelImpl(
             modelDownloadManager.downloadModel(
                 model.modelId,
                 model.downloadUrl,
-                model.bundleFilename
+                model.bundleFilename,
             )
         }
     }
@@ -160,9 +176,7 @@ class ModelSelectorViewModelImpl(
 
     private fun deleteModel(modelId: String) {
         val model = modelRepository.findById(modelId) ?: return
-        scope.launch(ioDispatcher) {
-            modelDownloadManager.deleteModel(model.bundleFilename)
-        }
+        scope.launch(ioDispatcher) { modelDownloadManager.deleteModel(model.bundleFilename) }
     }
 
     private fun submitToken(token: String) {
@@ -185,11 +199,12 @@ class ModelSelectorViewModelImpl(
 
     private fun toggleGroup(groupId: String) {
         val currentCollapsed = viewModelState.value.collapsedGroupIds
-        val newCollapsed = if (currentCollapsed.contains(groupId)) {
-            currentCollapsed - groupId
-        } else {
-            currentCollapsed + groupId
-        }
+        val newCollapsed =
+            if (currentCollapsed.contains(groupId)) {
+                currentCollapsed - groupId
+            } else {
+                currentCollapsed + groupId
+            }
         viewModelState.value = viewModelState.value.copy(collapsedGroupIds = newCollapsed)
     }
 
@@ -212,82 +227,97 @@ class ModelSelectorViewModelImpl(
         modelsStatus: Map<String, ModelDownloadManager.Status>,
         isLoggedIn: Boolean,
         viewModelState: ViewModelState,
-    ): UiState = when (loadingState) {
-        is RepositoryState.Idle,
-        is RepositoryState.Loading -> UiState(
-            isLoadingCatalog = true,
-            statusMessage = "Loading models...",
-            isLoggedIn = isLoggedIn,
-            groupingMode = viewModelState.groupingMode,
-        )
-
-        is RepositoryState.Error -> UiState(
-            isLoadingCatalog = false,
-            catalogError = loadingState.message,
-            statusMessage = "Error: ${loadingState.message}",
-            isLoggedIn = isLoggedIn,
-            groupingMode = viewModelState.groupingMode,
-        )
-
-        is RepositoryState.Success -> {
-            var currentDownload: DownloadInfo? = null
-            val queuedIds = mutableListOf<String>()
-
-            val modelsInfo = loadingState.models.map { config ->
-                val status = modelsStatus[config.bundleFilename] ?: ModelDownloadManager.Status.NotStarted
-                val (downloadStatus, isDownloaded) = mapDownloadStatus(status)
-
-                if (downloadStatus is DownloadStatus.Downloading && currentDownload == null) {
-                    currentDownload = DownloadInfo(config.modelId, downloadStatus.progress)
-                } else if (downloadStatus is DownloadStatus.Queued) {
-                    queuedIds.add(config.modelId)
-                }
-
-                ModelInfo(
-                    config = config,
-                    isDownloaded = isDownloaded,
-                    downloadStatus = downloadStatus,
-                    isGated = config.isGated
+    ): UiState =
+        when (loadingState) {
+            is RepositoryState.Idle,
+            is RepositoryState.Loading ->
+                UiState(
+                    isLoadingCatalog = true,
+                    statusMessage = "Loading models...",
+                    isLoggedIn = isLoggedIn,
+                    groupingMode = viewModelState.groupingMode,
                 )
-            }.toImmutableList()
 
-            val groupedModels = groupModels(
-                modelsInfo,
-                viewModelState.groupingMode,
-                viewModelState.collapsedGroupIds
-            )
+            is RepositoryState.Error ->
+                UiState(
+                    isLoadingCatalog = false,
+                    catalogError = loadingState.message,
+                    statusMessage = "Error: ${loadingState.message}",
+                    isLoggedIn = isLoggedIn,
+                    groupingMode = viewModelState.groupingMode,
+                )
 
-            UiState(
-                models = modelsInfo,
-                groupedModels = groupedModels.toImmutableList(),
-                groupingMode = viewModelState.groupingMode,
-                isAllExpanded = viewModelState.collapsedGroupIds.isEmpty(),
-                currentDownload = currentDownload,
-                queuedDownloads = queuedIds.toImmutableList(),
-                isLoadingCatalog = false,
-                catalogError = null,
-                isLoggedIn = isLoggedIn,
-                statusMessage = currentDownload?.let { "Downloading: ${it.modelId.take(20)}..." }
-                    ?: "Select a model",
-            )
+            is RepositoryState.Success -> {
+                var currentDownload: DownloadInfo? = null
+                val queuedIds = mutableListOf<String>()
+
+                val modelsInfo =
+                    loadingState.models
+                        .map { config ->
+                            val status =
+                                modelsStatus[config.bundleFilename]
+                                    ?: ModelDownloadManager.Status.NotStarted
+                            val (downloadStatus, isDownloaded) = mapDownloadStatus(status)
+
+                            if (
+                                downloadStatus is DownloadStatus.Downloading &&
+                                    currentDownload == null
+                            ) {
+                                currentDownload =
+                                    DownloadInfo(config.modelId, downloadStatus.progress)
+                            } else if (downloadStatus is DownloadStatus.Queued) {
+                                queuedIds.add(config.modelId)
+                            }
+
+                            ModelInfo(
+                                config = config,
+                                isDownloaded = isDownloaded,
+                                downloadStatus = downloadStatus,
+                                isGated = config.isGated,
+                            )
+                        }
+                        .toImmutableList()
+
+                val groupedModels =
+                    groupModels(
+                        modelsInfo,
+                        viewModelState.groupingMode,
+                        viewModelState.collapsedGroupIds,
+                    )
+
+                UiState(
+                    models = modelsInfo,
+                    groupedModels = groupedModels.toImmutableList(),
+                    groupingMode = viewModelState.groupingMode,
+                    isAllExpanded = viewModelState.collapsedGroupIds.isEmpty(),
+                    currentDownload = currentDownload,
+                    queuedDownloads = queuedIds.toImmutableList(),
+                    isLoadingCatalog = false,
+                    catalogError = null,
+                    isLoggedIn = isLoggedIn,
+                    statusMessage =
+                        currentDownload?.let { "Downloading: ${it.modelId.take(20)}..." }
+                            ?: "Select a model",
+                )
+            }
         }
-    }
 
     private fun mapDownloadStatus(
         status: ModelDownloadManager.Status
     ): Pair<DownloadStatus, Boolean> {
-        val downloadStatus = when (status) {
-            is ModelDownloadManager.Status.InProgress -> {
-                val progress = status.progress ?: 0f
-                DownloadStatus.Downloading(progress)
-            }
+        val downloadStatus =
+            when (status) {
+                is ModelDownloadManager.Status.InProgress -> {
+                    val progress = status.progress ?: 0f
+                    DownloadStatus.Downloading(progress)
+                }
 
-            is ModelDownloadManager.Status.Pending -> DownloadStatus.Queued
-            is ModelDownloadManager.Status.Completed -> DownloadStatus.Completed
-            is ModelDownloadManager.Status.Failed -> DownloadStatus.Failed(status.message)
-            is ModelDownloadManager.Status.Cancelled -> DownloadStatus.NotStarted
-            ModelDownloadManager.Status.NotStarted -> DownloadStatus.NotStarted
-        }
+                is ModelDownloadManager.Status.Pending -> DownloadStatus.Queued
+                is ModelDownloadManager.Status.Completed -> DownloadStatus.Completed
+                is ModelDownloadManager.Status.Failed -> DownloadStatus.Failed(status.message)
+                is ModelDownloadManager.Status.Cancelled -> DownloadStatus.NotStarted
+                ModelDownloadManager.Status.NotStarted -> DownloadStatus.NotStarted
+            }
         val isDownloaded = status is ModelDownloadManager.Status.Completed
         return Pair(downloadStatus, isDownloaded)
     }
@@ -295,7 +325,7 @@ class ModelSelectorViewModelImpl(
     private fun groupModels(
         models: List<ModelInfo>,
         groupingMode: GroupingMode,
-        collapsedGroupIds: Set<String>
+        collapsedGroupIds: Set<String>,
     ): List<ModelGroup> {
         return when (groupingMode) {
             GroupingMode.None -> {
@@ -304,70 +334,80 @@ class ModelSelectorViewModelImpl(
                         id = "all",
                         title = "All Models",
                         models = models.toImmutableList(),
-                        isExpanded = true
+                        isExpanded = true,
                     )
                 )
             }
 
             GroupingMode.Family -> {
-                models.groupBy { it.config.modelFamily }
+                models
+                    .groupBy { it.config.modelFamily }
                     .map { (family, groupModels) ->
                         ModelGroup(
                             id = "family_$family",
-                            title = family.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() },
+                            title =
+                                family.replaceFirstChar {
+                                    if (it.isLowerCase()) it.titlecase() else it.toString()
+                                },
                             models = groupModels.toImmutableList(),
-                            isExpanded = !collapsedGroupIds.contains("family_$family")
+                            isExpanded = !collapsedGroupIds.contains("family_$family"),
                         )
                     }
                     .sortedBy { it.title }
             }
 
             GroupingMode.Hardware -> {
-                models.groupBy { it.config.hardwareAcceleration }
+                models
+                    .groupBy { it.config.hardwareAcceleration }
                     .map { (hardware, groupModels) ->
-                        val hardwareName = when (hardware) {
-                            HardwareBackend.CPU_ONLY -> "CPU Only"
-                            HardwareBackend.GPU_SUPPORTED -> "GPU Accelerated"
-                            HardwareBackend.NPU_SUPPORTED -> "NPU Accelerated"
-                        }
+                        val hardwareName =
+                            when (hardware) {
+                                HardwareBackend.CPU_ONLY -> "CPU Only"
+                                HardwareBackend.GPU_SUPPORTED -> "GPU Accelerated"
+                                HardwareBackend.NPU_SUPPORTED -> "NPU Accelerated"
+                            }
                         ModelGroup(
                             id = "hw_${hardware.name}",
                             title = hardwareName,
                             models = groupModels.toImmutableList(),
-                            isExpanded = !collapsedGroupIds.contains("hw_${hardware.name}")
+                            isExpanded = !collapsedGroupIds.contains("hw_${hardware.name}"),
                         )
                     }
                     .sortedBy { it.title }
             }
 
             GroupingMode.Library -> {
-                models.groupBy { it.config.inferenceLibrary }
+                models
+                    .groupBy { it.config.inferenceLibrary }
                     .map { (library, groupModels) ->
                         ModelGroup(
                             id = "lib_${library.name}",
-                            title = when (library) {
-                                InferenceLibrary.LITERT -> "LiteRT (TensorFlow Lite)"
-                                InferenceLibrary.MEDIAPIPE -> "MediaPipe"
-                            },
+                            title =
+                                when (library) {
+                                    InferenceLibrary.LITERT -> "LiteRT (TensorFlow Lite)"
+                                    InferenceLibrary.MEDIAPIPE -> "MediaPipe"
+                                },
                             models = groupModels.toImmutableList(),
-                            isExpanded = !collapsedGroupIds.contains("lib_${library.name}")
+                            isExpanded = !collapsedGroupIds.contains("lib_${library.name}"),
                         )
                     }
                     .sortedBy { it.title }
             }
 
             GroupingMode.Access -> {
-                models.groupBy { it.config.isGated }
+                models
+                    .groupBy { it.config.isGated }
                     .map { (isGated, groupModels) ->
                         ModelGroup(
                             id = "acc_$isGated",
-                            title = if (isGated) {
-                                "Need HF token"
-                            } else {
-                                "Free for all"
-                            },
+                            title =
+                                if (isGated) {
+                                    "Need HF token"
+                                } else {
+                                    "Free for all"
+                                },
                             models = groupModels.toImmutableList(),
-                            isExpanded = !collapsedGroupIds.contains("acc_$isGated")
+                            isExpanded = !collapsedGroupIds.contains("acc_$isGated"),
                         )
                     }
                     .sortedBy { it.title }

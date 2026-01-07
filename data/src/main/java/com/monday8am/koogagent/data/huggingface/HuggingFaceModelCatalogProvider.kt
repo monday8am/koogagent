@@ -33,10 +33,11 @@ import org.json.JSONObject
  */
 class HuggingFaceModelCatalogProvider(
     private val authRepository: AuthRepository? = null,
-    private val client: OkHttpClient = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .build(),
+    private val client: OkHttpClient =
+        OkHttpClient.Builder()
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .build(),
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : ModelCatalogProvider {
 
@@ -54,10 +55,18 @@ class HuggingFaceModelCatalogProvider(
         private const val DEFAULT_PARAM_COUNT = 1.0f
 
         // GPU-related keywords to search in README
-        private val GPU_KEYWORDS = listOf(
-            "gpu", "GPU", "cuda", "CUDA", "opencl", "OpenCL",
-            "gpu acceleration", "GPU acceleration", "hardware acceleration"
-        )
+        private val GPU_KEYWORDS =
+            listOf(
+                "gpu",
+                "GPU",
+                "cuda",
+                "CUDA",
+                "opencl",
+                "OpenCL",
+                "gpu acceleration",
+                "GPU acceleration",
+                "hardware acceleration",
+            )
     }
 
     private val requestSemaphore = kotlinx.coroutines.sync.Semaphore(5)
@@ -98,13 +107,9 @@ class HuggingFaceModelCatalogProvider(
             }
         }
 
-    /**
-     * Fetches the list of models from the organization.
-     */
+    /** Fetches the list of models from the organization. */
     private suspend fun fetchModelList(): List<HuggingFaceModelSummary> {
-        val request = Request.Builder()
-            .url(LIST_URL)
-            .build()
+        val request = Request.Builder().url(LIST_URL).build()
 
         return executeRequest(request) { response ->
             val body = response.body.string()
@@ -115,14 +120,10 @@ class HuggingFaceModelCatalogProvider(
         }
     }
 
-    /**
-     * Fetches detailed information for a specific model.
-     */
+    /** Fetches detailed information for a specific model. */
     private suspend fun fetchModelDetails(modelId: String): HuggingFaceModelDetails? {
         val url = "$BASE_URL/$modelId"
-        val request = Request.Builder()
-            .url(url)
-            .build()
+        val request = Request.Builder().url(url).build()
 
         return try {
             executeRequest(request) { response ->
@@ -135,39 +136,38 @@ class HuggingFaceModelCatalogProvider(
     }
 
     /**
-     * Fetches the README.md file for a model to check for GPU compatibility mentions.
-     * Returns true if GPU keywords are found, false otherwise.
+     * Fetches the README.md file for a model to check for GPU compatibility mentions. Returns true
+     * if GPU keywords are found, false otherwise.
      */
     private suspend fun checkGpuSupportInReadme(modelId: String): Boolean {
         val url = String.format(README_URL_TEMPLATE, modelId)
-        val request = Request.Builder()
-            .url(url)
-            .build()
+        val request = Request.Builder().url(url).build()
 
         return try {
             executeRequest(request) { response ->
                 val readmeContent = response.body.string()
-                val hasGpuMention = GPU_KEYWORDS.any { keyword ->
-                    readmeContent.contains(keyword, ignoreCase = false)
-                }
+                val hasGpuMention =
+                    GPU_KEYWORDS.any { keyword ->
+                        readmeContent.contains(keyword, ignoreCase = false)
+                    }
                 logger.d { "Model $modelId GPU support check: $hasGpuMention" }
                 hasGpuMention
             }
         } catch (e: Exception) {
-            logger.w { "Failed to fetch README for $modelId: ${e.message}. Defaulting to GPU_SUPPORTED" }
+            logger.w {
+                "Failed to fetch README for $modelId: ${e.message}. Defaulting to GPU_SUPPORTED"
+            }
             true // Default to GPU_SUPPORTED if README fetch fails
         }
     }
 
     /**
-     * Fetches file tree to get file sizes (not available in model details endpoint).
-     * Returns a map of filename -> size in bytes.
+     * Fetches file tree to get file sizes (not available in model details endpoint). Returns a map
+     * of filename -> size in bytes.
      */
     private suspend fun fetchFileSizes(modelId: String): Map<String, Long> {
         val url = "$BASE_URL/$modelId/tree/main"
-        val request = Request.Builder()
-            .url(url)
-            .build()
+        val request = Request.Builder().url(url).build()
 
         return try {
             executeRequest(request) { response ->
@@ -179,11 +179,12 @@ class HuggingFaceModelCatalogProvider(
                     val path = fileObj.optString("path", null) ?: continue
 
                     // Try to get size from LFS metadata first (for large files)
-                    val size = if (fileObj.has("lfs")) {
-                        fileObj.getJSONObject("lfs").optLong("size", -1L)
-                    } else {
-                        fileObj.optLong("size", -1L)
-                    }
+                    val size =
+                        if (fileObj.has("lfs")) {
+                            fileObj.getJSONObject("lfs").optLong("size", -1L)
+                        } else {
+                            fileObj.optLong("size", -1L)
+                        }
 
                     if (size > 0) {
                         sizeMap[path] = size
@@ -199,45 +200,44 @@ class HuggingFaceModelCatalogProvider(
         }
     }
 
-    /**
-     * Helper to execute OkHttp requests as suspending functions with cancellation support.
-     */
+    /** Helper to execute OkHttp requests as suspending functions with cancellation support. */
     private suspend fun <T> executeRequest(request: Request, parser: (Response) -> T): T {
-        val finalRequest = authRepository?.authToken?.value?.let { token ->
-            request.newBuilder()
-                .header("Authorization", "Bearer $token")
-                .build()
-        } ?: request
+        val finalRequest =
+            authRepository?.authToken?.value?.let { token ->
+                request.newBuilder().header("Authorization", "Bearer $token").build()
+            } ?: request
 
         return suspendCancellableCoroutine { continuation ->
             val call = client.newCall(finalRequest)
             continuation.invokeOnCancellation { call.cancel() }
 
-            call.enqueue(object : Callback {
-                override fun onResponse(call: Call, response: Response) {
-                    response.use {
-                        if (!response.isSuccessful) {
-                            continuation.resumeWithException(IOException("Unexpected code $response"))
-                            return
-                        }
-                        try {
-                            continuation.resume(parser(response))
-                        } catch (e: Exception) {
-                            continuation.resumeWithException(e)
+            call.enqueue(
+                object : Callback {
+                    override fun onResponse(call: Call, response: Response) {
+                        response.use {
+                            if (!response.isSuccessful) {
+                                continuation.resumeWithException(
+                                    IOException("Unexpected code $response")
+                                )
+                                return
+                            }
+                            try {
+                                continuation.resume(parser(response))
+                            } catch (e: Exception) {
+                                continuation.resumeWithException(e)
+                            }
                         }
                     }
-                }
 
-                override fun onFailure(call: Call, e: IOException) {
-                    continuation.resumeWithException(e)
+                    override fun onFailure(call: Call, e: IOException) {
+                        continuation.resumeWithException(e)
+                    }
                 }
-            })
+            )
         }
     }
 
-    /**
-     * Parses a model summary from the list endpoint.
-     */
+    /** Parses a model summary from the list endpoint. */
     private fun parseModelSummary(json: JSONObject): HuggingFaceModelSummary? {
         return try {
             HuggingFaceModelSummary(
@@ -251,25 +251,21 @@ class HuggingFaceModelCatalogProvider(
         }
     }
 
-    /**
-     * Parses model details from the details endpoint.
-     */
+    /** Parses model details from the details endpoint. */
     private fun parseModelDetails(json: JSONObject): HuggingFaceModelDetails? {
         return try {
             val siblingsArray = json.optJSONArray("siblings") ?: JSONArray()
-            val siblings = (0 until siblingsArray.length()).mapNotNull { i ->
-                val sibling = siblingsArray.getJSONObject(i)
-                val rfilename = sibling.optString("rfilename", null)
-                // Note: size is not in siblings array, fetched separately from /tree/main
-                if (rfilename != null) {
-                    HuggingFaceFile(
-                        rfilename = rfilename,
-                        size = null,
-                    )
-                } else {
-                    null
+            val siblings =
+                (0 until siblingsArray.length()).mapNotNull { i ->
+                    val sibling = siblingsArray.getJSONObject(i)
+                    val rfilename = sibling.optString("rfilename", null)
+                    // Note: size is not in siblings array, fetched separately from /tree/main
+                    if (rfilename != null) {
+                        HuggingFaceFile(rfilename = rfilename, size = null)
+                    } else {
+                        null
+                    }
                 }
-            }
 
             val gatedValue = json.opt("gated")
 
@@ -288,6 +284,7 @@ class HuggingFaceModelCatalogProvider(
 
     /**
      * Converts model details to a list of ModelConfiguration (one per valid file variant).
+     *
      * @param details Model metadata from API
      * @param fileSizes Map of filename -> size in bytes from /tree/main endpoint
      * @param hasGpuSupport Whether GPU support was detected in README
@@ -295,11 +292,11 @@ class HuggingFaceModelCatalogProvider(
     private fun convertToConfigurations(
         details: HuggingFaceModelDetails,
         fileSizes: Map<String, Long>,
-        hasGpuSupport: Boolean
+        hasGpuSupport: Boolean,
     ): List<ModelConfiguration> {
         return details.siblings.mapNotNull { file ->
-            val parsed = ModelFilenameParser.parse(file.rfilename, details.id)
-                ?: return@mapNotNull null
+            val parsed =
+                ModelFilenameParser.parse(file.rfilename, details.id) ?: return@mapNotNull null
 
             val downloadUrl = String.format(DOWNLOAD_URL_TEMPLATE, details.id, file.rfilename)
             val huggingFaceUrl = "https://huggingface.co/${details.id}"
@@ -316,9 +313,11 @@ class HuggingFaceModelCatalogProvider(
                 downloadUrl = downloadUrl,
                 bundleFilename = file.rfilename,
                 inferenceLibrary = parsed.inferenceLibrary,
-                hardwareAcceleration = determineHardwareBackend(parsed.inferenceLibrary, hasGpuSupport),
+                hardwareAcceleration =
+                    determineHardwareBackend(parsed.inferenceLibrary, hasGpuSupport),
                 isGated = details.gated.isGated,
-                description = null, // TODO: Fetch from README.md or implement in-app markdown viewer
+                description =
+                    null, // TODO: Fetch from README.md or implement in-app markdown viewer
                 fileSizeBytes = fileSize,
                 huggingFaceUrl = huggingFaceUrl,
             )
@@ -327,10 +326,14 @@ class HuggingFaceModelCatalogProvider(
 
     /**
      * Determines hardware acceleration support based on inference library and README analysis.
+     *
      * @param library The inference library being used
      * @param hasGpuSupport Whether GPU keywords were found in the model's README
      */
-    private fun determineHardwareBackend(library: InferenceLibrary, hasGpuSupport: Boolean): HardwareBackend {
+    private fun determineHardwareBackend(
+        library: InferenceLibrary,
+        hasGpuSupport: Boolean,
+    ): HardwareBackend {
         return if (hasGpuSupport) {
             HardwareBackend.GPU_SUPPORTED
         } else {

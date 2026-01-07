@@ -16,24 +16,18 @@ val installCommonEventHandling: FeatureContext.() -> Unit = {
     }
      */
     handleEvents {
-        onLLMCallStarting {
-            kermitLogger.d { "LLM call started with prompt: ${it.prompt}" }
-        }
-        onAgentStarting {
-            kermitLogger.d { "Agent started: ${it.agent.id}" }
-        }
-        onAgentClosing {
-            kermitLogger.d { "Agent closed: ${it.agentId}" }
-        }
+        onLLMCallStarting { kermitLogger.d { "LLM call started with prompt: ${it.prompt}" } }
+        onAgentStarting { kermitLogger.d { "Agent started: ${it.agent.id}" } }
+        onAgentClosing { kermitLogger.d { "Agent closed: ${it.agentId}" } }
         onLLMCallCompleted {
             kermitLogger.d { "LLM call ended with \ntools: ${it.tools}\nresponses:${it.responses}" }
         }
         onToolCallStarting { eventContext ->
-            kermitLogger.d { "Tool called: ${eventContext.toolName} with args ${eventContext.toolArgs}" }
+            kermitLogger.d {
+                "Tool called: ${eventContext.toolName} with args ${eventContext.toolArgs}"
+            }
         }
-        onToolCallCompleted {
-            kermitLogger.d { "Tool call ended with result: ${it.toolName}" }
-        }
+        onToolCallCompleted { kermitLogger.d { "Tool call ended with result: ${it.toolName}" } }
         onAgentCompleted { eventContext ->
             kermitLogger.d { "Agent finished with result: ${eventContext.result}" }
         }

@@ -25,9 +25,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 
-/**
- * Fake implementation of ModelCatalogProvider for testing.
- */
+/** Fake implementation of ModelCatalogProvider for testing. */
 internal class FakeModelCatalogProvider(
     private val models: List<ModelConfiguration> = emptyList(),
     private val shouldFail: Boolean = false,
@@ -65,15 +63,14 @@ class ModelSelectorViewModelTest {
     private lateinit var fakeRepository: ModelRepositoryImpl
     private lateinit var fakeDownloadManager: FakeModelDownloadManager
     private lateinit var fakeAuthRepository: FakeAuthRepository
-    private lateinit var modelsStatusFlow: MutableStateFlow<Map<String, ModelDownloadManager.Status>>
+    private lateinit var modelsStatusFlow:
+        MutableStateFlow<Map<String, ModelDownloadManager.Status>>
 
     @BeforeTest
     fun setup() {
         Dispatchers.setMain(testDispatcher)
         modelsStatusFlow = MutableStateFlow(emptyMap())
-        fakeDownloadManager = FakeModelDownloadManager(
-            modelsStatusFlow = modelsStatusFlow
-        )
+        fakeDownloadManager = FakeModelDownloadManager(modelsStatusFlow = modelsStatusFlow)
         fakeAuthRepository = FakeAuthRepository()
         // Default repository for simple cases
         fakeRepository = ModelRepositoryImpl(FakeModelCatalogProvider(testModels), testDispatcher)
@@ -116,9 +113,11 @@ class ModelSelectorViewModelTest {
     @Test
     fun `Initialize should handle catalog load failure`() = runTest {
         val errorMessage = "Network error"
-        val viewModel = createViewModel(
-            catalogProvider = FakeModelCatalogProvider(shouldFail = true, failureMessage = errorMessage)
-        )
+        val viewModel =
+            createViewModel(
+                catalogProvider =
+                    FakeModelCatalogProvider(shouldFail = true, failureMessage = errorMessage)
+            )
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
@@ -132,15 +131,16 @@ class ModelSelectorViewModelTest {
     @Test
     fun `Initialize should allow retry after failure`() = runTest {
         var shouldFail = true
-        val catalogProvider = object : ModelCatalogProvider {
-            override suspend fun fetchModels(): Result<List<ModelConfiguration>> {
-                return if (shouldFail) {
-                    Result.failure(Exception("Network error"))
-                } else {
-                    Result.success(testModels)
+        val catalogProvider =
+            object : ModelCatalogProvider {
+                override suspend fun fetchModels(): Result<List<ModelConfiguration>> {
+                    return if (shouldFail) {
+                        Result.failure(Exception("Network error"))
+                    } else {
+                        Result.success(testModels)
+                    }
                 }
             }
-        }
 
         val viewModel = createViewModel(catalogProvider = catalogProvider)
         advanceUntilIdle()
@@ -175,9 +175,8 @@ class ModelSelectorViewModelTest {
     @Test
     fun `Initialize should re-attach to active download`() = runTest {
         // Setup manager with an active download for model1
-        modelsStatusFlow.value = mapOf(
-            model1.bundleFilename to ModelDownloadManager.Status.InProgress(progress = 42f)
-        )
+        modelsStatusFlow.value =
+            mapOf(model1.bundleFilename to ModelDownloadManager.Status.InProgress(progress = 42f))
 
         val viewModel = createViewModel()
         advanceUntilIdle()
@@ -203,10 +202,11 @@ class ModelSelectorViewModelTest {
         // VM needs models in repository to start download
         fakeRepository.setModels(testModels)
 
-        val downloadManager = FakeModelDownloadManager(
-            progressSteps = listOf(25f, 50f, 75f),
-            modelsStatusFlow = modelsStatusFlow
-        )
+        val downloadManager =
+            FakeModelDownloadManager(
+                progressSteps = listOf(25f, 50f, 75f),
+                modelsStatusFlow = modelsStatusFlow,
+            )
         val viewModel = createViewModel(downloadManager = downloadManager)
         advanceUntilIdle()
 
@@ -234,10 +234,11 @@ class ModelSelectorViewModelTest {
 
         // In the new reactive architecture, queue is derived from modelsStatus.
         // Set up the flow to show model1 in progress and model2 pending.
-        modelsStatusFlow.value = mapOf(
-            model1.bundleFilename to ModelDownloadManager.Status.InProgress(progress = 10f),
-            model2.bundleFilename to ModelDownloadManager.Status.Pending
-        )
+        modelsStatusFlow.value =
+            mapOf(
+                model1.bundleFilename to ModelDownloadManager.Status.InProgress(progress = 10f),
+                model2.bundleFilename to ModelDownloadManager.Status.Pending,
+            )
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
@@ -275,15 +276,18 @@ class ModelSelectorViewModelTest {
         fakeRepository.setModels(testModels)
 
         // Start with model1 as downloaded
-        modelsStatusFlow.value = mapOf(
-            model1.bundleFilename to ModelDownloadManager.Status.Completed(java.io.File("/fake/path"))
-        )
+        modelsStatusFlow.value =
+            mapOf(
+                model1.bundleFilename to
+                    ModelDownloadManager.Status.Completed(java.io.File("/fake/path"))
+            )
 
         val viewModel = createViewModel()
         advanceUntilIdle()
 
         // Verify model is initially downloaded
-        val initialModel = viewModel.uiState.value.models.find { it.config.modelId == model1.modelId }
+        val initialModel =
+            viewModel.uiState.value.models.find { it.config.modelId == model1.modelId }
         assertNotNull(initialModel)
         assertTrue(initialModel.isDownloaded)
 
@@ -308,7 +312,8 @@ class ModelSelectorViewModelTest {
         advanceUntilIdle()
 
         // Initially not downloaded
-        val initialModel = viewModel.uiState.value.models.find { it.config.modelId == model1.modelId }
+        val initialModel =
+            viewModel.uiState.value.models.find { it.config.modelId == model1.modelId }
         assertNotNull(initialModel)
         assertFalse(updatedModelIsReady(viewModel, model1.modelId))
 
@@ -354,8 +359,12 @@ class ModelSelectorViewModelTest {
         viewModel.dispose()
     }
 
-    private fun updatedModelIsReady(viewModel: ModelSelectorViewModelImpl, modelId: String): Boolean {
-        return viewModel.uiState.value.models.find { it.config.modelId == modelId }?.isDownloaded ?: false
+    private fun updatedModelIsReady(
+        viewModel: ModelSelectorViewModelImpl,
+        modelId: String,
+    ): Boolean {
+        return viewModel.uiState.value.models.find { it.config.modelId == modelId }?.isDownloaded
+            ?: false
     }
 
     // endregion
@@ -403,7 +412,8 @@ class ModelSelectorViewModelTest {
         viewModel.onUiAction(UiAction.ToggleGroup(initialGroup.id))
         advanceUntilIdle()
 
-        val collapsedGroup = viewModel.uiState.value.groupedModels.first { it.id == initialGroup.id }
+        val collapsedGroup =
+            viewModel.uiState.value.groupedModels.first { it.id == initialGroup.id }
         assertFalse(collapsedGroup.isExpanded)
 
         viewModel.dispose()

@@ -48,6 +48,7 @@ data class TestStatus(val name: String, val state: State) {
 
 sealed class TestUiAction {
     data class RunTests(val useGpu: Boolean) : TestUiAction()
+
     data object CancelTests : TestUiAction()
 }
 
@@ -69,19 +70,21 @@ class TestViewModelImpl(
 
     private var currentTest: ToolCallingTest? = null
     private val runTestsTrigger = MutableSharedFlow<Boolean>(extraBufferCapacity = 1)
-    private val executionState: StateFlow<ExecutionState> = runTestsTrigger
-        .flatMapLatest { useGpu -> executeTests(useGpu) }
-        .stateIn(scope, SharingStarted.Eagerly, ExecutionState.Idle(initialModel))
+    private val executionState: StateFlow<ExecutionState> =
+        runTestsTrigger
+            .flatMapLatest { useGpu -> executeTests(useGpu) }
+            .stateIn(scope, SharingStarted.Eagerly, ExecutionState.Idle(initialModel))
 
     // UI state derived from ExecutionState
-    override val uiState: StateFlow<TestUiState> = executionState
-        .onEach { state -> Logger.d("State: ${state::class.simpleName}") }
-        .map { state -> deriveUiState(state) }
-        .stateIn(
-            scope = scope,
-            started = SharingStarted.Eagerly,
-            initialValue = deriveUiState(ExecutionState.Idle(initialModel))
-        )
+    override val uiState: StateFlow<TestUiState> =
+        executionState
+            .onEach { state -> Logger.d("State: ${state::class.simpleName}") }
+            .map { state -> deriveUiState(state) }
+            .stateIn(
+                scope = scope,
+                started = SharingStarted.Eagerly,
+                initialValue = deriveUiState(ExecutionState.Idle(initialModel)),
+            )
 
     override fun onUiAction(uiAction: TestUiAction) {
         when (uiAction) {
@@ -91,34 +94,42 @@ class TestViewModelImpl(
     }
 
     /**
-     * Pure flow transformation: triggers → ExecutionState emissions.
-     * Handles backend configuration, engine initialization, and test execution.
+     * Pure flow transformation: triggers → ExecutionState emissions. Handles backend configuration,
+     * engine initialization, and test execution.
      */
     private fun executeTests(useGpu: Boolean): Flow<ExecutionState> = flow {
         val modelConfig = prepareModelConfig(useGpu)
-        val initialResults = TestResults(
-            statuses = ToolCallingTest.REGRESSION_TEST_SUITE.map {
-                TestStatus(it.name, TestStatus.State.IDLE)
-            }.toImmutableList()
-        )
+        val initialResults =
+            TestResults(
+                statuses =
+                    ToolCallingTest.REGRESSION_TEST_SUITE.map {
+                            TestStatus(it.name, TestStatus.State.IDLE)
+                        }
+                        .toImmutableList()
+            )
 
         inferenceEngine
             .initializeAsFlow(modelConfig, modelPath)
             .onStart { emit(ExecutionState.Initializing(modelConfig)) }
             .flatMapConcat { engine ->
                 ToolCallingTest(
-                    streamPromptExecutor = engine::promptStreaming,
-                    resetConversation = engine::resetConversation,
-                ).also { currentTest = it }.runAllTest()
+                        streamPromptExecutor = engine::promptStreaming,
+                        resetConversation = engine::resetConversation,
+                    )
+                    .also { currentTest = it }
+                    .runAllTest()
             }
             .runningFold(initialResults) { current, frame ->
                 TestResults(
                     frames = (current.frames + (frame.id to frame)).toImmutableMap(),
-                    statuses = updateTestStatuses(current.statuses, frame).toImmutableList()
+                    statuses = updateTestStatuses(current.statuses, frame).toImmutableList(),
                 )
             }
             .map { results ->
-                if (results.statuses.last().state in listOf(TestStatus.State.FAIL, TestStatus.State.PASS)) {
+                if (
+                    results.statuses.last().state in
+                        listOf(TestStatus.State.FAIL, TestStatus.State.PASS)
+                ) {
                     ExecutionState.Finish(modelConfig, results)
                 } else {
                     ExecutionState.Running(modelConfig, results)
@@ -129,16 +140,18 @@ class TestViewModelImpl(
                     emit(ExecutionState.Idle(modelConfig))
                 } else {
                     Logger.e("Error: ${e.message}")
-                    val errorFrame = TestResultFrame.Validation(
-                        testName = "Error",
-                        result = ValidationResult.Fail("Error: ${e.message}"),
-                        duration = 0,
-                        fullContent = "",
-                    )
-                    val errorResults = TestResults(
-                        frames = persistentMapOf(errorFrame.id to errorFrame),
-                        statuses = initialResults.statuses
-                    )
+                    val errorFrame =
+                        TestResultFrame.Validation(
+                            testName = "Error",
+                            result = ValidationResult.Fail("Error: ${e.message}"),
+                            duration = 0,
+                            fullContent = "",
+                        )
+                    val errorResults =
+                        TestResults(
+                            frames = persistentMapOf(errorFrame.id to errorFrame),
+                            statuses = initialResults.statuses,
+                        )
                     emit(ExecutionState.Finish(modelConfig, errorResults))
                 }
             }
@@ -156,46 +169,53 @@ class TestViewModelImpl(
         return currentModel.copy(hardwareAcceleration = newBackend)
     }
 
-    /**
-     * Pure function: derives UI state from execution state.
-     */
-    private fun deriveUiState(state: ExecutionState): TestUiState = when (state) {
-        is ExecutionState.Idle -> TestUiState(
-            selectedModel = state.model,
-            isRunning = false,
-            isInitializing = false,
-            frames = persistentMapOf(),
-            testStatuses = ToolCallingTest.REGRESSION_TEST_SUITE.map {
-                TestStatus(it.name, TestStatus.State.IDLE)
-            }.toImmutableList()
-        )
+    /** Pure function: derives UI state from execution state. */
+    private fun deriveUiState(state: ExecutionState): TestUiState =
+        when (state) {
+            is ExecutionState.Idle ->
+                TestUiState(
+                    selectedModel = state.model,
+                    isRunning = false,
+                    isInitializing = false,
+                    frames = persistentMapOf(),
+                    testStatuses =
+                        ToolCallingTest.REGRESSION_TEST_SUITE.map {
+                                TestStatus(it.name, TestStatus.State.IDLE)
+                            }
+                            .toImmutableList(),
+                )
 
-        is ExecutionState.Initializing -> TestUiState(
-            selectedModel = state.model,
-            isRunning = true,
-            isInitializing = true,
-            frames = persistentMapOf(),
-            testStatuses = ToolCallingTest.REGRESSION_TEST_SUITE.map {
-                TestStatus(it.name, TestStatus.State.IDLE)
-            }.toImmutableList()
-        )
+            is ExecutionState.Initializing ->
+                TestUiState(
+                    selectedModel = state.model,
+                    isRunning = true,
+                    isInitializing = true,
+                    frames = persistentMapOf(),
+                    testStatuses =
+                        ToolCallingTest.REGRESSION_TEST_SUITE.map {
+                                TestStatus(it.name, TestStatus.State.IDLE)
+                            }
+                            .toImmutableList(),
+                )
 
-        is ExecutionState.Running -> TestUiState(
-            selectedModel = state.model,
-            isRunning = true,
-            isInitializing = false,
-            frames = state.results.frames,
-            testStatuses = state.results.statuses
-        )
+            is ExecutionState.Running ->
+                TestUiState(
+                    selectedModel = state.model,
+                    isRunning = true,
+                    isInitializing = false,
+                    frames = state.results.frames,
+                    testStatuses = state.results.statuses,
+                )
 
-        is ExecutionState.Finish -> TestUiState(
-            selectedModel = state.model,
-            isRunning = false,
-            isInitializing = false,
-            frames = state.results.frames,
-            testStatuses = state.results.statuses
-        )
-    }
+            is ExecutionState.Finish ->
+                TestUiState(
+                    selectedModel = state.model,
+                    isRunning = false,
+                    isInitializing = false,
+                    frames = state.results.frames,
+                    testStatuses = state.results.statuses,
+                )
+        }
 
     private fun updateTestStatuses(
         currentStatuses: List<TestStatus>,
@@ -211,11 +231,12 @@ class TestViewModelImpl(
             is TestResultFrame.Validation -> {
                 currentStatuses.map {
                     if (it.name == frame.testName) {
-                        val state = if (frame.result is ValidationResult.Pass) {
-                            TestStatus.State.PASS
-                        } else {
-                            TestStatus.State.FAIL
-                        }
+                        val state =
+                            if (frame.result is ValidationResult.Pass) {
+                                TestStatus.State.PASS
+                            } else {
+                                TestStatus.State.FAIL
+                            }
                         it.copy(state = state)
                     } else {
                         it
@@ -237,14 +258,19 @@ private sealed class ExecutionState {
     abstract val model: ModelConfiguration
 
     data class Idle(override val model: ModelConfiguration) : ExecutionState()
+
     data class Initializing(override val model: ModelConfiguration) : ExecutionState()
-    data class Running(override val model: ModelConfiguration, val results: TestResults) : ExecutionState()
-    data class Finish(override val model: ModelConfiguration, val results: TestResults) : ExecutionState()
+
+    data class Running(override val model: ModelConfiguration, val results: TestResults) :
+        ExecutionState()
+
+    data class Finish(override val model: ModelConfiguration, val results: TestResults) :
+        ExecutionState()
 }
 
 private data class TestResults(
     val frames: ImmutableMap<String, TestResultFrame> = persistentMapOf(),
-    val statuses: ImmutableList<TestStatus> = ToolCallingTest.REGRESSION_TEST_SUITE.map {
-        TestStatus(it.name, TestStatus.State.IDLE)
-    }.toImmutableList()
+    val statuses: ImmutableList<TestStatus> =
+        ToolCallingTest.REGRESSION_TEST_SUITE.map { TestStatus(it.name, TestStatus.State.IDLE) }
+            .toImmutableList(),
 )

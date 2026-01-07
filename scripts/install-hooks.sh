@@ -12,34 +12,34 @@ echo "Installing git hooks..."
 cat > "$HOOKS_DIR/pre-commit" << 'EOF'
 #!/bin/sh
 
-# Pre-commit hook that runs ktlint via Gradle (uses .editorconfig)
+# Pre-commit hook that runs ktfmt via Gradle
 # This ensures consistency between local checks and CI
 
-echo "Running ktlint check..."
+echo "Running ktfmt check..."
 
 # Get the list of staged Kotlin files
 STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(kt|kts)$')
 
 if [ -z "$STAGED_FILES" ]; then
-    echo "No Kotlin files staged, skipping ktlint"
+    echo "No Kotlin files staged, skipping ktfmt"
     exit 0
 fi
 
-# Run ktlint check via Gradle
-./gradlew ktlintCheck --daemon -q
+# Run ktfmt check via Gradle
+./gradlew ktfmtCheck --daemon -q
 
 RESULT=$?
 
 if [ $RESULT -ne 0 ]; then
     echo ""
-    echo "❌ ktlint check failed!"
+    echo "❌ ktfmt check failed!"
     echo ""
-    echo "Run './gradlew ktlintFormat' to auto-fix issues"
+    echo "Run './gradlew ktfmtFormat' to auto-fix issues"
     echo "Then stage the fixed files and commit again"
     exit 1
 fi
 
-echo "✅ ktlint check passed"
+echo "✅ ktfmt check passed"
 exit 0
 EOF
 
@@ -48,4 +48,4 @@ chmod +x "$HOOKS_DIR/pre-commit"
 echo "✅ Git hooks installed successfully"
 echo ""
 echo "Available hooks:"
-echo "  - pre-commit: Runs ktlint check before each commit"
+echo "  - pre-commit: Runs ktfmt check before each commit"

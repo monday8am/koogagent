@@ -14,9 +14,7 @@ import com.monday8am.koogagent.data.InferenceLibrary
  */
 object ModelFilenameParser {
 
-    /**
-     * Metadata extracted from a model filename.
-     */
+    /** Metadata extracted from a model filename. */
     data class ParsedMetadata(
         val modelFamily: String,
         val parameterCount: Float?,
@@ -33,14 +31,7 @@ object ModelFilenameParser {
     private val CONTEXT_REGEX = Regex("""ekv(\d+)""", RegexOption.IGNORE_CASE)
 
     // Device suffixes to filter out (hardware-specific builds)
-    private val DEVICE_SUFFIXES = listOf(
-        "mt6989",
-        "mt6991",
-        "mt6993",
-        "sm8550",
-        "sm8650",
-        "sm8750",
-    )
+    private val DEVICE_SUFFIXES = listOf("mt6989", "mt6991", "mt6993", "sm8550", "sm8650", "sm8750")
 
     // Valid model file extensions
     private val VALID_EXTENSIONS = listOf(".litertlm", ".task")
@@ -67,11 +58,12 @@ object ModelFilenameParser {
         val extension = filename.substringAfterLast(".")
 
         // Determine inference library from extension
-        val library = when (extension.lowercase()) {
-            "litertlm" -> InferenceLibrary.LITERT
-            "task" -> InferenceLibrary.MEDIAPIPE
-            else -> return null
-        }
+        val library =
+            when (extension.lowercase()) {
+                "litertlm" -> InferenceLibrary.LITERT
+                "task" -> InferenceLibrary.MEDIAPIPE
+                else -> return null
+            }
 
         // Extract parameters from filename or modelId
         val params = extractParameters(baseName) ?: extractParameters(modelId)
@@ -99,8 +91,8 @@ object ModelFilenameParser {
     }
 
     /**
-     * Extracts parameter count (in billions) from text.
-     * Handles both "B" (billions) and "M" (millions) suffixes.
+     * Extracts parameter count (in billions) from text. Handles both "B" (billions) and "M"
+     * (millions) suffixes.
      */
     private fun extractParameters(text: String): Float? {
         // Try to match billions first
@@ -114,44 +106,43 @@ object ModelFilenameParser {
         return null
     }
 
-    /**
-     * Extracts quantization format from filename.
-     */
+    /** Extracts quantization format from filename. */
     private fun extractQuantization(baseName: String): String? {
         return QUANT_REGEX.find(baseName)?.groupValues?.get(1)?.lowercase()
     }
 
-    /**
-     * Extracts context/KV cache length from filename.
-     */
+    /** Extracts context/KV cache length from filename. */
     private fun extractContextLength(baseName: String): Int? {
         return CONTEXT_REGEX.find(baseName)?.groupValues?.get(1)?.toIntOrNull()
     }
 
-    private val FAMILY_PREFIXES = listOf(
-        "qwen3", "qwen2.5", "qwen2",
-        "gemma3", "gemma2", "gemma",
-        "smollm", "smolvlm", "hammer",
-        "tinyllama", "phi", "deepseek",
-        "fastvlm", "functiongemma"
-    )
+    private val FAMILY_PREFIXES =
+        listOf(
+            "qwen3",
+            "qwen2.5",
+            "qwen2",
+            "gemma3",
+            "gemma2",
+            "gemma",
+            "smollm",
+            "smolvlm",
+            "hammer",
+            "tinyllama",
+            "phi",
+            "deepseek",
+            "fastvlm",
+            "functiongemma",
+        )
 
-    /**
-     * Extracts model family from the Hugging Face model ID.
-     */
+    /** Extracts model family from the Hugging Face model ID. */
     private fun extractFamily(modelId: String): String {
         val name = modelId.substringAfter("/").lowercase()
         return FAMILY_PREFIXES.find { name.startsWith(it) }
             ?: name.substringBefore("-").substringBefore("_")
     }
 
-    /**
-     * Builds a human-readable display name from parsed metadata.
-     */
-    private fun buildDisplayName(
-        family: String,
-        params: Float?,
-    ): String {
+    /** Builds a human-readable display name from parsed metadata. */
+    private fun buildDisplayName(family: String, params: Float?): String {
         val familyDisplay = family.replaceFirstChar { it.uppercase() }
         val paramsDisplay = params?.let { formatParams(it) } ?: ""
 
@@ -162,9 +153,7 @@ object ModelFilenameParser {
         return parts.joinToString("-")
     }
 
-    /**
-     * Formats parameter count for display.
-     */
+    /** Formats parameter count for display. */
     private fun formatParams(params: Float): String {
         return if (params == params.toInt().toFloat()) {
             "${params.toInt()}B"
@@ -173,9 +162,7 @@ object ModelFilenameParser {
         }
     }
 
-    /**
-     * Formats context length for display.
-     */
+    /** Formats context length for display. */
     private fun formatContext(context: Int): String {
         return when {
             context >= 1024 && context % 1024 == 0 -> "${context / 1024}K"

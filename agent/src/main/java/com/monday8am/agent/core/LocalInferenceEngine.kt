@@ -10,7 +10,10 @@ interface LocalInferenceEngine {
 
     fun promptStreaming(prompt: String): Flow<String>
 
-    fun initializeAsFlow(modelConfig: ModelConfiguration, modelPath: String): Flow<LocalInferenceEngine>
+    fun initializeAsFlow(
+        modelConfig: ModelConfiguration,
+        modelPath: String,
+    ): Flow<LocalInferenceEngine>
 
     fun resetConversation(): Result<Unit>
 

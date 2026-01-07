@@ -10,10 +10,11 @@ class ModelRepositoryTest {
     private val model1 = ModelCatalog.QWEN3_0_6B
     private val model2 = ModelCatalog.GEMMA3_1B
 
-    private val fakeProvider = object : ModelCatalogProvider {
-        override suspend fun fetchModels(): Result<List<ModelConfiguration>> =
-            Result.success(listOf(model1, model2))
-    }
+    private val fakeProvider =
+        object : ModelCatalogProvider {
+            override suspend fun fetchModels(): Result<List<ModelConfiguration>> =
+                Result.success(listOf(model1, model2))
+        }
 
     private val repository = ModelRepositoryImpl(fakeProvider)
 

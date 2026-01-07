@@ -10,10 +10,7 @@ class ModelFilenameParserTest {
 
     @Test
     fun `parse simple litertlm filename`() {
-        val result = ModelFilenameParser.parse(
-            "Qwen3-0.6B.litertlm",
-            "litert-community/Qwen3-0.6B"
-        )
+        val result = ModelFilenameParser.parse("Qwen3-0.6B.litertlm", "litert-community/Qwen3-0.6B")
 
         assertNotNull(result)
         assertEquals("qwen3", result.modelFamily)
@@ -23,10 +20,11 @@ class ModelFilenameParserTest {
 
     @Test
     fun `parse filename with context and quantization`() {
-        val result = ModelFilenameParser.parse(
-            "Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096.litertlm",
-            "litert-community/Gemma3-1B-IT"
-        )
+        val result =
+            ModelFilenameParser.parse(
+                "Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096.litertlm",
+                "litert-community/Gemma3-1B-IT",
+            )
 
         assertNotNull(result)
         assertEquals("gemma3", result!!.modelFamily)
@@ -38,10 +36,11 @@ class ModelFilenameParserTest {
 
     @Test
     fun `parse task file for MediaPipe`() {
-        val result = ModelFilenameParser.parse(
-            "SmolLM-135M-Instruct_multi-prefill-seq_f32_ekv1280.task",
-            "litert-community/SmolLM-135M-Instruct"
-        )
+        val result =
+            ModelFilenameParser.parse(
+                "SmolLM-135M-Instruct_multi-prefill-seq_f32_ekv1280.task",
+                "litert-community/SmolLM-135M-Instruct",
+            )
 
         assertNotNull(result)
         assertEquals("smollm", result.modelFamily)
@@ -53,10 +52,8 @@ class ModelFilenameParserTest {
 
     @Test
     fun `parse int4 quantization`() {
-        val result = ModelFilenameParser.parse(
-            "gemma3-1b-it-int4.litertlm",
-            "litert-community/Gemma3-1B-IT"
-        )
+        val result =
+            ModelFilenameParser.parse("gemma3-1b-it-int4.litertlm", "litert-community/Gemma3-1B-IT")
 
         assertNotNull(result)
         assertEquals("gemma3", result.modelFamily)
@@ -65,10 +62,11 @@ class ModelFilenameParserTest {
 
     @Test
     fun `parse int8 quantization`() {
-        val result = ModelFilenameParser.parse(
-            "Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv4096.litertlm",
-            "litert-community/Qwen2.5-1.5B-Instruct"
-        )
+        val result =
+            ModelFilenameParser.parse(
+                "Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv4096.litertlm",
+                "litert-community/Qwen2.5-1.5B-Instruct",
+            )
 
         assertNotNull(result)
         assertEquals("qwen2.5", result.modelFamily)
@@ -78,20 +76,22 @@ class ModelFilenameParserTest {
 
     @Test
     fun `skip device-specific Snapdragon files`() {
-        val result = ModelFilenameParser.parse(
-            "Gemma3-1B-IT_q4_ekv1280_sm8650.litertlm",
-            "litert-community/Gemma3-1B-IT"
-        )
+        val result =
+            ModelFilenameParser.parse(
+                "Gemma3-1B-IT_q4_ekv1280_sm8650.litertlm",
+                "litert-community/Gemma3-1B-IT",
+            )
 
         assertNull(result)
     }
 
     @Test
     fun `skip device-specific MediaTek files`() {
-        val result = ModelFilenameParser.parse(
-            "Gemma3-1B-IT_q4_ekv1280_mt6989.litertlm",
-            "litert-community/Gemma3-1B-IT"
-        )
+        val result =
+            ModelFilenameParser.parse(
+                "Gemma3-1B-IT_q4_ekv1280_mt6989.litertlm",
+                "litert-community/Gemma3-1B-IT",
+            )
 
         assertNull(result)
     }
@@ -106,15 +106,18 @@ class ModelFilenameParserTest {
 
     @Test
     fun `parse generates display name`() {
-        val result = ModelFilenameParser.parse(
-            "Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096.litertlm",
-            "litert-community/Gemma3-1B-IT"
-        )
+        val result =
+            ModelFilenameParser.parse(
+                "Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096.litertlm",
+                "litert-community/Gemma3-1B-IT",
+            )
 
         assertNotNull(result)
         // Display name should contain family and params
         val displayName = result!!.displayName
-        assert(displayName.contains("Gemma3", ignoreCase = true)) { "Expected 'Gemma3' in '$displayName'" }
+        assert(displayName.contains("Gemma3", ignoreCase = true)) {
+            "Expected 'Gemma3' in '$displayName'"
+        }
         assert(displayName.contains("1B", ignoreCase = true)) { "Expected '1B' in '$displayName'" }
     }
 
@@ -122,40 +125,46 @@ class ModelFilenameParserTest {
     fun `extract family from various model IDs`() {
         assertEquals(
             "qwen3",
-            ModelFilenameParser.parse("model.litertlm", "litert-community/Qwen3-0.6B")?.modelFamily
+            ModelFilenameParser.parse("model.litertlm", "litert-community/Qwen3-0.6B")?.modelFamily,
         )
         assertEquals(
             "qwen2.5",
-            ModelFilenameParser.parse("model.litertlm", "litert-community/Qwen2.5-1.5B-Instruct")?.modelFamily
+            ModelFilenameParser.parse("model.litertlm", "litert-community/Qwen2.5-1.5B-Instruct")
+                ?.modelFamily,
         )
         assertEquals(
             "gemma3",
-            ModelFilenameParser.parse("model.litertlm", "litert-community/Gemma3-1B-IT")?.modelFamily
+            ModelFilenameParser.parse("model.litertlm", "litert-community/Gemma3-1B-IT")
+                ?.modelFamily,
         )
         assertEquals(
             "smollm",
-            ModelFilenameParser.parse("model.litertlm", "litert-community/SmolLM-135M-Instruct")?.modelFamily
+            ModelFilenameParser.parse("model.litertlm", "litert-community/SmolLM-135M-Instruct")
+                ?.modelFamily,
         )
         assertEquals(
             "tinyllama",
-            ModelFilenameParser.parse("model.litertlm", "litert-community/TinyLlama-1.1B-Chat-v1.0")?.modelFamily
+            ModelFilenameParser.parse("model.litertlm", "litert-community/TinyLlama-1.1B-Chat-v1.0")
+                ?.modelFamily,
         )
         assertEquals(
             "phi",
-            ModelFilenameParser.parse("model.litertlm", "litert-community/Phi-4-mini-instruct")?.modelFamily
+            ModelFilenameParser.parse("model.litertlm", "litert-community/Phi-4-mini-instruct")
+                ?.modelFamily,
         )
         assertEquals(
             "deepseek",
-            ModelFilenameParser.parse("model.litertlm", "litert-community/DeepSeek-R1-Distill-Qwen-1.5B")?.modelFamily
+            ModelFilenameParser.parse(
+                    "model.litertlm",
+                    "litert-community/DeepSeek-R1-Distill-Qwen-1.5B",
+                )
+                ?.modelFamily,
         )
     }
 
     @Test
     fun `parse default context when not specified`() {
-        val result = ModelFilenameParser.parse(
-            "Qwen3-0.6B.litertlm",
-            "litert-community/Qwen3-0.6B"
-        )
+        val result = ModelFilenameParser.parse("Qwen3-0.6B.litertlm", "litert-community/Qwen3-0.6B")
 
         assertNotNull(result)
         // When context is not specified in filename, it should be null
@@ -164,10 +173,8 @@ class ModelFilenameParserTest {
 
     @Test
     fun `parse 1280 context length`() {
-        val result = ModelFilenameParser.parse(
-            "model_q8_ekv1280.litertlm",
-            "litert-community/Model"
-        )
+        val result =
+            ModelFilenameParser.parse("model_q8_ekv1280.litertlm", "litert-community/Model")
 
         assertNotNull(result)
         assertEquals(1280, result!!.contextLength)
