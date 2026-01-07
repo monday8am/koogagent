@@ -17,11 +17,29 @@
 		<activity
 			android:name=".MainActivity"
 			android:exported="true"
+			android:launchMode="singleTop"
 			android:theme="@style/Theme.KoogAgent">
 			<intent-filter>
 				<action android:name="android.intent.action.MAIN" />
 
 				<category android:name="android.intent.category.LAUNCHER" />
+			</intent-filter>
+		</activity>
+
+		<!-- OAuth redirect handler for HuggingFace login -->
+		<activity
+			android:name=".oauth.OAuthRedirectActivity"
+			android:exported="true"
+			android:launchMode="singleTask"
+			android:theme="@android:style/Theme.Translucent.NoTitleBar">
+			<intent-filter>
+				<action android:name="android.intent.action.VIEW" />
+				<category android:name="android.intent.category.DEFAULT" />
+				<category android:name="android.intent.category.BROWSABLE" />
+				<data
+					android:scheme="koogagent"
+					android:host="oauth"
+					android:path="/callback" />
 			</intent-filter>
 		</activity>
 		<uses-native-library android:name="libvndksupport.so" android:required="false"/>

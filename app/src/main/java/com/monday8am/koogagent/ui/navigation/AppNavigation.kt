@@ -1,5 +1,6 @@
 package com.monday8am.koogagent.ui.navigation
 
+import android.content.Intent
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
@@ -12,7 +13,12 @@ import com.monday8am.koogagent.ui.screens.notification.NotificationScreen
 import com.monday8am.koogagent.ui.screens.testing.TestScreen
 
 @Composable
-fun AppNavigation(modifier: Modifier = Modifier, navController: NavHostController = rememberNavController()) {
+fun AppNavigation(
+    modifier: Modifier = Modifier,
+    navController: NavHostController = rememberNavController(),
+    oAuthResultIntent: Intent? = null,
+    onOAuthResultConsumed: () -> Unit = {},
+) {
     NavHost(
         navController = navController,
         startDestination = Route.ModelSelector,
@@ -26,6 +32,8 @@ fun AppNavigation(modifier: Modifier = Modifier, navController: NavHostControlle
                 onNavigateToTesting = { modelId ->
                     navController.navigate(Route.Testing(modelId))
                 },
+                oAuthResultIntent = oAuthResultIntent,
+                onOAuthResultConsumed = onOAuthResultConsumed,
             )
         }
         composable<Route.Notification> { backStackEntry ->

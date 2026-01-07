@@ -27,6 +27,8 @@ compose-lint = "1.4.2"
 firebase-bom = "34.7.0"
 google-services = "4.4.4"
 firebase-crashlytics-plugin = "3.0.6"
+appauth = "0.11.1"
+browser = "1.9.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -63,6 +65,8 @@ androidx-security-crypto = { group = "androidx.security", name = "security-crypt
 compose-lint-checks = { group = "com.slack.lint.compose", name = "compose-lint-checks", version.ref = "compose-lint" }
 firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebase-bom" }
 firebase-crashlytics = { group = "com.google.firebase", name = "firebase-crashlytics" }
+appauth = { group = "net.openid", name = "appauth", version.ref = "appauth" }
+androidx-browser = { group = "androidx.browser", name = "browser", version.ref = "browser" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

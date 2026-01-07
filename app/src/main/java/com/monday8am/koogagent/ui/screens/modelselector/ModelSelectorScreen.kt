@@ -1,5 +1,7 @@
 package com.monday8am.koogagent.ui.screens.modelselector
 
+import android.content.Intent
+import android.widget.Toast
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,8 +13,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -28,6 +32,7 @@ import com.monday8am.presentation.modelselector.ModelSelectorViewModelImpl
 import com.monday8am.presentation.modelselector.UiAction
 import com.monday8am.presentation.modelselector.UiState
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.launch
 
 /**
  * Model Selector Screen - Entry point for model selection.
@@ -36,6 +41,8 @@ import kotlinx.collections.immutable.toImmutableList
 fun ModelSelectorScreen(
     onNavigateToNotification: (String) -> Unit,
     onNavigateToTesting: (String) -> Unit,
+    oAuthResultIntent: Intent? = null,
+    onOAuthResultConsumed: () -> Unit = {},
     viewModel: AndroidModelSelectorViewModel = viewModel {
         AndroidModelSelectorViewModel(
             ModelSelectorViewModelImpl(
@@ -46,10 +53,37 @@ fun ModelSelectorScreen(
         )
     }
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val oAuthManager = remember { Dependencies.oAuthManager }
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var selectedModelId by remember { mutableStateOf<String?>(null) }
-    var showAuthDialog: Boolean by remember { mutableStateOf(false) }
+    var showLogoutDialog by remember { mutableStateOf(false) }
+    var isAuthenticating by remember { mutableStateOf(false) }
+
+    // Handle OAuth result when received
+    LaunchedEffect(oAuthResultIntent) {
+        oAuthResultIntent?.let { intent ->
+            scope.launch {
+                isAuthenticating = true
+                try {
+                    val token = oAuthManager.handleAuthorizationResponse(intent)
+                    viewModel.onUiAction(UiAction.SubmitToken(token))
+                    Toast.makeText(context, "Logged in to HuggingFace", Toast.LENGTH_SHORT).show()
+                } catch (e: Exception) {
+                    Toast.makeText(
+                        context,
+                        "Login failed: ${e.message}",
+                        Toast.LENGTH_LONG
+                    ).show()
+                } finally {
+                    isAuthenticating = false
+                    onOAuthResultConsumed()
+                }
+            }
+        }
+    }
 
     LaunchedEffect(uiState.models) {
         if (selectedModelId != null && uiState.models.none { it.config.modelId == selectedModelId }) {
@@ -57,7 +91,14 @@ fun ModelSelectorScreen(
         }
     }
 
+    // Function to launch OAuth flow
+    val launchOAuth: () -> Unit = {
+        val authIntent = oAuthManager.createAuthorizationIntent()
+        context.startActivity(authIntent)
+    }
+
     val displayStatusMessage = when {
+        isAuthenticating -> "Verifying login with Hugging Face..."
         uiState.isLoadingCatalog -> "Loading models from Hugging Face..."
         uiState.currentDownload != null -> "Downloading: ${uiState.currentDownload?.modelId?.take(20)}..."
         selectedModelId != null -> {
@@ -75,15 +116,16 @@ fun ModelSelectorScreen(
         modifier = Modifier,
         onIntent = viewModel::onUiAction,
         onSelectModel = { selectedModelId = it },
-        onShowDialog = { showAuthDialog = true },
+        onLoginClick = launchOAuth,
+        onLogoutClick = { showLogoutDialog = true },
         onNavigateToNotification = onNavigateToNotification,
         onNavigateToTesting = onNavigateToTesting,
     )
 
-    if (showAuthDialog) {
-        AuthDialog(
-            onDismiss = { showAuthDialog = false },
-            onSubmit = { token -> viewModel.onUiAction(UiAction.SubmitToken(token)) }
+    if (showLogoutDialog) {
+        LogoutConfirmationDialog(
+            onDismiss = { showLogoutDialog = false },
+            onConfirm = { viewModel.onUiAction(UiAction.Logout) }
         )
     }
 }
@@ -96,7 +138,8 @@ private fun ModelSelectorScreenContent(
     modifier: Modifier = Modifier,
     onIntent: (UiAction) -> Unit = {},
     onSelectModel: (String) -> Unit = {},
-    onShowDialog: () -> Unit = {},
+    onLoginClick: () -> Unit = {},
+    onLogoutClick: () -> Unit = {},
     onNavigateToNotification: (String) -> Unit = {},
     onNavigateToTesting: (String) -> Unit = {},
 ) {
@@ -110,7 +153,10 @@ private fun ModelSelectorScreenContent(
             statusMessage = statusMessage,
             groupingMode = uiState.groupingMode,
             isAllExpanded = uiState.isAllExpanded,
+            isLoggedIn = uiState.isLoggedIn,
             onIntent = onIntent,
+            onLoginClick = onLoginClick,
+            onLogoutClick = onLogoutClick,
             modifier = Modifier.fillMaxWidth(),
         )
 
@@ -136,7 +182,8 @@ private fun ModelSelectorScreenContent(
                     if (action is UiAction.DownloadModel) {
                         val model = uiState.models.find { it.config.modelId == action.modelId }
                         if (model?.isGated == true && !uiState.isLoggedIn) {
-                            onShowDialog()
+                            // Trigger OAuth login for gated models
+                            onLoginClick()
                         } else {
                             onSelectModel(action.modelId)
                             onIntent(action)
@@ -153,9 +200,7 @@ private fun ModelSelectorScreenContent(
         ToolBar(
             models = uiState.models,
             selectedModelId = selectedModelId,
-            isLoggedIn = uiState.isLoggedIn,
             onAction = onIntent,
-            onShowAuthDialog = onShowDialog,
             onNavigateToTesting = onNavigateToTesting,
             onNavigateToNotification = onNavigateToNotification,
         )

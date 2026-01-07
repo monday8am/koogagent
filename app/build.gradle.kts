@@ -33,6 +33,15 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // HuggingFace OAuth client ID from local.properties or environment variable
+        val hfClientId = project.findProperty("HF_CLIENT_ID")?.toString()
+            ?: System.getenv("HF_CLIENT_ID")
+            ?: ""
+        buildConfigField("String", "HF_CLIENT_ID", "\"$hfClientId\"")
+
+        // AppAuth redirect scheme placeholder
+        manifestPlaceholders["appAuthRedirectScheme"] = "koogagent"
     }
 
     signingConfigs {
@@ -73,6 +82,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     lint {
@@ -113,6 +123,10 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.collections.immutable)
     implementation(libs.androidx.security.crypto)
+
+    // OAuth
+    implementation(libs.appauth)
+    implementation(libs.androidx.browser)
 
     implementation(libs.litertlm.android)
     implementation(libs.mediapipe.tasks.genai)

@@ -18,6 +18,7 @@ import com.monday8am.koogagent.download.ModelDownloadManagerImpl
 import com.monday8am.koogagent.inference.litertlm.LiteRTLmTools
 import com.monday8am.koogagent.inference.litertlm.NativeLocationTools
 import com.monday8am.koogagent.inference.mediapipe.MediaPipeTools
+import com.monday8am.koogagent.oauth.HuggingFaceOAuthManager
 import com.monday8am.koogagent.ui.DeviceContextProviderImpl
 import com.monday8am.koogagent.ui.NotificationEngineImpl
 import com.monday8am.presentation.modelselector.ModelDownloadManager
@@ -53,6 +54,13 @@ object Dependencies {
 
     val authRepository: AuthRepository by lazy {
         AuthRepositoryImpl(appContext)
+    }
+
+    val oAuthManager: HuggingFaceOAuthManager by lazy {
+        HuggingFaceOAuthManager(
+            context = appContext,
+            clientId = BuildConfig.HF_CLIENT_ID,
+        )
     }
 
     val modelCatalogProvider: ModelCatalogProvider by lazy {

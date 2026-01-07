@@ -9,8 +9,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.PersonOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -32,9 +30,7 @@ import kotlinx.collections.immutable.toImmutableList
 internal fun ToolBar(
     models: ImmutableList<ModelInfo>,
     selectedModelId: String?,
-    isLoggedIn: Boolean,
     onAction: (UiAction) -> Unit,
-    onShowAuthDialog: () -> Unit,
     onNavigateToTesting: (String) -> Unit,
     onNavigateToNotification: (String) -> Unit,
     modifier: Modifier = Modifier
@@ -48,31 +44,7 @@ internal fun ToolBar(
             .padding(top = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Button(
-            onClick = {
-                if (isLoggedIn) {
-                    onAction(UiAction.Logout)
-                } else {
-                    onShowAuthDialog()
-                }
-            },
-            colors = if (isLoggedIn) {
-                ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                )
-            } else {
-                ButtonDefaults.buttonColors()
-            }
-        ) {
-            Icon(
-                imageVector = if (isLoggedIn) Icons.Default.Person else Icons.Default.PersonOff,
-                contentDescription = if (isLoggedIn) "Logout" else "Login",
-                modifier = iconSizeModifier,
-            )
-        }
-
-        // Delete button - visible only when downloaded model is selected
+        // Delete/Cancel button - visible only when downloaded model is selected
         val downloadStatus =
             models.find { it.config.modelId == selectedModelId }?.downloadStatus ?: DownloadStatus.NotStarted
 
@@ -163,9 +135,7 @@ private fun ToolBarPreview_NotDownloaded() {
                 ),
             ).toImmutableList(),
             selectedModelId = ModelCatalog.QWEN3_0_6B.modelId,
-            isLoggedIn = false,
             onAction = {},
-            onShowAuthDialog = {},
             onNavigateToTesting = {},
             onNavigateToNotification = {},
         )
@@ -186,9 +156,7 @@ private fun ToolBarPreview_DownloadedSelected() {
                 ),
             ).toImmutableList(),
             selectedModelId = ModelCatalog.HAMMER2_1_0_5B.modelId,
-            isLoggedIn = true,
             onAction = {},
-            onShowAuthDialog = {},
             onNavigateToTesting = {},
             onNavigateToNotification = {},
         )
@@ -209,9 +177,7 @@ private fun ToolBarPreview_Downloading() {
                 ),
             ).toImmutableList(),
             selectedModelId = ModelCatalog.GEMMA3_1B.modelId,
-            isLoggedIn = true,
             onAction = {},
-            onShowAuthDialog = {},
             onNavigateToTesting = {},
             onNavigateToNotification = {},
         )
