@@ -34,7 +34,7 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // HuggingFace OAuth client ID from local.properties or environment variable
+        // HuggingFace OAuth client ID from gradle.properties or environment variable
         val hfClientId = project.findProperty("HF_CLIENT_ID")?.toString()
             ?: System.getenv("HF_CLIENT_ID")
             ?: ""
