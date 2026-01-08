@@ -82,6 +82,13 @@ jobs:
       - name: Set up HuggingFace OAuth
         run: echo "HF_CLIENT_ID=${{ secrets.HF_CLIENT_ID }}" >> $GITHUB_ENV
 
+      - name: Update version in build.gradle.kts
+        run: |
+          sed -i "s/versionCode = [0-9]\+/versionCode = ${{ inputs.version_code }}/" app/build.gradle.kts
+          sed -i "s/versionName = \"[^\"]*\"/versionName = \"${{ inputs.version_name }}\"/" app/build.gradle.kts
+          echo "Updated version to code=${{ inputs.version_code }}, name=${{ inputs.version_name }}"
+          grep -E "versionCode|versionName" app/build.gradle.kts
+
       - name: Run tests
         run: ./gradlew test
 
