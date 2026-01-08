@@ -12,59 +12,85 @@ import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme =
     darkColorScheme(
-        primary = SolarizedBlue,
-        secondary = SolarizedCyan,
-        tertiary = SolarizedOrange,
-        error = SolarizedRed,
-        background = SolarizedBase03,
-        surface = SolarizedBase03,
-        onPrimary = SolarizedBase3,
-        onSecondary = SolarizedBase3,
-        onTertiary = SolarizedBase3,
-        onError = SolarizedBase3,
-        onBackground = SolarizedBase0,
-        onSurface = SolarizedBase0,
-        surfaceVariant = SolarizedBase02,
-        onSurfaceVariant = SolarizedBase1,
-        primaryContainer = SolarizedBlue.copy(alpha = 0.2f),
-        onPrimaryContainer = SolarizedBlue,
-        secondaryContainer = SolarizedCyan.copy(alpha = 0.2f),
-        onSecondaryContainer = SolarizedCyan,
-        tertiaryContainer = SolarizedOrange.copy(alpha = 0.2f),
-        onTertiaryContainer = SolarizedOrange,
-        errorContainer = SolarizedRed.copy(alpha = 0.2f),
-        onErrorContainer = SolarizedRed,
+        // Primary brand color (Purple)
+        primary = BrandPurple,
+        onPrimary = Color.White,
+        primaryContainer = DarkThinkingContainer,
+        onPrimaryContainer = DarkThinkingOnContainer,
+
+        // Secondary color (Blue for tools)
+        secondary = DarkToolBorder,
+        onSecondary = Color.White,
+        secondaryContainer = DarkToolContainer,
+        onSecondaryContainer = DarkToolOnContainer,
+
+        // Tertiary color (Green for success)
+        tertiary = DarkSuccessBorder,
+        onTertiary = Color.White,
+        tertiaryContainer = DarkSuccessContainer,
+        onTertiaryContainer = DarkSuccessOnContainer,
+
+        // Error colors
+        error = DarkErrorBorder,
+        onError = Color.White,
+        errorContainer = DarkErrorContainer,
+        onErrorContainer = DarkErrorOnContainer,
+
+        // Background and surface
+        background = DarkBackground,
+        onBackground = DarkOnBackground,
+        surface = DarkSurface,
+        onSurface = DarkOnSurface,
+        surfaceVariant = DarkSurfaceVariant,
+        onSurfaceVariant = DarkOnSurface,
+
+        // Outline
+        outline = DarkOutline,
+        outlineVariant = DarkOutline.copy(alpha = 0.5f),
     )
 
 private val LightColorScheme =
     lightColorScheme(
-        primary = SolarizedBlue,
-        secondary = SolarizedCyan,
-        tertiary = SolarizedOrange,
-        error = SolarizedRed,
-        background = SolarizedBase3,
-        surface = SolarizedBase3,
-        onPrimary = SolarizedBase3,
-        onSecondary = SolarizedBase3,
-        onTertiary = SolarizedBase3,
-        onError = SolarizedBase3,
-        onBackground = SolarizedBase00,
-        onSurface = SolarizedBase00,
-        surfaceVariant = SolarizedBase2,
-        onSurfaceVariant = SolarizedBase01,
-        primaryContainer = SolarizedBlue.copy(alpha = 0.15f),
-        onPrimaryContainer = SolarizedBlue,
-        secondaryContainer = SolarizedCyan.copy(alpha = 0.15f),
-        onSecondaryContainer = SolarizedCyan,
-        tertiaryContainer = SolarizedOrange.copy(alpha = 0.15f),
-        onTertiaryContainer = SolarizedOrange,
-        errorContainer = SolarizedRed.copy(alpha = 0.15f),
-        onErrorContainer = SolarizedRed,
+        // Primary brand color (Purple)
+        primary = BrandPurple,
+        onPrimary = Color.White,
+        primaryContainer = LightThinkingContainer,
+        onPrimaryContainer = LightThinkingOnContainer,
+
+        // Secondary color (Blue for tools)
+        secondary = LightToolBorder,
+        onSecondary = Color.White,
+        secondaryContainer = LightToolContainer,
+        onSecondaryContainer = LightToolOnContainer,
+
+        // Tertiary color (Green for success)
+        tertiary = LightSuccessBorder,
+        onTertiary = Color.White,
+        tertiaryContainer = LightSuccessContainer,
+        onTertiaryContainer = LightSuccessOnContainer,
+
+        // Error colors
+        error = LightErrorBorder,
+        onError = Color.White,
+        errorContainer = LightErrorContainer,
+        onErrorContainer = LightErrorOnContainer,
+
+        // Background and surface
+        background = LightBackground,
+        onBackground = LightOnBackground,
+        surface = LightSurface,
+        onSurface = LightOnSurface,
+        surfaceVariant = LightSurfaceVariant,
+        onSurfaceVariant = LightOnSurface,
+
+        // Outline
+        outline = LightOutline,
+        outlineVariant = LightOutline.copy(alpha = 0.5f),
     )
 
 @Composable
 fun KoogAgentTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    darkTheme: Boolean = true,
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit,
 ) {
