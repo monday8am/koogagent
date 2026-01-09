@@ -28,6 +28,7 @@ google-services = "4.4.4"
 firebase-crashlytics-plugin = "3.0.6"
 appauth = "0.11.1"
 browser = "1.9.0"
+uiTextGoogleFonts = "1.10.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -66,6 +67,7 @@ firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.r
 firebase-crashlytics = { group = "com.google.firebase", name = "firebase-crashlytics" }
 appauth = { group = "net.openid", name = "appauth", version.ref = "appauth" }
 androidx-browser = { group = "androidx.browser", name = "browser", version.ref = "browser" }
+androidx-compose-ui-text-google-fonts = { group = "androidx.compose.ui", name = "ui-text-google-fonts", version.ref = "uiTextGoogleFonts" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

@@ -1,92 +1,88 @@
 package com.monday8am.koogagent.ui.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
-private val DarkColorScheme =
-    darkColorScheme(
-        // Primary brand color (Purple)
-        primary = BrandPurple,
-        onPrimary = Color.White,
-        primaryContainer = DarkThinkingContainer,
-        onPrimaryContainer = DarkThinkingOnContainer,
+private val LightColorScheme = lightColorScheme(
+    primary = primaryLight,
+    onPrimary = onPrimaryLight,
+    primaryContainer = primaryContainerLight,
+    onPrimaryContainer = onPrimaryContainerLight,
+    secondary = secondaryLight,
+    onSecondary = onSecondaryLight,
+    secondaryContainer = secondaryContainerLight,
+    onSecondaryContainer = onSecondaryContainerLight,
+    tertiary = tertiaryLight,
+    onTertiary = onTertiaryLight,
+    tertiaryContainer = tertiaryContainerLight,
+    onTertiaryContainer = onTertiaryContainerLight,
+    error = errorLight,
+    onError = onErrorLight,
+    errorContainer = errorContainerLight,
+    onErrorContainer = onErrorContainerLight,
+    background = backgroundLight,
+    onBackground = onBackgroundLight,
+    surface = surfaceLight,
+    onSurface = onSurfaceLight,
+    surfaceVariant = surfaceVariantLight,
+    onSurfaceVariant = onSurfaceVariantLight,
+    outline = outlineLight,
+    outlineVariant = outlineVariantLight,
+    scrim = scrimLight,
+    inverseSurface = inverseSurfaceLight,
+    inverseOnSurface = inverseOnSurfaceLight,
+    inversePrimary = inversePrimaryLight,
+    surfaceDim = surfaceDimLight,
+    surfaceBright = surfaceBrightLight,
+    surfaceContainerLowest = surfaceContainerLowestLight,
+    surfaceContainerLow = surfaceContainerLowLight,
+    surfaceContainer = surfaceContainerLight,
+    surfaceContainerHigh = surfaceContainerHighLight,
+    surfaceContainerHighest = surfaceContainerHighestLight,
+)
 
-        // Secondary color (Blue for tools)
-        secondary = DarkToolBorder,
-        onSecondary = Color.White,
-        secondaryContainer = DarkToolContainer,
-        onSecondaryContainer = DarkToolOnContainer,
-
-        // Tertiary color (Green for success)
-        tertiary = DarkSuccessBorder,
-        onTertiary = Color.White,
-        tertiaryContainer = DarkSuccessContainer,
-        onTertiaryContainer = DarkSuccessOnContainer,
-
-        // Error colors
-        error = DarkErrorBorder,
-        onError = Color.White,
-        errorContainer = DarkErrorContainer,
-        onErrorContainer = DarkErrorOnContainer,
-
-        // Background and surface
-        background = DarkBackground,
-        onBackground = DarkOnBackground,
-        surface = DarkSurface,
-        onSurface = DarkOnSurface,
-        surfaceVariant = DarkSurfaceVariant,
-        onSurfaceVariant = DarkOnSurface,
-
-        // Outline
-        outline = DarkOutline,
-        outlineVariant = DarkOutline.copy(alpha = 0.5f),
-    )
-
-private val LightColorScheme =
-    lightColorScheme(
-        // Primary brand color (Purple)
-        primary = BrandPurple,
-        onPrimary = Color.White,
-        primaryContainer = LightThinkingContainer,
-        onPrimaryContainer = LightThinkingOnContainer,
-
-        // Secondary color (Blue for tools)
-        secondary = LightToolBorder,
-        onSecondary = Color.White,
-        secondaryContainer = LightToolContainer,
-        onSecondaryContainer = LightToolOnContainer,
-
-        // Tertiary color (Green for success)
-        tertiary = LightSuccessBorder,
-        onTertiary = Color.White,
-        tertiaryContainer = LightSuccessContainer,
-        onTertiaryContainer = LightSuccessOnContainer,
-
-        // Error colors
-        error = LightErrorBorder,
-        onError = Color.White,
-        errorContainer = LightErrorContainer,
-        onErrorContainer = LightErrorOnContainer,
-
-        // Background and surface
-        background = LightBackground,
-        onBackground = LightOnBackground,
-        surface = LightSurface,
-        onSurface = LightOnSurface,
-        surfaceVariant = LightSurfaceVariant,
-        onSurfaceVariant = LightOnSurface,
-
-        // Outline
-        outline = LightOutline,
-        outlineVariant = LightOutline.copy(alpha = 0.5f),
-    )
+private val DarkColorScheme = darkColorScheme(
+    primary = primaryDark,
+    onPrimary = onPrimaryDark,
+    primaryContainer = primaryContainerDark,
+    onPrimaryContainer = onPrimaryContainerDark,
+    secondary = secondaryDark,
+    onSecondary = onSecondaryDark,
+    secondaryContainer = secondaryContainerDark,
+    onSecondaryContainer = onSecondaryContainerDark,
+    tertiary = tertiaryDark,
+    onTertiary = onTertiaryDark,
+    tertiaryContainer = tertiaryContainerDark,
+    onTertiaryContainer = onTertiaryContainerDark,
+    error = errorDark,
+    onError = onErrorDark,
+    errorContainer = errorContainerDark,
+    onErrorContainer = onErrorContainerDark,
+    background = backgroundDark,
+    onBackground = onBackgroundDark,
+    surface = surfaceDark,
+    onSurface = onSurfaceDark,
+    surfaceVariant = surfaceVariantDark,
+    onSurfaceVariant = onSurfaceVariantDark,
+    outline = outlineDark,
+    outlineVariant = outlineVariantDark,
+    scrim = scrimDark,
+    inverseSurface = inverseSurfaceDark,
+    inverseOnSurface = inverseOnSurfaceDark,
+    inversePrimary = inversePrimaryDark,
+    surfaceDim = surfaceDimDark,
+    surfaceBright = surfaceBrightDark,
+    surfaceContainerLowest = surfaceContainerLowestDark,
+    surfaceContainerLow = surfaceContainerLowDark,
+    surfaceContainer = surfaceContainerDark,
+    surfaceContainerHigh = surfaceContainerHighDark,
+    surfaceContainerHighest = surfaceContainerHighestDark,
+)
 
 @Composable
 fun KoogAgentTheme(
@@ -112,7 +108,7 @@ fun KoogAgentTheme(
 
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = Typography,
-        content = content,
+        typography = AppTypography,
+        content = content
     )
 }

@@ -135,6 +135,7 @@ dependencies {
     // Firebase
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.crashlytics)
+    implementation(libs.androidx.compose.ui.text.google.fonts)
 
     lintChecks(libs.compose.lint.checks)
 

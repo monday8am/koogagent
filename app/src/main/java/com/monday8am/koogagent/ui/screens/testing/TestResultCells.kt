@@ -1,5 +1,6 @@
 package com.monday8am.koogagent.ui.screens.testing
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -12,29 +13,43 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.monday8am.koogagent.ui.theme.KoogAgentTheme
 import com.monday8am.presentation.testing.TestResultFrame
 import com.monday8am.presentation.testing.ValidationResult
 
 @Composable
 internal fun DescriptionCell(frame: TestResultFrame.Description) {
+    val colorScheme = MaterialTheme.colorScheme
+    // Description: surfaceVariant
+    val container = colorScheme.surfaceVariant
+    val onContainer = colorScheme.onSurfaceVariant
+    val border = colorScheme.outlineVariant
+
     Card(
+        colors = CardDefaults.cardColors(
+            containerColor = container,
+            contentColor = onContainer
+        ),
+        border = BorderStroke(1.dp, border),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
                 text = "${frame.testName} • Description",
                 style = MaterialTheme.typography.titleSmall,
+                color = border,
             )
             if (frame.description.isNotEmpty()) {
                 Text(
                     text = frame.description,
                     style = MaterialTheme.typography.bodyMedium,
+                    color = onContainer,
                 )
             }
             Text(
                 text = "System Prompt: ${frame.systemPrompt}",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = onContainer.copy(alpha = 0.7f),
             )
         }
     }
@@ -42,7 +57,19 @@ internal fun DescriptionCell(frame: TestResultFrame.Description) {
 
 @Composable
 internal fun QueryCell(frame: TestResultFrame.Query) {
+    val colorScheme = MaterialTheme.colorScheme
+    // Query: surface
+    val container = colorScheme.surface
+    val onContainer = colorScheme.onSurface
+    val border = colorScheme.primary
+    val text = colorScheme.onSurface
+
     Card(
+        colors = CardDefaults.cardColors(
+            containerColor = container,
+            contentColor = onContainer
+        ),
+        border = BorderStroke(1.dp, border),
         modifier = Modifier
             .fillMaxWidth()
             .padding(start = 24.dp),
@@ -51,11 +78,12 @@ internal fun QueryCell(frame: TestResultFrame.Query) {
             Text(
                 text = "User • Query",
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.primary,
+                color = border,
             )
             Text(
                 text = frame.query,
                 style = MaterialTheme.typography.bodyMedium,
+                color = text,
             )
         }
     }
@@ -63,19 +91,30 @@ internal fun QueryCell(frame: TestResultFrame.Query) {
 
 @Composable
 internal fun ThinkingCell(frame: TestResultFrame.Thinking) {
+    val colorScheme = MaterialTheme.colorScheme
+    // Thinking: primaryContainer
+    val container = colorScheme.primaryContainer
+    val onContainer = colorScheme.onPrimaryContainer
+    val border = colorScheme.primary
+
     Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        colors = CardDefaults.cardColors(
+            containerColor = container,
+            contentColor = onContainer
+        ),
+        border = BorderStroke(1.dp, border),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Column(modifier = Modifier.padding(8.dp)) {
+        Column(modifier = Modifier.padding(12.dp)) {
             Text(
                 text = "${frame.testName} • Thinking",
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                color = border,
             )
             Text(
                 text = frame.accumulator,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyMedium,
+                color = onContainer,
             )
         }
     }
@@ -83,19 +122,30 @@ internal fun ThinkingCell(frame: TestResultFrame.Thinking) {
 
 @Composable
 internal fun ToolCell(frame: TestResultFrame.Tool) {
+    val colorScheme = MaterialTheme.colorScheme
+    // Tool: secondaryContainer
+    val container = colorScheme.secondaryContainer
+    val onContainer = colorScheme.onSecondaryContainer
+    val border = colorScheme.secondary
+
     Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+        colors = CardDefaults.cardColors(
+            containerColor = container,
+            contentColor = onContainer
+        ),
+        border = BorderStroke(1.dp, border),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Column(modifier = Modifier.padding(8.dp)) {
+        Column(modifier = Modifier.padding(12.dp)) {
             Text(
                 text = "${frame.testName} • Tool Call",
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f),
+                color = border,
             )
             Text(
                 text = frame.accumulator,
-                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                style = MaterialTheme.typography.bodyMedium,
+                color = onContainer,
             )
         }
     }
@@ -103,19 +153,30 @@ internal fun ToolCell(frame: TestResultFrame.Tool) {
 
 @Composable
 internal fun ContentCell(frame: TestResultFrame.Content) {
+    val colorScheme = MaterialTheme.colorScheme
+    // Success/Content: tertiaryContainer
+    val container = colorScheme.tertiaryContainer
+    val onContainer = colorScheme.onTertiaryContainer
+    val border = colorScheme.tertiary
+
     Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
+        colors = CardDefaults.cardColors(
+            containerColor = container,
+            contentColor = onContainer
+        ),
+        border = BorderStroke(1.dp, border),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Column(modifier = Modifier.padding(8.dp)) {
+        Column(modifier = Modifier.padding(12.dp)) {
             Text(
                 text = "${frame.testName} • Response",
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f),
+                color = border,
             )
             Text(
                 text = frame.accumulator,
-                color = MaterialTheme.colorScheme.onTertiaryContainer,
+                style = MaterialTheme.typography.bodyMedium,
+                color = onContainer,
             )
         }
     }
@@ -123,95 +184,169 @@ internal fun ContentCell(frame: TestResultFrame.Content) {
 
 @Composable
 internal fun ValidationCell(frame: TestResultFrame.Validation) {
-    val (backgroundColor, textColor, message) =
-        when (val result = frame.result) {
-            is ValidationResult.Pass -> Triple(
-                MaterialTheme.colorScheme.primaryContainer,
-                MaterialTheme.colorScheme.primary,
-                result.message
-            )
+    val colorScheme = MaterialTheme.colorScheme
+    val (container, onContainer, border) = when (frame.result) {
+        is ValidationResult.Pass -> Triple(
+            colorScheme.tertiaryContainer,
+            colorScheme.onTertiaryContainer,
+            colorScheme.tertiary
+        )
 
-            is ValidationResult.Fail -> Triple(
-                MaterialTheme.colorScheme.errorContainer,
-                MaterialTheme.colorScheme.error,
-                result.message
-            )
-        }
+        is ValidationResult.Fail -> Triple(
+            colorScheme.errorContainer,
+            colorScheme.onErrorContainer,
+            colorScheme.error
+        )
+    }
+
+    val message = when (val result = frame.result) {
+        is ValidationResult.Pass -> result.message
+        is ValidationResult.Fail -> result.message
+    }
 
     Card(
-        colors = CardDefaults.cardColors(containerColor = backgroundColor),
+        colors = CardDefaults.cardColors(
+            containerColor = container,
+            contentColor = onContainer
+        ),
+        border = BorderStroke(2.dp, border),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Column(modifier = Modifier.padding(8.dp)) {
+        Column(modifier = Modifier.padding(12.dp)) {
             Text(
                 text = "${frame.testName} • Validation",
                 style = MaterialTheme.typography.titleSmall,
-                color = textColor,
+                color = border,
             )
             Text(
                 text = "$message (${frame.duration}ms)",
-                color = textColor,
+                style = MaterialTheme.typography.bodyMedium,
+                color = onContainer,
             )
         }
     }
 }
 
-@Preview
+@Preview(name = "Light Mode", showBackground = true)
 @Composable
-private fun ComponentsPreview() {
-    Column(
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.padding(16.dp)
-    ) {
-        DescriptionCell(
-            TestResultFrame.Description(
-                testName = "Test 01",
-                description = "This is a description",
-                systemPrompt = "This is a system prompt"
+private fun ComponentsPreviewLight() {
+    KoogAgentTheme(darkTheme = false) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(16.dp)
+        ) {
+            DescriptionCell(
+                TestResultFrame.Description(
+                    testName = "Test 01",
+                    description = "This is a description",
+                    systemPrompt = "This is a system prompt"
+                )
             )
-        )
-        QueryCell(
-            TestResultFrame.Query(
-                testName = "Test 01",
-                query = "This is a query"
+            QueryCell(
+                TestResultFrame.Query(
+                    testName = "Test 01",
+                    query = "This is a query"
+                )
             )
-        )
-        ThinkingCell(
-            TestResultFrame.Thinking(
-                testName = "Test 01",
-                chunk = "...",
-                accumulator = "I am thinking about the problem..."
+            ThinkingCell(
+                TestResultFrame.Thinking(
+                    testName = "Test 01",
+                    chunk = "...",
+                    accumulator = "I am thinking about the problem..."
+                )
             )
-        )
-        ToolCell(
-            TestResultFrame.Tool(
-                testName = "Test 01",
-                content = "get_weather",
-                accumulator = "Calling weather tool..."
+            ToolCell(
+                TestResultFrame.Tool(
+                    testName = "Test 01",
+                    content = "get_weather",
+                    accumulator = "Calling weather tool..."
+                )
             )
-        )
-        ContentCell(
-            TestResultFrame.Content(
-                testName = "Test 01",
-                chunk = "Hello",
-                accumulator = "Hello, world!"
+            ContentCell(
+                TestResultFrame.Content(
+                    testName = "Test 01",
+                    chunk = "Hello",
+                    accumulator = "Hello, world!"
+                )
             )
-        )
-        ValidationCell(
-            TestResultFrame.Validation(
-                testName = "Test 01",
-                result = ValidationResult.Pass("Test Passed"),
-                duration = 123L,
-                fullContent = "Complete"
+            ValidationCell(
+                TestResultFrame.Validation(
+                    testName = "Test 01",
+                    result = ValidationResult.Pass("Test Passed"),
+                    duration = 123L,
+                    fullContent = "Complete"
+                )
             )
-        )
-        ValidationCell(
-            TestResultFrame.Validation(
-                testName = "Test 01",
-                result = ValidationResult.Fail("Test Failed", "Error details"),
-                duration = 456L,
-                fullContent = "Failed content"
+            ValidationCell(
+                TestResultFrame.Validation(
+                    testName = "Test 01",
+                    result = ValidationResult.Fail("Test Failed", "Error details"),
+                    duration = 456L,
+                    fullContent = "Failed content"
+                )
             )
-        )
+        }
+    }
+}
+
+@Preview(name = "Dark Mode", showBackground = true)
+@Composable
+private fun ComponentsPreviewDark() {
+    KoogAgentTheme(darkTheme = true) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(16.dp)
+        ) {
+            DescriptionCell(
+                TestResultFrame.Description(
+                    testName = "Test 01",
+                    description = "This is a description",
+                    systemPrompt = "This is a system prompt"
+                )
+            )
+            QueryCell(
+                TestResultFrame.Query(
+                    testName = "Test 01",
+                    query = "This is a query"
+                )
+            )
+            ThinkingCell(
+                TestResultFrame.Thinking(
+                    testName = "Test 01",
+                    chunk = "...",
+                    accumulator = "I am thinking about the problem..."
+                )
+            )
+            ToolCell(
+                TestResultFrame.Tool(
+                    testName = "Test 01",
+                    content = "get_weather",
+                    accumulator = "Calling weather tool..."
+                )
+            )
+            ContentCell(
+                TestResultFrame.Content(
+                    testName = "Test 01",
+                    chunk = "Hello",
+                    accumulator = "Hello, world!"
+                )
+            )
+            ValidationCell(
+                TestResultFrame.Validation(
+                    testName = "Test 01",
+                    result = ValidationResult.Pass("Test Passed"),
+                    duration = 123L,
+                    fullContent = "Complete"
+                )
+            )
+            ValidationCell(
+                TestResultFrame.Validation(
+                    testName = "Test 01",
+                    result = ValidationResult.Fail("Test Failed", "Error details"),
+                    duration = 456L,
+                    fullContent = "Failed content"
+                )
+            )
+        }
     }
 }

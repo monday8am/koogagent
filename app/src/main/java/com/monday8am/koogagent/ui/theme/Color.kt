@@ -2,90 +2,81 @@ package com.monday8am.koogagent.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// ============================================
-// High Contrast Material3 Color Palette
-// ============================================
+val primaryLight = Color(0xFF545A92)
+val onPrimaryLight = Color(0xFFFFFFFF)
+val primaryContainerLight = Color(0xFFE0E0FF)
+val onPrimaryContainerLight = Color(0xFF3D4279)
+val secondaryLight = Color(0xFF5C5D72)
+val onSecondaryLight = Color(0xFFFFFFFF)
+val secondaryContainerLight = Color(0xFFE1E0F9)
+val onSecondaryContainerLight = Color(0xFF444559)
+val tertiaryLight = Color(0xFF78536B)
+val onTertiaryLight = Color(0xFFFFFFFF)
+val tertiaryContainerLight = Color(0xFFFFD7EE)
+val onTertiaryContainerLight = Color(0xFF5E3C53)
+val errorLight = Color(0xFFBA1A1A)
+val onErrorLight = Color(0xFFFFFFFF)
+val errorContainerLight = Color(0xFFFFDAD6)
+val onErrorContainerLight = Color(0xFF93000A)
+val backgroundLight = Color(0xFFFBF8FF)
+val onBackgroundLight = Color(0xFF1B1B21)
+val surfaceLight = Color(0xFFFBF8FF)
+val onSurfaceLight = Color(0xFF1B1B21)
+val surfaceVariantLight = Color(0xFFE3E1EC)
+val onSurfaceVariantLight = Color(0xFF46464F)
+val outlineLight = Color(0xFF777680)
+val outlineVariantLight = Color(0xFFC7C5D0)
+val scrimLight = Color(0xFF000000)
+val inverseSurfaceLight = Color(0xFF303036)
+val inverseOnSurfaceLight = Color(0xFFF2EFF7)
+val inversePrimaryLight = Color(0xFFBDC2FF)
+val surfaceDimLight = Color(0xFFDBD9E0)
+val surfaceBrightLight = Color(0xFFFBF8FF)
+val surfaceContainerLowestLight = Color(0xFFFFFFFF)
+val surfaceContainerLowLight = Color(0xFFF5F2FA)
+val surfaceContainerLight = Color(0xFFEFEDF4)
+val surfaceContainerHighLight = Color(0xFFEAE7EF)
+val surfaceContainerHighestLight = Color(0xFFE4E1E9)
 
-// Primary Brand Colors
-val BrandPurple = Color(0xFF7C4DFF)
-val BrandPurpleLight = Color(0xFFB47CFF)
-val BrandPurpleDark = Color(0xFF5E35B1)
+val primaryDark = Color(0xFFBDC2FF)
+val onPrimaryDark = Color(0xFF262B61)
+val primaryContainerDark = Color(0xFF3D4279)
+val onPrimaryContainerDark = Color(0xFFE0E0FF)
+val secondaryDark = Color(0xFFC5C4DD)
+val onSecondaryDark = Color(0xFF2D2F42)
+val secondaryContainerDark = Color(0xFF444559)
+val onSecondaryContainerDark = Color(0xFFE1E0F9)
+val tertiaryDark = Color(0xFFE7B9D5)
+val onTertiaryDark = Color(0xFF45263C)
+val tertiaryContainerDark = Color(0xFF5E3C53)
+val onTertiaryContainerDark = Color(0xFFFFD7EE)
+val errorDark = Color(0xFFFFB4AB)
+val onErrorDark = Color(0xFF690005)
+val errorContainerDark = Color(0xFF93000A)
+val onErrorContainerDark = Color(0xFFFFDAD6)
+val backgroundDark = Color(0xFF131318)
+val onBackgroundDark = Color(0xFFE4E1E9)
+val surfaceDark = Color(0xFF131318)
+val onSurfaceDark = Color(0xFFE4E1E9)
+val surfaceVariantDark = Color(0xFF46464F)
+val onSurfaceVariantDark = Color(0xFFC7C5D0)
+val outlineDark = Color(0xFF91909A)
+val outlineVariantDark = Color(0xFF46464F)
+val scrimDark = Color(0xFF000000)
+val inverseSurfaceDark = Color(0xFFE4E1E9)
+val inverseOnSurfaceDark = Color(0xFF303036)
+val inversePrimaryDark = Color(0xFF545A92)
+val surfaceDimDark = Color(0xFF131318)
+val surfaceBrightDark = Color(0xFF39393F)
+val surfaceContainerLowestDark = Color(0xFF0E0E13)
+val surfaceContainerLowDark = Color(0xFF1B1B21)
+val surfaceContainerDark = Color(0xFF1F1F25)
+val surfaceContainerHighDark = Color(0xFF2A292F)
+val surfaceContainerHighestDark = Color(0xFF34343A)
 
-// ============================================
-// DARK THEME COLORS
-// ============================================
 
-// Dark Mode - Base Colors
-val DarkBackground = Color(0xFF0D0D0D)
-val DarkSurface = Color(0xFF1A1A1A)
-val DarkSurfaceVariant = Color(0xFF242424)
-val DarkOnBackground = Color(0xFFE8E8E8)
-val DarkOnSurface = Color(0xFFE0E0E0)
-val DarkOutline = Color(0xFF3D3D3D)
 
-// Dark Mode - Thinking Cell (Purple/Violet tones)
-val DarkThinkingContainer = Color(0xFF1A0F2E)
-val DarkThinkingOnContainer = Color(0xFFD4B3FF)
-val DarkThinkingBorder = Color(0xFF5E35B1)
-val DarkThinkingText = Color(0xFFC5A8FF)
 
-// Dark Mode - Tool Cell (Blue/Cyan tones)
-val DarkToolContainer = Color(0xFF0A1929)
-val DarkToolOnContainer = Color(0xFF90CAF9)
-val DarkToolBorder = Color(0xFF1976D2)
-val DarkToolText = Color(0xFF64B5F6)
 
-// Dark Mode - Success Cell (Green tones)
-val DarkSuccessContainer = Color(0xFF0D2818)
-val DarkSuccessOnContainer = Color(0xFF81C784)
-val DarkSuccessBorder = Color(0xFF2E7D32)
-val DarkSuccessText = Color(0xFF66BB6A)
 
-// Dark Mode - Error/Fail Cell (Red/Pink tones)
-val DarkErrorContainer = Color(0xFF2C0D0D)
-val DarkErrorOnContainer = Color(0xFFEF5350)
-val DarkErrorBorder = Color(0xFFC62828)
-val DarkErrorText = Color(0xFFE57373)
 
-// ============================================
-// LIGHT THEME COLORS
-// ============================================
-
-// Light Mode - Base Colors
-val LightBackground = Color(0xFFFFFBFE)
-val LightSurface = Color(0xFFFFFBFE)
-val LightSurfaceVariant = Color(0xFFF3EDF7)
-val LightOnBackground = Color(0xFF1C1B1F)
-val LightOnSurface = Color(0xFF1C1B1F)
-val LightOutline = Color(0xFFCAC4D0)
-
-// Light Mode - Thinking Cell (Purple/Violet tones)
-val LightThinkingContainer = Color(0xFFF3E5FF)
-val LightThinkingOnContainer = Color(0xFF4A148C)
-val LightThinkingBorder = Color(0xFF7C4DFF)
-val LightThinkingText = Color(0xFF5E35B1)
-
-// Light Mode - Tool Cell (Blue/Cyan tones)
-val LightToolContainer = Color(0xFFE3F2FD)
-val LightToolOnContainer = Color(0xFF01579B)
-val LightToolBorder = Color(0xFF1976D2)
-val LightToolText = Color(0xFF0277BD)
-
-// Light Mode - Success Cell (Green tones)
-val LightSuccessContainer = Color(0xFFE8F5E9)
-val LightSuccessOnContainer = Color(0xFF1B5E20)
-val LightSuccessBorder = Color(0xFF388E3C)
-val LightSuccessText = Color(0xFF2E7D32)
-
-// Light Mode - Error/Fail Cell (Red/Pink tones)
-val LightErrorContainer = Color(0xFFFFEBEE)
-val LightErrorOnContainer = Color(0xFFB71C1C)
-val LightErrorBorder = Color(0xFFD32F2F)
-val LightErrorText = Color(0xFFC62828)
-
-// ============================================
-// Shared Semantic Colors
-// ============================================
-
-val Warning = Color(0xFFFFA726)
-val Info = Color(0xFF29B6F6)
