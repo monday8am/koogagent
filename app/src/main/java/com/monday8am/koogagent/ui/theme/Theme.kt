@@ -1,70 +1,94 @@
 package com.monday8am.koogagent.ui.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-
-private val DarkColorScheme =
-    darkColorScheme(
-        primary = SolarizedBlue,
-        secondary = SolarizedCyan,
-        tertiary = SolarizedOrange,
-        error = SolarizedRed,
-        background = SolarizedBase03,
-        surface = SolarizedBase03,
-        onPrimary = SolarizedBase3,
-        onSecondary = SolarizedBase3,
-        onTertiary = SolarizedBase3,
-        onError = SolarizedBase3,
-        onBackground = SolarizedBase0,
-        onSurface = SolarizedBase0,
-        surfaceVariant = SolarizedBase02,
-        onSurfaceVariant = SolarizedBase1,
-        primaryContainer = SolarizedBlue.copy(alpha = 0.2f),
-        onPrimaryContainer = SolarizedBlue,
-        secondaryContainer = SolarizedCyan.copy(alpha = 0.2f),
-        onSecondaryContainer = SolarizedCyan,
-        tertiaryContainer = SolarizedOrange.copy(alpha = 0.2f),
-        onTertiaryContainer = SolarizedOrange,
-        errorContainer = SolarizedRed.copy(alpha = 0.2f),
-        onErrorContainer = SolarizedRed,
-    )
 
 private val LightColorScheme =
     lightColorScheme(
-        primary = SolarizedBlue,
-        secondary = SolarizedCyan,
-        tertiary = SolarizedOrange,
-        error = SolarizedRed,
-        background = SolarizedBase3,
-        surface = SolarizedBase3,
-        onPrimary = SolarizedBase3,
-        onSecondary = SolarizedBase3,
-        onTertiary = SolarizedBase3,
-        onError = SolarizedBase3,
-        onBackground = SolarizedBase00,
-        onSurface = SolarizedBase00,
-        surfaceVariant = SolarizedBase2,
-        onSurfaceVariant = SolarizedBase01,
-        primaryContainer = SolarizedBlue.copy(alpha = 0.15f),
-        onPrimaryContainer = SolarizedBlue,
-        secondaryContainer = SolarizedCyan.copy(alpha = 0.15f),
-        onSecondaryContainer = SolarizedCyan,
-        tertiaryContainer = SolarizedOrange.copy(alpha = 0.15f),
-        onTertiaryContainer = SolarizedOrange,
-        errorContainer = SolarizedRed.copy(alpha = 0.15f),
-        onErrorContainer = SolarizedRed,
+        primary = primaryLight,
+        onPrimary = onPrimaryLight,
+        primaryContainer = primaryContainerLight,
+        onPrimaryContainer = onPrimaryContainerLight,
+        secondary = secondaryLight,
+        onSecondary = onSecondaryLight,
+        secondaryContainer = secondaryContainerLight,
+        onSecondaryContainer = onSecondaryContainerLight,
+        tertiary = tertiaryLight,
+        onTertiary = onTertiaryLight,
+        tertiaryContainer = tertiaryContainerLight,
+        onTertiaryContainer = onTertiaryContainerLight,
+        error = errorLight,
+        onError = onErrorLight,
+        errorContainer = errorContainerLight,
+        onErrorContainer = onErrorContainerLight,
+        background = backgroundLight,
+        onBackground = onBackgroundLight,
+        surface = surfaceLight,
+        onSurface = onSurfaceLight,
+        surfaceVariant = surfaceVariantLight,
+        onSurfaceVariant = onSurfaceVariantLight,
+        outline = outlineLight,
+        outlineVariant = outlineVariantLight,
+        scrim = scrimLight,
+        inverseSurface = inverseSurfaceLight,
+        inverseOnSurface = inverseOnSurfaceLight,
+        inversePrimary = inversePrimaryLight,
+        surfaceDim = surfaceDimLight,
+        surfaceBright = surfaceBrightLight,
+        surfaceContainerLowest = surfaceContainerLowestLight,
+        surfaceContainerLow = surfaceContainerLowLight,
+        surfaceContainer = surfaceContainerLight,
+        surfaceContainerHigh = surfaceContainerHighLight,
+        surfaceContainerHighest = surfaceContainerHighestLight,
+    )
+
+private val DarkColorScheme =
+    darkColorScheme(
+        primary = primaryDark,
+        onPrimary = onPrimaryDark,
+        primaryContainer = primaryContainerDark,
+        onPrimaryContainer = onPrimaryContainerDark,
+        secondary = secondaryDark,
+        onSecondary = onSecondaryDark,
+        secondaryContainer = secondaryContainerDark,
+        onSecondaryContainer = onSecondaryContainerDark,
+        tertiary = tertiaryDark,
+        onTertiary = onTertiaryDark,
+        tertiaryContainer = tertiaryContainerDark,
+        onTertiaryContainer = onTertiaryContainerDark,
+        error = errorDark,
+        onError = onErrorDark,
+        errorContainer = errorContainerDark,
+        onErrorContainer = onErrorContainerDark,
+        background = backgroundDark,
+        onBackground = onBackgroundDark,
+        surface = surfaceDark,
+        onSurface = onSurfaceDark,
+        surfaceVariant = surfaceVariantDark,
+        onSurfaceVariant = onSurfaceVariantDark,
+        outline = outlineDark,
+        outlineVariant = outlineVariantDark,
+        scrim = scrimDark,
+        inverseSurface = inverseSurfaceDark,
+        inverseOnSurface = inverseOnSurfaceDark,
+        inversePrimary = inversePrimaryDark,
+        surfaceDim = surfaceDimDark,
+        surfaceBright = surfaceBrightDark,
+        surfaceContainerLowest = surfaceContainerLowestDark,
+        surfaceContainerLow = surfaceContainerLowDark,
+        surfaceContainer = surfaceContainerDark,
+        surfaceContainerHigh = surfaceContainerHighDark,
+        surfaceContainerHighest = surfaceContainerHighestDark,
     )
 
 @Composable
 fun KoogAgentTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    darkTheme: Boolean = true,
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit,
 ) {
@@ -84,9 +108,5 @@ fun KoogAgentTheme(
             }
         }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        content = content,
-    )
+    MaterialTheme(colorScheme = colorScheme, typography = AppTypography, content = content)
 }

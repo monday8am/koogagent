@@ -41,44 +41,39 @@ internal fun ModelSelectorHeader(
     onIntent: (UiAction) -> Unit,
     onLoginClick: () -> Unit,
     onLogoutClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier = modifier,
-    ) {
+    Column(modifier = modifier) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 32.dp, bottom = 16.dp),
+            modifier = Modifier.fillMaxWidth().padding(top = 32.dp, bottom = 16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = "Select a Model",
-                style = MaterialTheme.typography.headlineMedium,
-            )
+            Text(text = "Select a Model", style = MaterialTheme.typography.headlineMedium)
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 // User login/logout button
-                IconButton(
-                    onClick = { if (isLoggedIn) onLogoutClick() else onLoginClick() }
-                ) {
+                IconButton(onClick = { if (isLoggedIn) onLogoutClick() else onLoginClick() }) {
                     Icon(
-                        imageVector = if (isLoggedIn) Icons.Default.Person else Icons.Default.PersonOff,
-                        contentDescription = if (isLoggedIn) "Logout from HuggingFace" else "Login to HuggingFace",
-                        tint = if (isLoggedIn)
-                            MaterialTheme.colorScheme.primary
-                        else
-                            MaterialTheme.colorScheme.onSurfaceVariant
+                        imageVector =
+                            if (isLoggedIn) Icons.Default.Person else Icons.Default.PersonOff,
+                        contentDescription =
+                            if (isLoggedIn) "Logout from HuggingFace" else "Login to HuggingFace",
+                        tint =
+                            if (isLoggedIn) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
 
                 if (groupingMode != GroupingMode.None) {
                     IconButton(onClick = { onIntent(UiAction.ToggleAllGroups) }) {
                         Icon(
-                            imageVector = if (isAllExpanded) Icons.Default.UnfoldLess else Icons.Default.UnfoldMore,
-                            contentDescription = if (isAllExpanded) "Collapse All" else "Expand All",
-                            tint = MaterialTheme.colorScheme.primary
+                            imageVector =
+                                if (isAllExpanded) Icons.Default.UnfoldLess
+                                else Icons.Default.UnfoldMore,
+                            contentDescription =
+                                if (isAllExpanded) "Collapse All" else "Expand All",
+                            tint = MaterialTheme.colorScheme.primary,
                         )
                     }
                 }
@@ -89,20 +84,17 @@ internal fun ModelSelectorHeader(
                         Icon(
                             Icons.Default.FilterList,
                             contentDescription = "Group models",
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = MaterialTheme.colorScheme.primary,
                         )
                     }
-                    DropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false }
-                    ) {
+                    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                         GroupingMode.entries.forEach { mode ->
                             DropdownMenuItem(
                                 text = { Text(mode.name) },
                                 onClick = {
                                     onIntent(UiAction.SetGroupingMode(mode))
                                     expanded = false
-                                }
+                                },
                             )
                         }
                     }
@@ -132,7 +124,7 @@ private fun ModelSelectorHeaderPreview() {
                 onIntent = {},
                 onLoginClick = {},
                 onLogoutClick = {},
-                modifier = Modifier.padding(16.dp)
+                modifier = Modifier.padding(16.dp),
             )
         }
     }

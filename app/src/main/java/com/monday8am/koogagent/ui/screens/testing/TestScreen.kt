@@ -7,11 +7,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
@@ -20,11 +22,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.foundation.layout.size
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -45,35 +46,37 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableMap
 import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.collections.immutable.toImmutableList
-import androidx.compose.runtime.saveable.rememberSaveable
 
 @Composable
 fun TestScreen(
     modelId: String,
-    viewModel: AndroidTestViewModel = viewModel(key = modelId) {
-        val selectedModel = Dependencies.modelRepository.findById(modelId) ?: ModelCatalog.DEFAULT
+    viewModel: AndroidTestViewModel =
+        viewModel(key = modelId) {
+            val selectedModel =
+                Dependencies.modelRepository.findById(modelId) ?: ModelCatalog.DEFAULT
 
-        val inferenceEngine =
-            InferenceEngineFactory.create(
-                context = Dependencies.appContext,
-                inferenceLibrary = selectedModel.inferenceLibrary,
-                liteRtTools = Dependencies.nativeTools,
-                mediaPipeTools = Dependencies.mediaPipeTools,
+            val inferenceEngine =
+                InferenceEngineFactory.create(
+                    context = Dependencies.appContext,
+                    inferenceLibrary = selectedModel.inferenceLibrary,
+                    liteRtTools = Dependencies.nativeTools,
+                    mediaPipeTools = Dependencies.mediaPipeTools,
+                )
+
+            val modelPath =
+                (Dependencies.modelDownloadManager as ModelDownloadManagerImpl).getModelPath(
+                    selectedModel.bundleFilename
+                )
+
+            AndroidTestViewModel(
+                TestViewModelImpl(
+                    initialModel = selectedModel,
+                    modelPath = modelPath,
+                    inferenceEngine = inferenceEngine,
+                ),
+                selectedModel,
             )
-
-        val modelPath =
-            (Dependencies.modelDownloadManager as ModelDownloadManagerImpl)
-                .getModelPath(selectedModel.bundleFilename)
-
-        AndroidTestViewModel(
-            TestViewModelImpl(
-                initialModel = selectedModel,
-                modelPath = modelPath,
-                inferenceEngine = inferenceEngine,
-            ),
-            selectedModel
-        )
-    }
+        },
 ) {
 
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -116,9 +119,7 @@ private fun TestContent(
     Column(
         verticalArrangement = spacedBy(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = modifier
-            .fillMaxSize()
-            .padding(16.dp),
+        modifier = modifier.fillMaxSize().padding(16.dp),
     ) {
         // 1. Top Card with Model Info
         ModelInfoCard(
@@ -133,18 +134,9 @@ private fun TestContent(
         }
 
         // 2. LazyColumn with cells (70% weight)
-        TestResultsList(
-            frames = frames,
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1.0f)
-        )
+        TestResultsList(frames = frames, modifier = Modifier.fillMaxWidth().weight(1.0f))
 
-        TestStatusList(
-            testStatuses = testStatuses,
-            modifier = Modifier
-                .fillMaxWidth()
-        )
+        TestStatusList(testStatuses = testStatuses, modifier = Modifier.fillMaxWidth())
 
         // 4. Run/Cancel Button
         Button(
@@ -162,16 +154,11 @@ private fun TestContent(
                 CircularProgressIndicator(
                     modifier = Modifier.size(16.dp),
                     strokeWidth = 2.dp,
-                    color = MaterialTheme.colorScheme.onPrimary
+                    color = MaterialTheme.colorScheme.onPrimary,
                 )
-                Text(
-                    text = "Cancelling...",
-                    modifier = Modifier.padding(start = 8.dp)
-                )
+                Text(text = "Cancelling...", modifier = Modifier.padding(start = 8.dp))
             } else {
-                Text(
-                    text = if (isRunning) "Cancel Tests" else "Run Tests",
-                )
+                Text(text = if (isRunning) "Cancel Tests" else "Run Tests")
             }
         }
     }
@@ -187,11 +174,9 @@ private fun ModelInfoCard(
 ) {
     Card(modifier = modifier.fillMaxWidth()) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             // Left: Model info
             Column(modifier = Modifier.weight(1f)) {
@@ -210,21 +195,16 @@ private fun ModelInfoCard(
             }
 
             // Right: CPU/GPU Toggle
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = spacedBy(4.dp)
-            ) {
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = spacedBy(4.dp)) {
                 Text(
                     text = if (useGpu) "GPU" else "CPU",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.primary,
                 )
                 Switch(
                     checked = useGpu,
                     enabled = !isRunning,
-                    onCheckedChange = { isChecked ->
-                        onBackendToggle(isChecked)
-                    }
+                    onCheckedChange = { isChecked -> onBackendToggle(isChecked) },
                 )
             }
         }
@@ -232,7 +212,10 @@ private fun ModelInfoCard(
 }
 
 @Composable
-private fun TestResultsList(frames: ImmutableMap<String, TestResultFrame>, modifier: Modifier = Modifier) {
+private fun TestResultsList(
+    frames: ImmutableMap<String, TestResultFrame>,
+    modifier: Modifier = Modifier,
+) {
     val listState = rememberLazyListState()
 
     // Auto-scroll to latest item
@@ -244,14 +227,10 @@ private fun TestResultsList(frames: ImmutableMap<String, TestResultFrame>, modif
 
     LazyColumn(
         state = listState,
-        modifier =
-            modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         verticalArrangement = spacedBy(8.dp),
     ) {
-        items(
-            items = frames.values.toList(),
-            key = { frame -> frame.id },
-        ) { frame ->
+        items(items = frames.values.toList(), key = { frame -> frame.id }) { frame ->
             when (frame) {
                 is TestResultFrame.Description -> DescriptionCell(frame)
                 is TestResultFrame.Query -> QueryCell(frame)
@@ -265,24 +244,17 @@ private fun TestResultsList(frames: ImmutableMap<String, TestResultFrame>, modif
 }
 
 @Composable
-fun InitializationIndicator(
-    message: String,
-    modifier: Modifier = Modifier,
-) {
+fun InitializationIndicator(message: String, modifier: Modifier = Modifier) {
     Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(vertical = 16.dp),
+        modifier = modifier.fillMaxWidth().padding(vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = spacedBy(8.dp)
+        verticalArrangement = spacedBy(8.dp),
     ) {
-        LinearProgressIndicator(
-            modifier = Modifier.fillMaxWidth(0.8f)
-        )
+        LinearProgressIndicator(modifier = Modifier.fillMaxWidth(0.8f))
         Text(
             text = message,
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.secondary
+            color = MaterialTheme.colorScheme.secondary,
         )
     }
 }
@@ -292,30 +264,30 @@ fun InitializationIndicator(
 private fun TestContentPreview() {
     KoogAgentTheme {
         TestContent(
-            frames = persistentMapOf(
-                "1" to TestResultFrame.Content(
-                    testName = "TEST 0: Basic Response",
-                    chunk = "",
-                    accumulator = "Hello! I'm doing great, thanks for asking!",
+            frames =
+                persistentMapOf(
+                    "1" to
+                        TestResultFrame.Content(
+                            testName = "TEST 0: Basic Response",
+                            chunk = "",
+                            accumulator = "Hello! I'm doing great, thanks for asking!",
+                        ),
+                    "2" to
+                        TestResultFrame.Validation(
+                            testName = "TEST 0: Basic Response",
+                            result = ValidationResult.Pass("Valid response received"),
+                            duration = 1234,
+                            fullContent = "Hello! I'm doing great, thanks for asking!",
+                        ),
                 ),
-                "2" to TestResultFrame.Validation(
-                    testName = "TEST 0: Basic Response",
-                    result = ValidationResult.Pass("Valid response received"),
-                    duration = 1234,
-                    fullContent = "Hello! I'm doing great, thanks for asking!",
-                ),
-            ),
-            testStatuses = listOf(
-                TestStatus(
-                    name = "TEST 0: Basic Response",
-                    state = TestStatus.State.PASS,
-                )
-            ).toImmutableList(),
+            testStatuses =
+                listOf(TestStatus(name = "TEST 0: Basic Response", state = TestStatus.State.PASS))
+                    .toImmutableList(),
             selectedModel = ModelCatalog.DEFAULT,
             isRunning = false,
             isInitializing = true,
-            onRunTests = { },
-            onCancelTests = { },
+            onRunTests = {},
+            onCancelTests = {},
         )
     }
 }

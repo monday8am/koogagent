@@ -24,65 +24,50 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.monday8am.koogagent.ui.theme.KoogAgentTheme
 import com.monday8am.presentation.testing.TestStatus
+import com.monday8am.presentation.testing.ToolCallingTest.Companion.REGRESSION_TEST_SUITE
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
-import com.monday8am.presentation.testing.ToolCallingTest.Companion.REGRESSION_TEST_SUITE
 
 @Composable
 internal fun TestStatusList(
     testStatuses: ImmutableList<TestStatus>,
     modifier: Modifier = Modifier,
 ) {
-    LazyRow(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = spacedBy(8.dp),
-    ) {
-        items(testStatuses) { status ->
-            TestStatusCard(status = status)
-        }
+    LazyRow(modifier = modifier.fillMaxWidth(), horizontalArrangement = spacedBy(8.dp)) {
+        items(testStatuses) { status -> TestStatusCard(status = status) }
     }
 }
 
 @Composable
 internal fun TestStatusCard(status: TestStatus) {
-    Card(
-        modifier = Modifier
-            .width(160.dp)
-            .height(100.dp)
-            .padding(vertical = 4.dp),
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = spacedBy(8.dp)
-        ) {
-            Text(
-                text = status.name,
-                style = MaterialTheme.typography.bodySmall,
-            )
+    Card(modifier = Modifier.width(160.dp).height(100.dp).padding(vertical = 4.dp)) {
+        Column(modifier = Modifier.padding(12.dp), verticalArrangement = spacedBy(8.dp)) {
+            Text(text = status.name, style = MaterialTheme.typography.bodySmall)
 
             when (status.state) {
-                TestStatus.State.IDLE -> Icon(
-                    Icons.Default.PlayArrow,
-                    contentDescription = "Idle",
-                    tint = MaterialTheme.colorScheme.outline
-                )
+                TestStatus.State.IDLE ->
+                    Icon(
+                        Icons.Default.PlayArrow,
+                        contentDescription = "Idle",
+                        tint = MaterialTheme.colorScheme.outline,
+                    )
 
-                TestStatus.State.RUNNING -> CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
-                    strokeWidth = 2.dp
-                )
+                TestStatus.State.RUNNING ->
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
 
-                TestStatus.State.PASS -> Icon(
-                    Icons.Default.CheckCircle,
-                    contentDescription = "Pass",
-                    tint = MaterialTheme.colorScheme.primary
-                )
+                TestStatus.State.PASS ->
+                    Icon(
+                        Icons.Default.CheckCircle,
+                        contentDescription = "Pass",
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
 
-                TestStatus.State.FAIL -> Icon(
-                    Icons.Default.Close,
-                    contentDescription = "Fail",
-                    tint = MaterialTheme.colorScheme.error
-                )
+                TestStatus.State.FAIL ->
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = "Fail",
+                        tint = MaterialTheme.colorScheme.error,
+                    )
             }
         }
     }
@@ -93,12 +78,11 @@ internal fun TestStatusCard(status: TestStatus) {
 private fun TestStatusListPreview() {
     KoogAgentTheme {
         TestStatusList(
-            testStatuses = REGRESSION_TEST_SUITE.map {
-                TestStatus(
-                    name = it.name,
-                    state = TestStatus.State.PASS
-                )
-            }.toImmutableList()
+            testStatuses =
+                REGRESSION_TEST_SUITE.map {
+                        TestStatus(name = it.name, state = TestStatus.State.PASS)
+                    }
+                    .toImmutableList()
         )
     }
 }
@@ -107,11 +91,6 @@ private fun TestStatusListPreview() {
 @Composable
 private fun TestStatusCardPreview() {
     KoogAgentTheme {
-        TestStatusCard(
-            status = TestStatus(
-                name = "Test Name",
-                state = TestStatus.State.PASS
-            )
-        )
+        TestStatusCard(status = TestStatus(name = "Test Name", state = TestStatus.State.PASS))
     }
 }

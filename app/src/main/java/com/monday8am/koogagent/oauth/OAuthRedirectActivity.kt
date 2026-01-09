@@ -6,8 +6,8 @@ import android.os.Bundle
 import com.monday8am.koogagent.MainActivity
 
 /**
- * Transparent activity that receives OAuth redirect callbacks.
- * Immediately forwards the OAuth response to MainActivity and finishes.
+ * Transparent activity that receives OAuth redirect callbacks. Immediately forwards the OAuth
+ * response to MainActivity and finishes.
  */
 class OAuthRedirectActivity : Activity() {
 
@@ -15,11 +15,12 @@ class OAuthRedirectActivity : Activity() {
         super.onCreate(savedInstanceState)
 
         // Forward the OAuth response to MainActivity
-        val forwardIntent = Intent(this, MainActivity::class.java).apply {
-            data = intent.data
-            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-            putExtra(EXTRA_OAUTH_REDIRECT, true)
-        }
+        val forwardIntent =
+            Intent(this, MainActivity::class.java).apply {
+                data = intent.data
+                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                putExtra(EXTRA_OAUTH_REDIRECT, true)
+            }
         startActivity(forwardIntent)
         finish()
     }

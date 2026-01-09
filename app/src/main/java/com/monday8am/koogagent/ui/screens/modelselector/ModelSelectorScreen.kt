@@ -1,6 +1,5 @@
 package com.monday8am.koogagent.ui.screens.modelselector
 
-import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -32,11 +31,8 @@ import com.monday8am.presentation.modelselector.ModelSelectorViewModelImpl
 import com.monday8am.presentation.modelselector.UiAction
 import com.monday8am.presentation.modelselector.UiState
 import kotlinx.collections.immutable.toImmutableList
-import kotlinx.coroutines.launch
 
-/**
- * Model Selector Screen - Entry point for model selection.
- */
+/** Model Selector Screen - Entry point for model selection. */
 @Composable
 fun ModelSelectorScreen(
     onNavigateToNotification: (String) -> Unit,
@@ -47,9 +43,9 @@ fun ModelSelectorScreen(
                 modelDownloadManager = Dependencies.modelDownloadManager,
                 modelRepository = Dependencies.modelRepository,
                 authRepository = Dependencies.authRepository,
-            ),
+            )
         )
-    }
+    },
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -69,11 +65,7 @@ fun ModelSelectorScreen(
                 viewModel.onUiAction(UiAction.SubmitToken(token))
                 Toast.makeText(context, "Logged in to HuggingFace", Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
-                Toast.makeText(
-                    context,
-                    "Login failed: ${e.message}",
-                    Toast.LENGTH_LONG
-                ).show()
+                Toast.makeText(context, "Login failed: ${e.message}", Toast.LENGTH_LONG).show()
             } finally {
                 isAuthenticating = false
             }
@@ -81,7 +73,9 @@ fun ModelSelectorScreen(
     }
 
     LaunchedEffect(uiState.models) {
-        if (selectedModelId != null && uiState.models.none { it.config.modelId == selectedModelId }) {
+        if (
+            selectedModelId != null && uiState.models.none { it.config.modelId == selectedModelId }
+        ) {
             selectedModelId = null
         }
     }
@@ -92,17 +86,23 @@ fun ModelSelectorScreen(
         context.startActivity(authIntent)
     }
 
-    val displayStatusMessage = when {
-        isAuthenticating -> "Verifying login with Hugging Face..."
-        uiState.isLoadingCatalog -> "Loading models from Hugging Face..."
-        uiState.currentDownload != null -> "Downloading: ${uiState.currentDownload?.modelId?.take(20)}..."
-        selectedModelId != null -> {
-            val name = uiState.models.find { it.config.modelId == selectedModelId }?.config?.displayName
-            "Selected: $name"
-        }
+    val displayStatusMessage =
+        when {
+            isAuthenticating -> "Verifying login with Hugging Face..."
+            uiState.isLoadingCatalog -> "Loading models from Hugging Face..."
+            uiState.currentDownload != null ->
+                "Downloading: ${uiState.currentDownload?.modelId?.take(20)}..."
+            selectedModelId != null -> {
+                val name =
+                    uiState.models
+                        .find { it.config.modelId == selectedModelId }
+                        ?.config
+                        ?.displayName
+                "Selected: $name"
+            }
 
-        else -> uiState.statusMessage
-    }
+            else -> uiState.statusMessage
+        }
 
     ModelSelectorScreenContent(
         uiState = uiState,
@@ -120,7 +120,7 @@ fun ModelSelectorScreen(
     if (showLogoutDialog) {
         LogoutConfirmationDialog(
             onDismiss = { showLogoutDialog = false },
-            onConfirm = { viewModel.onUiAction(UiAction.Logout) }
+            onConfirm = { viewModel.onUiAction(UiAction.Logout) },
         )
     }
 }
@@ -138,12 +138,7 @@ private fun ModelSelectorScreenContent(
     onNavigateToNotification: (String) -> Unit = {},
     onNavigateToTesting: (String) -> Unit = {},
 ) {
-    Column(
-        modifier =
-            modifier
-                .fillMaxSize()
-                .padding(16.dp),
-    ) {
+    Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
         ModelSelectorHeader(
             statusMessage = statusMessage,
             groupingMode = uiState.groupingMode,
@@ -211,19 +206,18 @@ private fun ModelSelectorScreenPreview() {
                 UiState(
                     models =
                         ModelCatalog.ALL_MODELS.map {
-                            ModelInfo(
-                                config = it,
-                                isDownloaded = it.modelId != ModelCatalog.GEMMA3_1B.modelId,
-                                downloadStatus =
-                                    if (it.modelId ==
-                                        ModelCatalog.GEMMA3_1B.modelId
-                                    ) {
-                                        DownloadStatus.Downloading(10f)
-                                    } else {
-                                        DownloadStatus.Completed
-                                    },
-                            )
-                        }.toImmutableList(),
+                                ModelInfo(
+                                    config = it,
+                                    isDownloaded = it.modelId != ModelCatalog.GEMMA3_1B.modelId,
+                                    downloadStatus =
+                                        if (it.modelId == ModelCatalog.GEMMA3_1B.modelId) {
+                                            DownloadStatus.Downloading(10f)
+                                        } else {
+                                            DownloadStatus.Completed
+                                        },
+                                )
+                            }
+                            .toImmutableList(),
                     currentDownload = DownloadInfo(ModelCatalog.GEMMA3_1B.modelId, 10f),
                     statusMessage = "Downloading model: GEMMA3_1B",
                     isLoadingCatalog = false,

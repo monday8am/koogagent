@@ -34,12 +34,13 @@ class ModelDownloadManagerImpl(
     // Initialize with current disk state to avoid race condition
     private val downloadedFilenames = MutableStateFlow(scanDiskFiles())
 
-    override val modelsStatus: Flow<Map<String, ModelDownloadManager.Status>> = combine(
-        downloadedFilenames,
-        workManager.getWorkInfosByTagFlow(WORK_TAG)
-    ) { downloaded, workInfos ->
-        buildStatusMap(downloaded, workInfos)
-    }.flowOn(dispatcher)
+    override val modelsStatus: Flow<Map<String, ModelDownloadManager.Status>> =
+        combine(downloadedFilenames, workManager.getWorkInfosByTagFlow(WORK_TAG)) {
+                downloaded,
+                workInfos ->
+                buildStatusMap(downloaded, workInfos)
+            }
+            .flowOn(dispatcher)
 
     init {
         // Observe WorkManager to update disk state when downloads complete
@@ -61,7 +62,8 @@ class ModelDownloadManagerImpl(
 
         // 1. Mark files on disk as Completed
         downloadedFiles.forEach { filename ->
-            statusMap[filename] = ModelDownloadManager.Status.Completed(File(getModelPath(filename)))
+            statusMap[filename] =
+                ModelDownloadManager.Status.Completed(File(getModelPath(filename)))
         }
 
         // 2. Active work takes precedence over disk state
@@ -88,18 +90,20 @@ class ModelDownloadManagerImpl(
 
     override fun getModelPath(bundleFilename: String) = "$modelDestinationPath$bundleFilename"
 
-    override suspend fun deleteModel(bundleFilename: String): Boolean = withContext(dispatcher) {
-        val modelFile = File(getModelPath(bundleFilename))
-        val deleted = if (modelFile.exists()) {
-            modelFile.delete()
-        } else {
-            true // Already deleted
+    override suspend fun deleteModel(bundleFilename: String): Boolean =
+        withContext(dispatcher) {
+            val modelFile = File(getModelPath(bundleFilename))
+            val deleted =
+                if (modelFile.exists()) {
+                    modelFile.delete()
+                } else {
+                    true // Already deleted
+                }
+            if (deleted) {
+                refreshDiskState()
+            }
+            deleted
         }
-        if (deleted) {
-            refreshDiskState()
-        }
-        deleted
-    }
 
     override suspend fun downloadModel(
         modelId: String,
@@ -138,7 +142,7 @@ class ModelDownloadManagerImpl(
                     DownloadUnzipWorker.KEY_DESTINATION_PATH to destinationFile.absolutePath,
                     DownloadUnzipWorker.KEY_REQUIRES_UNZIP to requiresUnzip,
                     DownloadUnzipWorker.KEY_AUTH_TOKEN to authRepository.authToken.value,
-                ),
+                )
             )
             .addTag(WORK_TAG)
             .addTag("$MODEL_ID_PREFIX$modelId")
@@ -146,12 +150,12 @@ class ModelDownloadManagerImpl(
             .build()
     }
 
-    private suspend fun findRunningWork(workName: String): WorkInfo? = withContext(dispatcher) {
-        workManager
-            .getWorkInfosForUniqueWork(workName)
-            .get()
-            .firstOrNull { !it.state.isFinished }
-    }
+    private suspend fun findRunningWork(workName: String): WorkInfo? =
+        withContext(dispatcher) {
+            workManager.getWorkInfosForUniqueWork(workName).get().firstOrNull {
+                !it.state.isFinished
+            }
+        }
 
     override fun cancelDownload() {
         workManager.cancelAllWorkByTag(WORK_TAG)
@@ -169,34 +173,34 @@ class ModelDownloadManagerImpl(
 }
 
 private fun WorkInfo.extractBundleFilename(): String? {
-    return tags
-        .firstOrNull { it.startsWith("bundle-filename:") }
-        ?.removePrefix("bundle-filename:")
+    return tags.firstOrNull { it.startsWith("bundle-filename:") }?.removePrefix("bundle-filename:")
 }
 
-private fun WorkInfo.toStatus(): ModelDownloadManager.Status = when (state) {
-    WorkInfo.State.ENQUEUED, WorkInfo.State.BLOCKED -> {
-        ModelDownloadManager.Status.Pending
-    }
+private fun WorkInfo.toStatus(): ModelDownloadManager.Status =
+    when (state) {
+        WorkInfo.State.ENQUEUED,
+        WorkInfo.State.BLOCKED -> {
+            ModelDownloadManager.Status.Pending
+        }
 
-    WorkInfo.State.RUNNING -> {
-        val progress = progress.getFloat(DownloadUnzipWorker.KEY_PROGRESS, 0f)
-        ModelDownloadManager.Status.InProgress(progress.coerceIn(0f, 100f))
-    }
+        WorkInfo.State.RUNNING -> {
+            val progress = progress.getFloat(DownloadUnzipWorker.KEY_PROGRESS, 0f)
+            ModelDownloadManager.Status.InProgress(progress.coerceIn(0f, 100f))
+        }
 
-    WorkInfo.State.SUCCEEDED -> {
-        // This case is typically not reached since we defer to disk scan
-        ModelDownloadManager.Status.Completed(File(""))
-    }
+        WorkInfo.State.SUCCEEDED -> {
+            // This case is typically not reached since we defer to disk scan
+            ModelDownloadManager.Status.Completed(File(""))
+        }
 
-    WorkInfo.State.FAILED -> {
-        val errorMessage =
-            outputData.getString(DownloadUnzipWorker.KEY_ERROR_MESSAGE)
-                ?: "Download failed due to an unknown error."
-        ModelDownloadManager.Status.Failed(errorMessage)
-    }
+        WorkInfo.State.FAILED -> {
+            val errorMessage =
+                outputData.getString(DownloadUnzipWorker.KEY_ERROR_MESSAGE)
+                    ?: "Download failed due to an unknown error."
+            ModelDownloadManager.Status.Failed(errorMessage)
+        }
 
-    WorkInfo.State.CANCELLED -> {
-        ModelDownloadManager.Status.Cancelled
+        WorkInfo.State.CANCELLED -> {
+            ModelDownloadManager.Status.Cancelled
+        }
     }
-}

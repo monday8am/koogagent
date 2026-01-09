@@ -11,6 +11,7 @@ pluginManagement {
         gradlePluginPortal()
     }
 }
+
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
@@ -20,7 +21,11 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "KoogAgent"
+
 include(":app")
+
 include(":agent")
+
 include(":data")
+
 include(":presentation")

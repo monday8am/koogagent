@@ -24,7 +24,6 @@ import kotlinx.coroutines.flow.flatMapConcat
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.runningFold
 import kotlinx.coroutines.flow.stateIn
@@ -78,7 +77,6 @@ class TestViewModelImpl(
     // UI state derived from ExecutionState
     override val uiState: StateFlow<TestUiState> =
         executionState
-            .onEach { state -> Logger.d("State: ${state::class.simpleName}") }
             .map { state -> deriveUiState(state) }
             .stateIn(
                 scope = scope,

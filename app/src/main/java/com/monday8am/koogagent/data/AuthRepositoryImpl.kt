@@ -9,32 +9,28 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 class AuthRepositoryImpl(context: Context) : AuthRepository {
-    private val masterKey = MasterKey.Builder(context)
-        .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-        .build()
+    private val masterKey =
+        MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build()
 
-    private val sharedPreferences = EncryptedSharedPreferences.create(
-        context,
-        "hf_auth_prefs",
-        masterKey,
-        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-    )
+    private val sharedPreferences =
+        EncryptedSharedPreferences.create(
+            context,
+            "hf_auth_prefs",
+            masterKey,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
+        )
 
     private val _authToken = MutableStateFlow(sharedPreferences.getString(TOKEN_KEY, null))
     override val authToken: StateFlow<String?> = _authToken.asStateFlow()
 
     override suspend fun saveToken(token: String) {
-        sharedPreferences.edit {
-            putString(TOKEN_KEY, token)
-        }
+        sharedPreferences.edit { putString(TOKEN_KEY, token) }
         _authToken.value = token
     }
 
     override suspend fun clearToken() {
-        sharedPreferences.edit {
-            remove(TOKEN_KEY)
-        }
+        sharedPreferences.edit { remove(TOKEN_KEY) }
         _authToken.value = null
     }
 

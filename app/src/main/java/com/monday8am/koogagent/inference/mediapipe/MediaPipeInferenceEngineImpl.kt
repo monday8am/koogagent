@@ -6,8 +6,8 @@ import com.google.ai.edge.localagents.core.proto.Content
 import com.google.ai.edge.localagents.core.proto.Part
 import com.google.ai.edge.localagents.core.proto.Tool
 import com.google.ai.edge.localagents.fc.ChatSession
-import com.google.ai.edge.localagents.fc.GenerativeModel
 import com.google.ai.edge.localagents.fc.GemmaFormatter
+import com.google.ai.edge.localagents.fc.GenerativeModel
 import com.google.ai.edge.localagents.fc.HammerFormatter
 import com.google.ai.edge.localagents.fc.LlamaFormatter
 import com.google.ai.edge.localagents.fc.LlmInferenceBackend
@@ -33,10 +33,9 @@ private const val SYSTEM_ROLE = "system"
 private const val USER_ROLE = "user"
 
 /**
- * MediaPipe-based implementation of LocalInferenceEngine using AI Edge On-Device APIs.
- * Uses GenerativeModel/ChatSession API with function calling support for Hammer2.1 model.
+ * MediaPipe-based implementation of LocalInferenceEngine using AI Edge On-Device APIs. Uses
+ * GenerativeModel/ChatSession API with function calling support for Hammer2.1 model.
  */
-
 class MediaPipeInferenceEngineImpl(
     private val context: Context,
     private val tools: List<Tool> = emptyList(),
@@ -48,7 +47,10 @@ class MediaPipeInferenceEngineImpl(
     private var currentModelPath: String? = null
     private var llmInference: LlmInference? = null
 
-    override suspend fun initialize(modelConfig: ModelConfiguration, modelPath: String): Result<Unit> =
+    override suspend fun initialize(
+        modelConfig: ModelConfiguration,
+        modelPath: String,
+    ): Result<Unit> =
         withContext(dispatcher) {
             if (generativeModel != null) {
                 return@withContext Result.success(Unit)
@@ -70,7 +72,9 @@ class MediaPipeInferenceEngineImpl(
     override suspend fun prompt(prompt: String): Result<String> {
         val session =
             chatSession
-                ?: return Result.failure(IllegalStateException("Inference engine is not initialized."))
+                ?: return Result.failure(
+                    IllegalStateException("Inference engine is not initialized.")
+                )
 
         return withContext(dispatcher) {
             runCatching {
@@ -78,7 +82,9 @@ class MediaPipeInferenceEngineImpl(
                     throw IllegalArgumentException("Prompt cannot be blank")
                 }
 
-                Logger.i("MediaPipeInferenceEngine") { "▶️ Starting inference (prompt: ${prompt.length} chars)" }
+                Logger.i("MediaPipeInferenceEngine") {
+                    "▶️ Starting inference (prompt: ${prompt.length} chars)"
+                }
                 val startTime = System.currentTimeMillis()
                 val response = session.sendMessageBlocking(prompt)
                 val duration = System.currentTimeMillis() - startTime
@@ -87,8 +93,8 @@ class MediaPipeInferenceEngineImpl(
 
                 Logger.i("MediaPipeInferenceEngine") {
                     "✅ Inference complete: ${duration}ms | " +
-                            "Response: ${response.length} chars (~$tokensApprox tokens) | " +
-                            "Speed: %.2f tokens/sec".format(tokensPerSec)
+                        "Response: ${response.length} chars (~$tokensApprox tokens) | " +
+                        "Speed: %.2f tokens/sec".format(tokensPerSec)
                 }
                 response
             }
@@ -97,38 +103,44 @@ class MediaPipeInferenceEngineImpl(
 
     override fun promptStreaming(prompt: String): Flow<String> {
         val session =
-            chatSession ?: run {
-                Logger.e("MediaPipeInferenceEngine") { "Inference session is not available." }
-                return emptyFlow()
-            }
+            chatSession
+                ?: run {
+                    Logger.e("MediaPipeInferenceEngine") { "Inference session is not available." }
+                    return emptyFlow()
+                }
 
         return flow {
-            val startTime = System.currentTimeMillis()
-            try {
-                val response = session.sendMessageBlocking(prompt)
-                emit(response)
-                val duration = System.currentTimeMillis() - startTime
-                Logger.i("MediaPipeInferenceEngine") { "✅ Streaming inference complete: ${duration}ms" }
-            } catch (e: Exception) {
-                Logger.e("MediaPipeInferenceEngine", e) { "Streaming inference failed" }
-                throw e
+                val startTime = System.currentTimeMillis()
+                try {
+                    val response = session.sendMessageBlocking(prompt)
+                    emit(response)
+                    val duration = System.currentTimeMillis() - startTime
+                    Logger.i("MediaPipeInferenceEngine") {
+                        "✅ Streaming inference complete: ${duration}ms"
+                    }
+                } catch (e: Exception) {
+                    Logger.e("MediaPipeInferenceEngine", e) { "Streaming inference failed" }
+                    throw e
+                }
             }
-        }.flowOn(dispatcher)
+            .flowOn(dispatcher)
     }
 
-    override fun initializeAsFlow(modelConfig: ModelConfiguration, modelPath: String): Flow<LocalInferenceEngine> =
-        flow {
-            initialize(modelConfig = modelConfig, modelPath = modelPath)
-                .onSuccess {
-                    emit(this@MediaPipeInferenceEngineImpl)
-                }.onFailure {
-                    throw it
-                }
-        }
+    override fun initializeAsFlow(
+        modelConfig: ModelConfiguration,
+        modelPath: String,
+    ): Flow<LocalInferenceEngine> = flow {
+        initialize(modelConfig = modelConfig, modelPath = modelPath)
+            .onSuccess { emit(this@MediaPipeInferenceEngineImpl) }
+            .onFailure { throw it }
+    }
 
     override fun resetConversation(): Result<Unit> {
-        val config = modelConfig ?: return Result.failure(IllegalStateException("Engine not initialized"))
-        val path = currentModelPath ?: return Result.failure(IllegalStateException("Model path not available"))
+        val config =
+            modelConfig ?: return Result.failure(IllegalStateException("Engine not initialized"))
+        val path =
+            currentModelPath
+                ?: return Result.failure(IllegalStateException("Model path not available"))
 
         return runCatching {
             // Close existing resources to prevent native memory corruption
@@ -145,7 +157,9 @@ class MediaPipeInferenceEngineImpl(
             generativeModel = GenerativeModel(backend, systemInstruction, tools)
             chatSession = generativeModel!!.startChat()
 
-            Logger.i("MediaPipeInferenceEngine") { "💬 Reset conversation with full session recreation!" }
+            Logger.i("MediaPipeInferenceEngine") {
+                "💬 Reset conversation with full session recreation!"
+            }
         }
     }
 
@@ -163,63 +177,72 @@ class MediaPipeInferenceEngineImpl(
     }
 }
 
-private fun createFormatter(modelFamily: String) = when (modelFamily.lowercase()) {
-    "gemma3", "gemma" -> GemmaFormatter()
-    "hammer2", "hammer" -> HammerFormatter()
-    "smollm", "qwen3", "qwen" -> HammerFormatter() // These use ChatML, HammerFormatter is a good fit
-    "llama" -> LlamaFormatter()
-    else -> GemmaFormatter() // Default fallback
-}
-
-private suspend fun ChatSession.sendMessageBlocking(message: String): String = suspendCancellableCoroutine { cont ->
-    try {
-        val userContent =
-            Content
-                .newBuilder()
-                .setRole(USER_ROLE)
-                .addParts(Part.newBuilder().setText(message))
-                .build()
-
-        val response = this.sendMessage(userContent)
-
-        if (response == null) {
-            Logger.e("MediaPipeInferenceEngine") { "Received null response from sendMessage" }
-            cont.resumeWithException(IllegalStateException("Received null response from inference engine"))
-            return@suspendCancellableCoroutine
-        }
-
-        val part =
-            response.candidatesList
-                ?.firstOrNull()
-                ?.content
-                ?.partsList
-                ?.firstOrNull()
-
-        val resultText =
-            when {
-                part?.hasText() == true -> {
-                    part.text
-                }
-
-                part?.hasFunctionCall() == true -> {
-                    // In a full implementation, this would execute the tool and send back results
-                    val functionCall = part.functionCall
-                    "Function call detected: ${functionCall.name} with args: ${functionCall.args}"
-                }
-
-                else -> {
-                    Logger.w("MediaPipeInferenceEngine") { "Response has no text or function call" }
-                    ""
-                }
-            }
-        cont.resume(resultText)
-    } catch (e: Exception) {
-        Logger.e("MediaPipeInferenceEngine", e) { "Error in sendMessageBlocking: ${e.message}" }
-        cont.resumeWithException(e)
+private fun createFormatter(modelFamily: String) =
+    when (modelFamily.lowercase()) {
+        "gemma3",
+        "gemma" -> GemmaFormatter()
+        "hammer2",
+        "hammer" -> HammerFormatter()
+        "smollm",
+        "qwen3",
+        "qwen" -> HammerFormatter() // These use ChatML, HammerFormatter is a good fit
+        "llama" -> LlamaFormatter()
+        else -> GemmaFormatter() // Default fallback
     }
-}
 
-private fun createLlmInference(context: Context, modelPath: String, modelConfig: ModelConfiguration): LlmInference {
+private suspend fun ChatSession.sendMessageBlocking(message: String): String =
+    suspendCancellableCoroutine { cont ->
+        try {
+            val userContent =
+                Content.newBuilder()
+                    .setRole(USER_ROLE)
+                    .addParts(Part.newBuilder().setText(message))
+                    .build()
+
+            val response = this.sendMessage(userContent)
+
+            if (response == null) {
+                Logger.e("MediaPipeInferenceEngine") { "Received null response from sendMessage" }
+                cont.resumeWithException(
+                    IllegalStateException("Received null response from inference engine")
+                )
+                return@suspendCancellableCoroutine
+            }
+
+            val part = response.candidatesList?.firstOrNull()?.content?.partsList?.firstOrNull()
+
+            val resultText =
+                when {
+                    part?.hasText() == true -> {
+                        part.text
+                    }
+
+                    part?.hasFunctionCall() == true -> {
+                        // In a full implementation, this would execute the tool and send back
+                        // results
+                        val functionCall = part.functionCall
+                        "Function call detected: ${functionCall.name} with args: ${functionCall.args}"
+                    }
+
+                    else -> {
+                        Logger.w("MediaPipeInferenceEngine") {
+                            "Response has no text or function call"
+                        }
+                        ""
+                    }
+                }
+            cont.resume(resultText)
+        } catch (e: Exception) {
+            Logger.e("MediaPipeInferenceEngine", e) { "Error in sendMessageBlocking: ${e.message}" }
+            cont.resumeWithException(e)
+        }
+    }
+
+private fun createLlmInference(
+    context: Context,
+    modelPath: String,
+    modelConfig: ModelConfiguration,
+): LlmInference {
     if (!File(modelPath).exists()) {
         throw IllegalStateException("Model file not found at path: $modelPath")
     }
@@ -230,8 +253,7 @@ private fun createLlmInference(context: Context, modelPath: String, modelConfig:
             Backend.CPU
         }
     val llmInferenceOptions =
-        LlmInference.LlmInferenceOptions
-            .builder()
+        LlmInference.LlmInferenceOptions.builder()
             .setModelPath(modelPath)
             .setMaxTokens(modelConfig.contextLength)
             .setPreferredBackend(backend)
@@ -239,11 +261,8 @@ private fun createLlmInference(context: Context, modelPath: String, modelConfig:
     return LlmInference.createFromOptions(context, llmInferenceOptions)
 }
 
-private fun createSystemInstruction(): Content = Content
-    .newBuilder()
-    .setRole(SYSTEM_ROLE)
-    .addParts(
-        Part
-            .newBuilder()
-            .setText(SYSTEM_PROMPT),
-    ).build()
+private fun createSystemInstruction(): Content =
+    Content.newBuilder()
+        .setRole(SYSTEM_ROLE)
+        .addParts(Part.newBuilder().setText(SYSTEM_PROMPT))
+        .build()
