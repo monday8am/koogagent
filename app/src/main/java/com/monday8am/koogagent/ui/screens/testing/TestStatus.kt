@@ -24,7 +24,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.monday8am.koogagent.ui.theme.KoogAgentTheme
 import com.monday8am.presentation.testing.TestStatus
-import com.monday8am.presentation.testing.ToolCallingTest.Companion.REGRESSION_TEST_SUITE
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
 
@@ -78,11 +77,11 @@ internal fun TestStatusCard(status: TestStatus) {
 private fun TestStatusListPreview() {
     KoogAgentTheme {
         TestStatusList(
-            testStatuses =
-                REGRESSION_TEST_SUITE.map {
-                        TestStatus(name = it.name, state = TestStatus.State.PASS)
-                    }
-                    .toImmutableList()
+            testStatuses = listOf(
+                TestStatus(name = "Test 1", state = TestStatus.State.PASS),
+                TestStatus(name = "Test 2", state = TestStatus.State.RUNNING),
+                TestStatus(name = "Test 3", state = TestStatus.State.IDLE)
+            ).toImmutableList()
         )
     }
 }

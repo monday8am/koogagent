@@ -1,0 +1,160 @@
+{
+  "tests": [
+    {
+      "id": "test_0",
+      "name": "TEST 0: Basic Response",
+      "queries": [
+        {
+          "text": "Hello, how are you?"
+        }
+      ],
+      "system_prompt": "You are a helpful assistant.",
+      "rules": [
+        {
+          "type": "no_tool_calls"
+        },
+        {
+          "type": "response_length_min",
+          "min": 6
+        }
+      ]
+    },
+    {
+      "id": "test_1",
+      "name": "TEST 1: Location Query",
+      "description": [
+        "Expects model to use location tool. 'get_location' should be called."
+      ],
+      "queries": [
+        {
+          "text": "Where am I located?"
+        }
+      ],
+      "system_prompt": "You are a helpful assistant with access to location tools.",
+      "rules": [
+        {
+          "type": "tool_match",
+          "tool_name": "get_location"
+        }
+      ]
+    },
+    {
+      "id": "test_2",
+      "name": "TEST 2: Weather Query (Sequential)",
+      "description": [
+        "Expects weather check for current location. Should call get_location then get_weather."
+      ],
+      "queries": [
+        {
+          "text": "What's the weather like here?"
+        }
+      ],
+      "system_prompt": "You are a weather assistant with access to weather tools. First you should call get_location to get the location, and then call get_weather with the obtained location.",
+      "rules": [
+        {
+          "type": "tool_match_all",
+          "tool_names": [
+            "get_location",
+            "get_weather"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "test_3",
+      "name": "TEST 3: Specific Weather (One Tool)",
+      "description": [
+        "Expects weather check for specific coordinates."
+      ],
+      "queries": [
+        {
+          "text": "What is the weather at lat 35.6 and lon 139.7?"
+        }
+      ],
+      "system_prompt": "You are a weather assistant.",
+      "rules": [
+        {
+          "type": "tool_args_match",
+          "tool_name": "get_weather",
+          "args": {
+            "latitude": 35.6,
+            "longitude": 139.7
+          }
+        }
+      ]
+    },
+    {
+      "id": "test_4",
+      "name": "TEST 4: No Tool Needed",
+      "description": [
+        "General knowledge question. No tools should be called."
+      ],
+      "queries": [
+        {
+          "text": "What is the capital of France?"
+        }
+      ],
+      "system_prompt": "You are a helpful assistant.",
+      "rules": [
+        {
+          "type": "no_tool_calls"
+        }
+      ]
+    },
+    {
+      "id": "test_5",
+      "name": "TEST 5: Chat with Tool Awareness",
+      "description": [
+        "Chit-chat. No tools should be called."
+      ],
+      "queries": [
+        {
+          "text": "Tell me a short joke."
+        }
+      ],
+      "system_prompt": "You are a funny assistant.",
+      "rules": [
+        {
+          "type": "chat_valid"
+        }
+      ]
+    },
+    {
+      "id": "test_6",
+      "name": "TEST 6: Parallel Tool Calls",
+      "description": [
+        "Expects multiple get_weather calls for different cities.",
+        "Model should call get_weather at least twice."
+      ],
+      "queries": [
+        {
+          "text": "What's the weather in Tokyo (lat 35.6, lon 139.7) and Paris (lat 48.8, lon 2.3)?"
+        }
+      ],
+      "system_prompt": "You are a weather assistant. When asked about weather in multiple locations, call get_weather for each location.",
+      "rules": [
+        {
+          "type": "tool_count_min",
+          "min": 2,
+          "tool_name": "get_weather"
+        },
+        {
+          "type": "tool_args_match",
+          "tool_name": "get_weather",
+          "args": {
+            "latitude": 35.6,
+            "longitude": 139.7
+          }
+        },
+        {
+          "type": "tool_args_match",
+          "tool_name": "get_weather",
+          "args": {
+            "latitude": 48.8,
+            "longitude": 2.3
+          }
+        }
+      ]
+    }
+  ]
+}

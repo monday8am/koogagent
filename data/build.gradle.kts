@@ -1,6 +1,7 @@
 plugins {
     id("java-library")
     alias(libs.plugins.jetbrains.kotlin.jvm)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 java {
@@ -19,6 +20,7 @@ dependencies {
     implementation(libs.kermit)
     api(libs.okhttp)
     api(libs.json)
+    implementation(libs.kotlinx.serialization.json)
 
     // Testing
     testImplementation(kotlin("test"))
