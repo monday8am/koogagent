@@ -77,11 +77,13 @@ internal fun TestStatusCard(status: TestStatus) {
 private fun TestStatusListPreview() {
     KoogAgentTheme {
         TestStatusList(
-            testStatuses = listOf(
-                TestStatus(name = "Test 1", state = TestStatus.State.PASS),
-                TestStatus(name = "Test 2", state = TestStatus.State.RUNNING),
-                TestStatus(name = "Test 3", state = TestStatus.State.IDLE)
-            ).toImmutableList()
+            testStatuses =
+                listOf(
+                        TestStatus(name = "Test 1", state = TestStatus.State.PASS),
+                        TestStatus(name = "Test 2", state = TestStatus.State.RUNNING),
+                        TestStatus(name = "Test 3", state = TestStatus.State.IDLE),
+                    )
+                    .toImmutableList()
         )
     }
 }

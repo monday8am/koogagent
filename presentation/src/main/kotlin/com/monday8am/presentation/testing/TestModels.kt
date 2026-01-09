@@ -55,9 +55,7 @@ sealed interface TestResultFrame {
     }
 }
 
-/**
- * Framework-agnostic test case definition.
- */
+/** Framework-agnostic test case definition. */
 data class TestCase(
     val name: String,
     val description: List<String> = emptyList(),

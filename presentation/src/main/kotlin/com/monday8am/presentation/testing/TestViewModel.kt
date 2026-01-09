@@ -74,15 +74,17 @@ class TestViewModelImpl(
     private val runTestsTrigger = MutableSharedFlow<Boolean>(extraBufferCapacity = 1)
 
     // Load tests on init
-    private val loadedTests: StateFlow<List<TestCase>> = flow {
-        try {
-            val definitions = testRepository.getTests()
-            emit(TestRuleValidator.convert(definitions))
-        } catch (e: Exception) {
-            Logger.e("Failed to load tests", e)
-            emit(emptyList())
-        }
-    }.stateIn(scope, SharingStarted.Eagerly, emptyList())
+    private val loadedTests: StateFlow<List<TestCase>> =
+        flow {
+                try {
+                    val definitions = testRepository.getTests()
+                    emit(TestRuleValidator.convert(definitions))
+                } catch (e: Exception) {
+                    Logger.e("Failed to load tests", e)
+                    emit(emptyList())
+                }
+            }
+            .stateIn(scope, SharingStarted.Eagerly, emptyList())
 
     private val executionState: StateFlow<ExecutionState> =
         runTestsTrigger
@@ -91,9 +93,7 @@ class TestViewModelImpl(
 
     // UI state derived from ExecutionState and Loaded Tests
     override val uiState: StateFlow<TestUiState> =
-        combine(executionState, loadedTests) { execState, tests ->
-            deriveUiState(execState, tests)
-        }
+        combine(executionState, loadedTests) { execState, tests -> deriveUiState(execState, tests) }
             .stateIn(
                 scope = scope,
                 started = SharingStarted.Eagerly,
@@ -111,70 +111,71 @@ class TestViewModelImpl(
      * Pure flow transformation: triggers → ExecutionState emissions. Handles backend configuration,
      * engine initialization, and test execution.
      */
-    private fun executeTests(useGpu: Boolean, testCases: List<TestCase>): Flow<ExecutionState> = flow {
-        if (testCases.isEmpty()) {
-            Logger.w("No tests loaded to run")
-            return@flow
-        }
-
-        val modelConfig = prepareModelConfig(useGpu)
-        val initialResults =
-            TestResults(
-                statuses = testCases.map {
-                    TestStatus(it.name, TestStatus.State.IDLE)
-                }
-                    .toImmutableList()
-            )
-
-        inferenceEngine
-            .initializeAsFlow(modelConfig, modelPath)
-            .onStart { emit(ExecutionState.Initializing(modelConfig)) }
-            .flatMapConcat { engine ->
-                ToolCallingTestEngine(
-                    streamPromptExecutor = engine::promptStreaming,
-                    resetConversation = engine::resetConversation,
-                )
-                    .also { currentTestEngine = it }
-                    .runAllTests(testCases)
+    private fun executeTests(useGpu: Boolean, testCases: List<TestCase>): Flow<ExecutionState> =
+        flow {
+            if (testCases.isEmpty()) {
+                Logger.w("No tests loaded to run")
+                return@flow
             }
-            .runningFold(initialResults) { current, frame ->
+
+            val modelConfig = prepareModelConfig(useGpu)
+            val initialResults =
                 TestResults(
-                    frames = (current.frames + (frame.id to frame)).toImmutableMap(),
-                    statuses = updateTestStatuses(current.statuses, frame).toImmutableList(),
+                    statuses =
+                        testCases
+                            .map { TestStatus(it.name, TestStatus.State.IDLE) }
+                            .toImmutableList()
                 )
-            }
-            .map { results ->
-                if (
-                    results.statuses.last().state in
-                    listOf(TestStatus.State.FAIL, TestStatus.State.PASS)
-                ) {
-                    ExecutionState.Finish(modelConfig, results)
-                } else {
-                    ExecutionState.Running(modelConfig, results)
-                }
-            }
-            .catch { e ->
-                if (e is TestCancelledException) {
-                    emit(ExecutionState.Idle(modelConfig))
-                } else {
-                    Logger.e("Error: ${e.message}")
-                    val errorFrame =
-                        TestResultFrame.Validation(
-                            testName = "Error",
-                            result = ValidationResult.Fail("Error: ${e.message}"),
-                            duration = 0,
-                            fullContent = "",
+
+            inferenceEngine
+                .initializeAsFlow(modelConfig, modelPath)
+                .onStart { emit(ExecutionState.Initializing(modelConfig)) }
+                .flatMapConcat { engine ->
+                    ToolCallingTestEngine(
+                            streamPromptExecutor = engine::promptStreaming,
+                            resetConversation = engine::resetConversation,
                         )
-                    val errorResults =
-                        TestResults(
-                            frames = persistentMapOf(errorFrame.id to errorFrame),
-                            statuses = initialResults.statuses,
-                        )
-                    emit(ExecutionState.Finish(modelConfig, errorResults))
+                        .also { currentTestEngine = it }
+                        .runAllTests(testCases)
                 }
-            }
-            .collect { emit(it) }
-    }
+                .runningFold(initialResults) { current, frame ->
+                    TestResults(
+                        frames = (current.frames + (frame.id to frame)).toImmutableMap(),
+                        statuses = updateTestStatuses(current.statuses, frame).toImmutableList(),
+                    )
+                }
+                .map { results ->
+                    if (
+                        results.statuses.last().state in
+                            listOf(TestStatus.State.FAIL, TestStatus.State.PASS)
+                    ) {
+                        ExecutionState.Finish(modelConfig, results)
+                    } else {
+                        ExecutionState.Running(modelConfig, results)
+                    }
+                }
+                .catch { e ->
+                    if (e is TestCancelledException) {
+                        emit(ExecutionState.Idle(modelConfig))
+                    } else {
+                        Logger.e("Error: ${e.message}")
+                        val errorFrame =
+                            TestResultFrame.Validation(
+                                testName = "Error",
+                                result = ValidationResult.Fail("Error: ${e.message}"),
+                                duration = 0,
+                                fullContent = "",
+                            )
+                        val errorResults =
+                            TestResults(
+                                frames = persistentMapOf(errorFrame.id to errorFrame),
+                                statuses = initialResults.statuses,
+                            )
+                        emit(ExecutionState.Finish(modelConfig, errorResults))
+                    }
+                }
+                .collect { emit(it) }
+        }
 
     private fun prepareModelConfig(useGpu: Boolean): ModelConfiguration {
         val currentModel = executionState.value.model
@@ -189,8 +190,10 @@ class TestViewModelImpl(
 
     /** Pure function: derives UI state from execution state. */
     private fun deriveUiState(state: ExecutionState, tests: List<TestCase>): TestUiState {
-        // If we are IDLE or INITIALIZING, but have loaded tests, we should show them as IDLE statuses
-        val defaultStatuses = tests.map { TestStatus(it.name, TestStatus.State.IDLE) }.toImmutableList()
+        // If we are IDLE or INITIALIZING, but have loaded tests, we should show them as IDLE
+        // statuses
+        val defaultStatuses =
+            tests.map { TestStatus(it.name, TestStatus.State.IDLE) }.toImmutableList()
 
         return when (state) {
             is ExecutionState.Idle ->

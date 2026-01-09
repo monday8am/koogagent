@@ -3,13 +3,11 @@ package com.monday8am.presentation.testing
 import com.monday8am.agent.tools.ToolTrace
 import com.monday8am.koogagent.data.testing.TestCaseDefinition
 import com.monday8am.koogagent.data.testing.ValidationRule
+import kotlin.math.abs
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.doubleOrNull
-import kotlin.math.abs
 
-/**
- * Converts data layer test definitions to presentation layer executable test cases.
- */
+/** Converts data layer test definitions to presentation layer executable test cases. */
 object TestRuleValidator {
 
     fun convert(definitions: List<TestCaseDefinition>): List<TestCase> {
@@ -20,7 +18,7 @@ object TestRuleValidator {
                 queries = def.queries.map { TestQuery(it.text, it.description) },
                 systemPrompt = def.systemPrompt,
                 parseThinkingTags = def.parseThinkingTags,
-                validator = createValidator(def.rules)
+                validator = createValidator(def.rules),
             )
         }
     }
@@ -51,7 +49,9 @@ object TestRuleValidator {
                 if (ToolTrace.calls.isEmpty()) {
                     ValidationResult.Pass("No tools called")
                 } else {
-                    ValidationResult.Fail("Unexpected tool calls: ${ToolTrace.calls.map { it.name }}")
+                    ValidationResult.Fail(
+                        "Unexpected tool calls: ${ToolTrace.calls.map { it.name }}"
+                    )
                 }
             }
 
@@ -78,29 +78,33 @@ object TestRuleValidator {
             is ValidationRule.ToolArgsMatch -> {
                 val toolCall = ToolTrace.calls.find { it.name == rule.toolName }
                 if (toolCall != null) {
-                    val allMatch = rule.args.entries.all { entry ->
-                        val expectedValue = entry.value
-                        val actualValue = toolCall.args[entry.key]
+                    val allMatch =
+                        rule.args.entries.all { entry ->
+                            val expectedValue = entry.value
+                            val actualValue = toolCall.args[entry.key]
 
-                        if (expectedValue is JsonPrimitive) {
-                            if (expectedValue.isString) {
-                                actualValue.toString() == expectedValue.content
-                            } else {
-                                val expectedDouble = expectedValue.doubleOrNull
-                                if (expectedDouble != null) {
-                                    val actualDouble = (actualValue as? Number)?.toDouble() ?: 0.0
-                                    abs(expectedDouble - actualDouble) < 0.1
-                                } else {
+                            if (expectedValue is JsonPrimitive) {
+                                if (expectedValue.isString) {
                                     actualValue.toString() == expectedValue.content
+                                } else {
+                                    val expectedDouble = expectedValue.doubleOrNull
+                                    if (expectedDouble != null) {
+                                        val actualDouble =
+                                            (actualValue as? Number)?.toDouble() ?: 0.0
+                                        abs(expectedDouble - actualDouble) < 0.1
+                                    } else {
+                                        actualValue.toString() == expectedValue.content
+                                    }
                                 }
+                            } else {
+                                actualValue.toString() == expectedValue.toString()
                             }
-                        } else {
-                            actualValue.toString() == expectedValue.toString()
                         }
-                    }
 
                     if (allMatch) {
-                        ValidationResult.Pass("Tool '${rule.toolName}' called with correct arguments")
+                        ValidationResult.Pass(
+                            "Tool '${rule.toolName}' called with correct arguments"
+                        )
                     } else {
                         ValidationResult.Fail(
                             "Tool '${rule.toolName}' arguments mismatch. Expected: ${rule.args}, Actual: ${toolCall.args}"
@@ -114,18 +118,20 @@ object TestRuleValidator {
             }
 
             is ValidationRule.ToolCountMin -> {
-                val matchingCalls = if (rule.toolName != null) {
-                    ToolTrace.calls.filter { it.name == rule.toolName }
-                } else {
-                    ToolTrace.calls
-                }
+                val matchingCalls =
+                    if (rule.toolName != null) {
+                        ToolTrace.calls.filter { it.name == rule.toolName }
+                    } else {
+                        ToolTrace.calls
+                    }
 
                 if (matchingCalls.size >= rule.min) {
                     ValidationResult.Pass("Tool call count met (min ${rule.min})")
                 } else {
                     ValidationResult.Fail(
-                        "Expected ${rule.min}+ tool calls" + (if (rule.toolName != null) " for ${rule.toolName}" else "") +
-                                ", got: ${matchingCalls.size}."
+                        "Expected ${rule.min}+ tool calls" +
+                            (if (rule.toolName != null) " for ${rule.toolName}" else "") +
+                            ", got: ${matchingCalls.size}."
                     )
                 }
             }
@@ -142,7 +148,9 @@ object TestRuleValidator {
                 if (ToolTrace.calls.isEmpty() && result.isNotBlank()) {
                     ValidationResult.Pass("Chat response valid (no tools)")
                 } else {
-                    ValidationResult.Fail("Chat invalid. Tools: ${ToolTrace.calls.size}, Result len: ${result.length}")
+                    ValidationResult.Fail(
+                        "Chat invalid. Tools: ${ToolTrace.calls.size}, Result len: ${result.length}"
+                    )
                 }
             }
         }
