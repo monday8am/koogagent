@@ -30,18 +30,23 @@ import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 
-private data class LlmModelInstance(val engine: Engine, var conversation: Conversation, val modelConfig: ModelConfiguration)
+private data class LlmModelInstance(
+    val engine: Engine,
+    var conversation: Conversation,
+    val modelConfig: ModelConfiguration,
+)
 
-/**
- * LiteRT-LM implementation with native tool calling support.
- */
+/** LiteRT-LM implementation with native tool calling support. */
 class LiteRTLmInferenceEngineImpl(
     private val tools: List<Any> = emptyList(),
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : LocalInferenceEngine {
     private var currentInstance: LlmModelInstance? = null
 
-    override suspend fun initialize(modelConfig: ModelConfiguration, modelPath: String): Result<Unit> =
+    override suspend fun initialize(
+        modelConfig: ModelConfiguration,
+        modelPath: String,
+    ): Result<Unit> =
         withContext(dispatcher) {
             if (currentInstance != null) {
                 return@withContext Result.success(Unit)
@@ -55,7 +60,10 @@ class LiteRTLmInferenceEngineImpl(
                 val engineConfig =
                     EngineConfig(
                         modelPath = modelPath,
-                        backend = if (modelConfig.hardwareAcceleration == HardwareBackend.GPU_SUPPORTED) Backend.GPU else Backend.CPU,
+                        backend =
+                            if (modelConfig.hardwareAcceleration == HardwareBackend.GPU_SUPPORTED)
+                                Backend.GPU
+                            else Backend.CPU,
                         visionBackend = null, // Text-only inference
                         audioBackend = null, // Text-only inference
                         maxNumTokens = modelConfig.contextLength,
@@ -67,21 +75,23 @@ class LiteRTLmInferenceEngineImpl(
                 // Configure conversation with tools for native tool calling
                 val conversationConfig =
                     ConversationConfig(
-                        systemMessage = Message.of(
-                            "You are a helpful assistant."
-                        ),
+                        systemMessage = Message.of("You are a helpful assistant."),
                         tools = tools, // Native LiteRT-LM tools with @Tool annotations
                         samplerConfig =
-                        SamplerConfig(
-                            topK = modelConfig.defaultTopK,
-                            topP = modelConfig.defaultTopP.toDouble(),
-                            temperature = modelConfig.defaultTemperature.toDouble(),
-                        ),
+                            SamplerConfig(
+                                topK = modelConfig.defaultTopK,
+                                topP = modelConfig.defaultTopP.toDouble(),
+                                temperature = modelConfig.defaultTemperature.toDouble(),
+                            ),
                     )
                 val conversation = engine.createConversation(conversationConfig)
 
                 currentInstance =
-                    LlmModelInstance(engine = engine, conversation = conversation, modelConfig = modelConfig)
+                    LlmModelInstance(
+                        engine = engine,
+                        conversation = conversation,
+                        modelConfig = modelConfig,
+                    )
 
                 Result.success(Unit)
             } catch (e: Throwable) {
@@ -104,7 +114,9 @@ class LiteRTLmInferenceEngineImpl(
     override suspend fun prompt(prompt: String): Result<String> {
         val instance =
             currentInstance
-                ?: return Result.failure(IllegalStateException("Inference engine is not initialized."))
+                ?: return Result.failure(
+                    IllegalStateException("Inference engine is not initialized.")
+                )
 
         return withContext(dispatcher) {
             runCatching {
@@ -112,7 +124,9 @@ class LiteRTLmInferenceEngineImpl(
                     throw IllegalArgumentException("Prompt cannot be blank")
                 }
 
-                Logger.i("LocalInferenceEngine") { "▶️ Starting inference (prompt: ${prompt.length} chars)" }
+                Logger.i("LocalInferenceEngine") {
+                    "▶️ Starting inference (prompt: ${prompt.length} chars)"
+                }
                 val startTime = System.currentTimeMillis()
 
                 val userMessage = Message.of(prompt)
@@ -135,10 +149,11 @@ class LiteRTLmInferenceEngineImpl(
 
     override fun promptStreaming(prompt: String): Flow<String> {
         val instance =
-            currentInstance ?: run {
-                Logger.e("LocalInferenceEngine") { "Inference instance is not available." }
-                return emptyFlow() // Return an empty flow if there's no instance.
-            }
+            currentInstance
+                ?: run {
+                    Logger.e("LocalInferenceEngine") { "Inference instance is not available." }
+                    return emptyFlow() // Return an empty flow if there's no instance.
+                }
         val userMessage = Message.of(prompt)
         var startTime = 0L
 
@@ -146,42 +161,43 @@ class LiteRTLmInferenceEngineImpl(
             .sendMessageAsync(userMessage)
             .map { message ->
                 message.contents.filterIsInstance<Content.Text>().joinToString("") { it.text }
-            }.filter { it.isNotEmpty() }
+            }
+            .filter { it.isNotEmpty() }
             .onStart {
                 startTime = System.currentTimeMillis()
                 Logger.i("LocalInferenceEngine") { "Streaming inference started." }
-            }.onCompletion {
+            }
+            .onCompletion {
                 val duration = System.currentTimeMillis() - startTime
                 Logger.i("LocalInferenceEngine") { "✅ Streaming inference complete: ${duration}ms" }
-            }.flowOn(dispatcher)
+            }
+            .flowOn(dispatcher)
     }
 
     override fun initializeAsFlow(
         modelConfig: ModelConfiguration,
-        modelPath: String
-    ): Flow<LocalInferenceEngine> =
-        flow {
-            initialize(modelConfig = modelConfig, modelPath = modelPath)
-                .onSuccess {
-                    emit(this@LiteRTLmInferenceEngineImpl)
-                }.onFailure {
-                    throw it
-                }
-        }
+        modelPath: String,
+    ): Flow<LocalInferenceEngine> = flow {
+        initialize(modelConfig = modelConfig, modelPath = modelPath)
+            .onSuccess { emit(this@LiteRTLmInferenceEngineImpl) }
+            .onFailure { throw it }
+    }
 
     override fun resetConversation(): Result<Unit> {
-        val instance = currentInstance ?: return Result.failure(IllegalStateException("Engine not initialized"))
+        val instance =
+            currentInstance
+                ?: return Result.failure(IllegalStateException("Engine not initialized"))
         return runCatching {
             instance.conversation.close()
             val conversationConfig =
                 ConversationConfig(
                     tools = tools, // Maintain tools across conversation resets
                     samplerConfig =
-                    SamplerConfig(
-                        topK = instance.modelConfig.defaultTopK,
-                        topP = instance.modelConfig.defaultTopP.toDouble(),
-                        temperature = instance.modelConfig.defaultTemperature.toDouble(),
-                    ),
+                        SamplerConfig(
+                            topK = instance.modelConfig.defaultTopK,
+                            topP = instance.modelConfig.defaultTopP.toDouble(),
+                            temperature = instance.modelConfig.defaultTemperature.toDouble(),
+                        ),
                 )
             Logger.i("LocalInferenceEngine") { "\uD83D\uDCAC Reset conversation!" }
             instance.conversation = instance.engine.createConversation(conversationConfig)
@@ -224,10 +240,13 @@ private suspend fun Conversation.sendMessageWithCallback(message: Message): Stri
         this.sendMessageAsync(message, callback)
 
         // Handle coroutine cancellation.
-        // LiteRT-LM's Conversation API does not currently offer a direct way to interrupt an ongoing
+        // LiteRT-LM's Conversation API does not currently offer a direct way to interrupt an
+        // ongoing
         // inference task. The coroutine will suspend until the task completes or errors out.
         // Cleanup, like closing the conversation, is handled by the closeSession() method.
         continuation.invokeOnCancellation {
-            Logger.i("sendMessageAsync:Coroutine was cancelled, but underlying inference may continue.")
+            Logger.i(
+                "sendMessageAsync:Coroutine was cancelled, but underlying inference may continue."
+            )
         }
     }

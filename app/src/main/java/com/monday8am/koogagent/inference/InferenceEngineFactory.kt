@@ -8,8 +8,8 @@ import com.monday8am.koogagent.inference.litertlm.LiteRTLmInferenceEngineImpl
 import com.monday8am.koogagent.inference.mediapipe.MediaPipeInferenceEngineImpl
 
 /**
- * Factory helper for creating appropriate inference engine based on inference library type.
- * Called once at app startup to create the engine for the selected model.
+ * Factory helper for creating appropriate inference engine based on inference library type. Called
+ * once at app startup to create the engine for the selected model.
  */
 object InferenceEngineFactory {
     fun create(
@@ -17,16 +17,14 @@ object InferenceEngineFactory {
         inferenceLibrary: InferenceLibrary,
         liteRtTools: List<Any> = emptyList(),
         mediaPipeTools: List<Tool> = emptyList(),
-    ): LocalInferenceEngine = when (inferenceLibrary) {
-        InferenceLibrary.LITERT -> {
-            LiteRTLmInferenceEngineImpl(tools = liteRtTools)
-        }
+    ): LocalInferenceEngine =
+        when (inferenceLibrary) {
+            InferenceLibrary.LITERT -> {
+                LiteRTLmInferenceEngineImpl(tools = liteRtTools)
+            }
 
-        InferenceLibrary.MEDIAPIPE -> {
-            MediaPipeInferenceEngineImpl(
-                context = context,
-                tools = mediaPipeTools,
-            )
+            InferenceLibrary.MEDIAPIPE -> {
+                MediaPipeInferenceEngineImpl(context = context, tools = mediaPipeTools)
+            }
         }
-    }
 }

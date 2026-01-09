@@ -26,10 +26,7 @@ internal fun DescriptionCell(frame: TestResultFrame.Description) {
     val border = colorScheme.outlineVariant
 
     Card(
-        colors = CardDefaults.cardColors(
-            containerColor = container,
-            contentColor = onContainer
-        ),
+        colors = CardDefaults.cardColors(containerColor = container, contentColor = onContainer),
         border = BorderStroke(1.dp, border),
         modifier = Modifier.fillMaxWidth(),
     ) {
@@ -65,26 +62,13 @@ internal fun QueryCell(frame: TestResultFrame.Query) {
     val text = colorScheme.onSurface
 
     Card(
-        colors = CardDefaults.cardColors(
-            containerColor = container,
-            contentColor = onContainer
-        ),
+        colors = CardDefaults.cardColors(containerColor = container, contentColor = onContainer),
         border = BorderStroke(1.dp, border),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(start = 24.dp),
+        modifier = Modifier.fillMaxWidth().padding(start = 24.dp),
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            Text(
-                text = "User • Query",
-                style = MaterialTheme.typography.labelSmall,
-                color = border,
-            )
-            Text(
-                text = frame.query,
-                style = MaterialTheme.typography.bodyMedium,
-                color = text,
-            )
+            Text(text = "User • Query", style = MaterialTheme.typography.labelSmall, color = border)
+            Text(text = frame.query, style = MaterialTheme.typography.bodyMedium, color = text)
         }
     }
 }
@@ -98,10 +82,7 @@ internal fun ThinkingCell(frame: TestResultFrame.Thinking) {
     val border = colorScheme.primary
 
     Card(
-        colors = CardDefaults.cardColors(
-            containerColor = container,
-            contentColor = onContainer
-        ),
+        colors = CardDefaults.cardColors(containerColor = container, contentColor = onContainer),
         border = BorderStroke(1.dp, border),
         modifier = Modifier.fillMaxWidth(),
     ) {
@@ -129,10 +110,7 @@ internal fun ToolCell(frame: TestResultFrame.Tool) {
     val border = colorScheme.secondary
 
     Card(
-        colors = CardDefaults.cardColors(
-            containerColor = container,
-            contentColor = onContainer
-        ),
+        colors = CardDefaults.cardColors(containerColor = container, contentColor = onContainer),
         border = BorderStroke(1.dp, border),
         modifier = Modifier.fillMaxWidth(),
     ) {
@@ -160,10 +138,7 @@ internal fun ContentCell(frame: TestResultFrame.Content) {
     val border = colorScheme.tertiary
 
     Card(
-        colors = CardDefaults.cardColors(
-            containerColor = container,
-            contentColor = onContainer
-        ),
+        colors = CardDefaults.cardColors(containerColor = container, contentColor = onContainer),
         border = BorderStroke(1.dp, border),
         modifier = Modifier.fillMaxWidth(),
     ) {
@@ -185,30 +160,27 @@ internal fun ContentCell(frame: TestResultFrame.Content) {
 @Composable
 internal fun ValidationCell(frame: TestResultFrame.Validation) {
     val colorScheme = MaterialTheme.colorScheme
-    val (container, onContainer, border) = when (frame.result) {
-        is ValidationResult.Pass -> Triple(
-            colorScheme.tertiaryContainer,
-            colorScheme.onTertiaryContainer,
-            colorScheme.tertiary
-        )
+    val (container, onContainer, border) =
+        when (frame.result) {
+            is ValidationResult.Pass ->
+                Triple(
+                    colorScheme.tertiaryContainer,
+                    colorScheme.onTertiaryContainer,
+                    colorScheme.tertiary,
+                )
 
-        is ValidationResult.Fail -> Triple(
-            colorScheme.errorContainer,
-            colorScheme.onErrorContainer,
-            colorScheme.error
-        )
-    }
+            is ValidationResult.Fail ->
+                Triple(colorScheme.errorContainer, colorScheme.onErrorContainer, colorScheme.error)
+        }
 
-    val message = when (val result = frame.result) {
-        is ValidationResult.Pass -> result.message
-        is ValidationResult.Fail -> result.message
-    }
+    val message =
+        when (val result = frame.result) {
+            is ValidationResult.Pass -> result.message
+            is ValidationResult.Fail -> result.message
+        }
 
     Card(
-        colors = CardDefaults.cardColors(
-            containerColor = container,
-            contentColor = onContainer
-        ),
+        colors = CardDefaults.cardColors(containerColor = container, contentColor = onContainer),
         border = BorderStroke(2.dp, border),
         modifier = Modifier.fillMaxWidth(),
     ) {
@@ -233,40 +205,35 @@ private fun ComponentsPreviewLight() {
     KoogAgentTheme(darkTheme = false) {
         Column(
             verticalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(16.dp),
         ) {
             DescriptionCell(
                 TestResultFrame.Description(
                     testName = "Test 01",
                     description = "This is a description",
-                    systemPrompt = "This is a system prompt"
+                    systemPrompt = "This is a system prompt",
                 )
             )
-            QueryCell(
-                TestResultFrame.Query(
-                    testName = "Test 01",
-                    query = "This is a query"
-                )
-            )
+            QueryCell(TestResultFrame.Query(testName = "Test 01", query = "This is a query"))
             ThinkingCell(
                 TestResultFrame.Thinking(
                     testName = "Test 01",
                     chunk = "...",
-                    accumulator = "I am thinking about the problem..."
+                    accumulator = "I am thinking about the problem...",
                 )
             )
             ToolCell(
                 TestResultFrame.Tool(
                     testName = "Test 01",
                     content = "get_weather",
-                    accumulator = "Calling weather tool..."
+                    accumulator = "Calling weather tool...",
                 )
             )
             ContentCell(
                 TestResultFrame.Content(
                     testName = "Test 01",
                     chunk = "Hello",
-                    accumulator = "Hello, world!"
+                    accumulator = "Hello, world!",
                 )
             )
             ValidationCell(
@@ -274,7 +241,7 @@ private fun ComponentsPreviewLight() {
                     testName = "Test 01",
                     result = ValidationResult.Pass("Test Passed"),
                     duration = 123L,
-                    fullContent = "Complete"
+                    fullContent = "Complete",
                 )
             )
             ValidationCell(
@@ -282,7 +249,7 @@ private fun ComponentsPreviewLight() {
                     testName = "Test 01",
                     result = ValidationResult.Fail("Test Failed", "Error details"),
                     duration = 456L,
-                    fullContent = "Failed content"
+                    fullContent = "Failed content",
                 )
             )
         }
@@ -295,40 +262,35 @@ private fun ComponentsPreviewDark() {
     KoogAgentTheme(darkTheme = true) {
         Column(
             verticalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(16.dp),
         ) {
             DescriptionCell(
                 TestResultFrame.Description(
                     testName = "Test 01",
                     description = "This is a description",
-                    systemPrompt = "This is a system prompt"
+                    systemPrompt = "This is a system prompt",
                 )
             )
-            QueryCell(
-                TestResultFrame.Query(
-                    testName = "Test 01",
-                    query = "This is a query"
-                )
-            )
+            QueryCell(TestResultFrame.Query(testName = "Test 01", query = "This is a query"))
             ThinkingCell(
                 TestResultFrame.Thinking(
                     testName = "Test 01",
                     chunk = "...",
-                    accumulator = "I am thinking about the problem..."
+                    accumulator = "I am thinking about the problem...",
                 )
             )
             ToolCell(
                 TestResultFrame.Tool(
                     testName = "Test 01",
                     content = "get_weather",
-                    accumulator = "Calling weather tool..."
+                    accumulator = "Calling weather tool...",
                 )
             )
             ContentCell(
                 TestResultFrame.Content(
                     testName = "Test 01",
                     chunk = "Hello",
-                    accumulator = "Hello, world!"
+                    accumulator = "Hello, world!",
                 )
             )
             ValidationCell(
@@ -336,7 +298,7 @@ private fun ComponentsPreviewDark() {
                     testName = "Test 01",
                     result = ValidationResult.Pass("Test Passed"),
                     duration = 123L,
-                    fullContent = "Complete"
+                    fullContent = "Complete",
                 )
             )
             ValidationCell(
@@ -344,7 +306,7 @@ private fun ComponentsPreviewDark() {
                     testName = "Test 01",
                     result = ValidationResult.Fail("Test Failed", "Error details"),
                     duration = 456L,
-                    fullContent = "Failed content"
+                    fullContent = "Failed content",
                 )
             )
         }

@@ -1,6 +1,5 @@
 package com.monday8am.koogagent.ui.navigation
 
-import android.content.Intent
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
@@ -27,9 +26,7 @@ fun AppNavigation(
                 onNavigateToNotification = { modelId ->
                     navController.navigate(Route.Notification(modelId))
                 },
-                onNavigateToTesting = { modelId ->
-                    navController.navigate(Route.Testing(modelId))
-                },
+                onNavigateToTesting = { modelId -> navController.navigate(Route.Testing(modelId)) },
             )
         }
         composable<Route.Notification> { backStackEntry ->

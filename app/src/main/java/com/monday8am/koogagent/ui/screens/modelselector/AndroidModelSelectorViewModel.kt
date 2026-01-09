@@ -9,8 +9,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 
 class AndroidModelSelectorViewModel(private val impl: ModelSelectorViewModel) :
-    ViewModel(),
-    ModelSelectorViewModel by impl {
+    ViewModel(), ModelSelectorViewModel by impl {
     override val uiState: StateFlow<UiState> =
         impl.uiState.stateIn(
             viewModelScope,

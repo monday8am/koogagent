@@ -9,39 +9,31 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.monday8am.koogagent.ui.theme.KoogAgentTheme
 
 @Composable
-fun LogoutConfirmationDialog(
-    onDismiss: () -> Unit,
-    onConfirm: () -> Unit
-) {
+fun LogoutConfirmationDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Logout from HuggingFace") },
         text = {
-            Text("Are you sure you want to logout? You will need to login again to download gated models.")
+            Text(
+                "Are you sure you want to logout? You will need to login again to download gated models."
+            )
         },
         confirmButton = {
-            Button(onClick = {
-                onConfirm()
-                onDismiss()
-            }) {
+            Button(
+                onClick = {
+                    onConfirm()
+                    onDismiss()
+                }
+            ) {
                 Text("Logout")
             }
         },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        }
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
 }
 
 @Preview(showBackground = true)
 @Composable
 private fun LogoutConfirmationDialogPreview() {
-    KoogAgentTheme {
-        LogoutConfirmationDialog(
-            onDismiss = {},
-            onConfirm = {}
-        )
-    }
+    KoogAgentTheme { LogoutConfirmationDialog(onDismiss = {}, onConfirm = {}) }
 }

@@ -35,9 +35,8 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // HuggingFace OAuth client ID from gradle.properties or environment variable
-        val hfClientId = project.findProperty("HF_CLIENT_ID")?.toString()
-            ?: System.getenv("HF_CLIENT_ID")
-            ?: ""
+        val hfClientId =
+            project.findProperty("HF_CLIENT_ID")?.toString() ?: System.getenv("HF_CLIENT_ID") ?: ""
         buildConfigField("String", "HF_CLIENT_ID", "\"$hfClientId\"")
 
         // AppAuth redirect scheme placeholder
@@ -60,7 +59,10 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
             signingConfig = signingConfigs.getByName("release")
         }
     }
@@ -70,15 +72,9 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlin {
-        jvmToolchain(17)
-    }
+    kotlin { jvmToolchain(17) }
 
-    packaging {
-        resources {
-            excludes += "META-INF/*"
-        }
-    }
+    packaging { resources { excludes += "META-INF/*" } }
 
     buildFeatures {
         compose = true
@@ -90,11 +86,12 @@ android {
         abortOnError = true
         checkDependencies = true
         // Suppress warnings for prototype
-        disable += setOf(
-            "ComposeModifierMissing", // Too strict for prototype
-            "IconDipSize", // Icon density mismatch in xhdpi (not critical for prototype)
-            "AndroidGradlePluginVersion", // Using AGP 9.0 rc2 intentionally
-        )
+        disable +=
+            setOf(
+                "ComposeModifierMissing", // Too strict for prototype
+                "IconDipSize", // Icon density mismatch in xhdpi (not critical for prototype)
+                "AndroidGradlePluginVersion", // Using AGP 9.0 rc2 intentionally
+            )
     }
 }
 

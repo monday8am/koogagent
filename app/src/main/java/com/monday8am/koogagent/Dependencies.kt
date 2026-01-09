@@ -26,23 +26,17 @@ import com.monday8am.presentation.notifications.DeviceContextProvider
 import com.monday8am.presentation.notifications.NotificationEngine
 
 /**
- * Simple service locator for app dependencies.
- * Centralizes dependency creation and avoids factory boilerplate.
+ * Simple service locator for app dependencies. Centralizes dependency creation and avoids factory
+ * boilerplate.
  */
 object Dependencies {
     lateinit var appContext: Context
 
-    val notificationEngine: NotificationEngine by lazy {
-        NotificationEngineImpl(appContext)
-    }
+    val notificationEngine: NotificationEngine by lazy { NotificationEngineImpl(appContext) }
 
-    val weatherProvider: WeatherProvider by lazy {
-        WeatherProviderImpl()
-    }
+    val weatherProvider: WeatherProvider by lazy { WeatherProviderImpl() }
 
-    val locationProvider: LocationProvider by lazy {
-        MockLocationProvider()
-    }
+    val locationProvider: LocationProvider by lazy { MockLocationProvider() }
 
     val deviceContextProvider: DeviceContextProvider by lazy {
         DeviceContextProviderImpl(appContext)
@@ -52,25 +46,22 @@ object Dependencies {
         ModelDownloadManagerImpl(appContext, authRepository)
     }
 
-    val authRepository: AuthRepository by lazy {
-        AuthRepositoryImpl(appContext)
-    }
+    val authRepository: AuthRepository by lazy { AuthRepositoryImpl(appContext) }
 
     private var _oAuthManager: HuggingFaceOAuthManager? = null
     val oAuthManager: HuggingFaceOAuthManager
         get() {
             if (_oAuthManager == null) {
-                _oAuthManager = HuggingFaceOAuthManager(
-                    context = appContext,
-                    clientId = BuildConfig.HF_CLIENT_ID,
-                )
+                _oAuthManager =
+                    HuggingFaceOAuthManager(
+                        context = appContext,
+                        clientId = BuildConfig.HF_CLIENT_ID,
+                    )
             }
             return _oAuthManager!!
         }
 
-    /**
-     * Disposes of resources that should be cleaned up when the activity is finishing.
-     */
+    /** Disposes of resources that should be cleaned up when the activity is finishing. */
     fun dispose() {
         _oAuthManager?.dispose()
         _oAuthManager = null
@@ -83,18 +74,9 @@ object Dependencies {
         )
     }
 
-    val modelRepository: ModelRepository by lazy {
-        ModelRepositoryImpl(modelCatalogProvider)
-    }
+    val modelRepository: ModelRepository by lazy { ModelRepositoryImpl(modelCatalogProvider) }
 
-    val nativeTools: List<Any> by lazy {
-        listOf(
-            NativeLocationTools(),
-            LiteRTLmTools(),
-        )
-    }
+    val nativeTools: List<Any> by lazy { listOf(NativeLocationTools(), LiteRTLmTools()) }
 
-    val mediaPipeTools: List<Tool> by lazy {
-        listOf(MediaPipeTools.createAllTools())
-    }
+    val mediaPipeTools: List<Tool> by lazy { listOf(MediaPipeTools.createAllTools()) }
 }

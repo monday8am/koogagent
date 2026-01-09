@@ -38,35 +38,27 @@ internal fun ModelList(
     selectedModelId: String?,
     onIntent: (UiAction) -> Unit,
     onSelectModel: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
-    LazyColumn(
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = modifier,
-    ) {
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = modifier) {
         groups.forEach { group ->
             stickyHeader(key = group.id) {
                 GroupHeader(
                     title = group.title,
                     isExpanded = group.isExpanded,
-                    onToggle = { onIntent(UiAction.ToggleGroup(group.id)) }
+                    onToggle = { onIntent(UiAction.ToggleGroup(group.id)) },
                 )
             }
 
             if (group.isExpanded) {
-                items(
-                    items = group.models,
-                    key = { it.config.modelId },
-                ) { modelInfo ->
+                items(items = group.models, key = { it.config.modelId }) { modelInfo ->
                     ModelCard(
                         modelInfo = modelInfo,
                         isSelected = modelInfo.config.modelId == selectedModelId,
                         onDownloadClick = {
                             onIntent(UiAction.DownloadModel(modelInfo.config.modelId))
                         },
-                        onSelectClick = {
-                            onSelectModel(modelInfo.config.modelId)
-                        },
+                        onSelectClick = { onSelectModel(modelInfo.config.modelId) },
                     )
                 }
             }
@@ -75,29 +67,26 @@ internal fun ModelList(
 }
 
 @Composable
-private fun GroupHeader(
-    title: String,
-    isExpanded: Boolean,
-    onToggle: () -> Unit
-) {
+private fun GroupHeader(title: String, isExpanded: Boolean, onToggle: () -> Unit) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface)
-            .clickable(onClick = onToggle)
-            .padding(vertical = 8.dp),
+        modifier =
+            Modifier.fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surface)
+                .clickable(onClick = onToggle)
+                .padding(vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = title,
             style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.primary
+            color = MaterialTheme.colorScheme.primary,
         )
         Icon(
-            imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+            imageVector =
+                if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
             contentDescription = if (isExpanded) "Collapse" else "Expand",
-            tint = MaterialTheme.colorScheme.primary
+            tint = MaterialTheme.colorScheme.primary,
         )
     }
 }
@@ -105,52 +94,57 @@ private fun GroupHeader(
 @Preview
 @Composable
 private fun ModelListPreview() {
-    val sampleModels = listOf(
-        ModelInfo(
-            config = ModelConfiguration(
-                displayName = "Qwen3 0.6B (LiteRT, 4K context)",
-                modelFamily = "qwen3",
-                parameterCount = 0.6f,
-                quantization = "int8",
-                contextLength = 4096,
-                downloadUrl = "https://example.com/model.litertlm",
-                bundleFilename = "model1.litertlm",
-                inferenceLibrary = InferenceLibrary.LITERT,
-                hardwareAcceleration = HardwareBackend.CPU_ONLY
+    val sampleModels =
+        listOf(
+            ModelInfo(
+                config =
+                    ModelConfiguration(
+                        displayName = "Qwen3 0.6B (LiteRT, 4K context)",
+                        modelFamily = "qwen3",
+                        parameterCount = 0.6f,
+                        quantization = "int8",
+                        contextLength = 4096,
+                        downloadUrl = "https://example.com/model.litertlm",
+                        bundleFilename = "model1.litertlm",
+                        inferenceLibrary = InferenceLibrary.LITERT,
+                        hardwareAcceleration = HardwareBackend.CPU_ONLY,
+                    ),
+                isDownloaded = true,
+                downloadStatus = DownloadStatus.Completed,
             ),
-            isDownloaded = true,
-            downloadStatus = DownloadStatus.Completed
-        ),
-        ModelInfo(
-            config = ModelConfiguration(
-                displayName = "Gemma3 1B (LiteRT, 4K context)",
-                modelFamily = "gemma3",
-                parameterCount = 1.0f,
-                quantization = "int4",
-                contextLength = 4096,
-                downloadUrl = "https://example.com/model2.litertlm",
-                bundleFilename = "model2.litertlm",
-                inferenceLibrary = InferenceLibrary.LITERT,
-                hardwareAcceleration = HardwareBackend.GPU_SUPPORTED
+            ModelInfo(
+                config =
+                    ModelConfiguration(
+                        displayName = "Gemma3 1B (LiteRT, 4K context)",
+                        modelFamily = "gemma3",
+                        parameterCount = 1.0f,
+                        quantization = "int4",
+                        contextLength = 4096,
+                        downloadUrl = "https://example.com/model2.litertlm",
+                        bundleFilename = "model2.litertlm",
+                        inferenceLibrary = InferenceLibrary.LITERT,
+                        hardwareAcceleration = HardwareBackend.GPU_SUPPORTED,
+                    ),
+                isDownloaded = false,
+                downloadStatus = DownloadStatus.NotStarted,
             ),
-            isDownloaded = false,
-            downloadStatus = DownloadStatus.NotStarted
         )
-    )
 
     KoogAgentTheme {
         ModelList(
-            groups = listOf(
-                ModelGroup(
-                    id = "group1",
-                    title = "Test Group",
-                    models = sampleModels.toImmutableList(),
-                    isExpanded = true
-                )
-            ).toImmutableList(),
+            groups =
+                listOf(
+                        ModelGroup(
+                            id = "group1",
+                            title = "Test Group",
+                            models = sampleModels.toImmutableList(),
+                            isExpanded = true,
+                        )
+                    )
+                    .toImmutableList(),
             selectedModelId = sampleModels.first().config.modelId,
             onIntent = {},
-            onSelectModel = {}
+            onSelectModel = {},
         )
     }
 }

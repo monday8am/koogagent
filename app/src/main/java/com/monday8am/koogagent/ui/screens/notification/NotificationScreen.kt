@@ -51,34 +51,37 @@ import com.monday8am.presentation.notifications.defaultNotificationContext
 @Composable
 fun NotificationScreen(
     modelId: String,
-    viewModel: AndroidNotificationViewModel = viewModel(key = modelId) {
-        val selectedModel = Dependencies.modelRepository.findById(modelId) ?: ModelCatalog.DEFAULT
+    viewModel: AndroidNotificationViewModel =
+        viewModel(key = modelId) {
+            val selectedModel =
+                Dependencies.modelRepository.findById(modelId) ?: ModelCatalog.DEFAULT
 
-        val inferenceEngine =
-            InferenceEngineFactory.create(
-                context = Dependencies.appContext,
-                inferenceLibrary = selectedModel.inferenceLibrary,
-                liteRtTools = Dependencies.nativeTools,
-                mediaPipeTools = Dependencies.mediaPipeTools,
+            val inferenceEngine =
+                InferenceEngineFactory.create(
+                    context = Dependencies.appContext,
+                    inferenceLibrary = selectedModel.inferenceLibrary,
+                    liteRtTools = Dependencies.nativeTools,
+                    mediaPipeTools = Dependencies.mediaPipeTools,
+                )
+
+            val modelPath =
+                (Dependencies.modelDownloadManager as ModelDownloadManagerImpl).getModelPath(
+                    selectedModel.bundleFilename
+                )
+
+            AndroidNotificationViewModel(
+                NotificationViewModelImpl(
+                    selectedModel = selectedModel,
+                    modelPath = modelPath,
+                    inferenceEngine = inferenceEngine,
+                    notificationEngine = Dependencies.notificationEngine,
+                    weatherProvider = Dependencies.weatherProvider,
+                    locationProvider = Dependencies.locationProvider,
+                    deviceContextProvider = Dependencies.deviceContextProvider,
+                ),
+                selectedModel,
             )
-
-        val modelPath =
-            (Dependencies.modelDownloadManager as ModelDownloadManagerImpl)
-                .getModelPath(selectedModel.bundleFilename)
-
-        AndroidNotificationViewModel(
-            NotificationViewModelImpl(
-                selectedModel = selectedModel,
-                modelPath = modelPath,
-                inferenceEngine = inferenceEngine,
-                notificationEngine = Dependencies.notificationEngine,
-                weatherProvider = Dependencies.weatherProvider,
-                locationProvider = Dependencies.locationProvider,
-                deviceContextProvider = Dependencies.deviceContextProvider,
-            ),
-            selectedModel
-        )
-    }
+        },
 ) {
 
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -87,7 +90,9 @@ fun NotificationScreen(
         log = state.statusMessage.toDisplayString(),
         selectedModel = state.selectedModel,
         notificationContext = state.context,
-        onNotificationContextChange = { viewModel.onUiAction(UiAction.UpdateContext(context = it)) },
+        onNotificationContextChange = {
+            viewModel.onUiAction(UiAction.UpdateContext(context = it))
+        },
         onPressButton = { viewModel.onUiAction(uiAction = it) },
         modifier = Modifier,
     )
@@ -105,21 +110,14 @@ private fun NotificationContent(
     Column(
         verticalArrangement = spacedBy(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier =
-        modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp),
+        modifier = modifier.fillMaxSize().padding(horizontal = 16.dp),
     ) {
         ModelInfoCard(model = selectedModel, modifier = Modifier.padding(top = 32.dp))
 
         LogPanel(textLog = log)
 
-        Button(
-            onClick = { onPressButton(UiAction.ShowNotification) },
-        ) {
-            Text(
-                text = "Trigger Notification",
-            )
+        Button(onClick = { onPressButton(UiAction.ShowNotification) }) {
+            Text(text = "Trigger Notification")
         }
 
         NotificationContextEditor(
@@ -133,10 +131,7 @@ private fun NotificationContent(
 private fun ModelInfoCard(model: ModelConfiguration, modifier: Modifier = Modifier) {
     Card(modifier = modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(12.dp)) {
-            Text(
-                text = "Model: ${model.displayName}",
-                style = MaterialTheme.typography.titleMedium,
-            )
+            Text(text = "Model: ${model.displayName}", style = MaterialTheme.typography.titleMedium)
             Text(
                 text = "${model.parameterCount}B params • ${model.contextLength} tokens",
                 style = MaterialTheme.typography.bodySmall,
@@ -152,22 +147,20 @@ private fun ModelInfoCard(model: ModelConfiguration, modifier: Modifier = Modifi
 @Composable
 private fun LogPanel(textLog: String, modifier: Modifier = Modifier) {
     val scrollState = rememberScrollState()
-    LaunchedEffect(textLog) {
-        scrollState.animateScrollTo(scrollState.maxValue)
-    }
+    LaunchedEffect(textLog) { scrollState.animateScrollTo(scrollState.maxValue) }
     Box(
         modifier =
-        modifier
-            .fillMaxWidth()
-            .height(290.dp)
-            .verticalScroll(scrollState)
-            .background(MaterialTheme.colorScheme.inverseSurface),
+            modifier
+                .fillMaxWidth()
+                .height(290.dp)
+                .verticalScroll(scrollState)
+                .background(MaterialTheme.colorScheme.inverseSurface)
     ) {
         Text(
             text = textLog,
             color = MaterialTheme.colorScheme.primary,
             textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
         )
     }
 }
@@ -178,10 +171,7 @@ private fun NotificationContextEditor(
     onContextChange: (NotificationContext) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        verticalArrangement = spacedBy(12.dp),
-        modifier = modifier.fillMaxWidth(),
-    ) {
+    Column(verticalArrangement = spacedBy(12.dp), modifier = modifier.fillMaxWidth()) {
         Text(text = "Notification context", style = MaterialTheme.typography.titleMedium)
 
         EnumDropdown(
@@ -223,19 +213,13 @@ private fun <T : Enum<T>> EnumDropdown(
     ) {
         TextField(
             value = formatEnumName(selected.name),
-            onValueChange = { },
+            onValueChange = {},
             label = { Text(label) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             readOnly = true,
-            modifier =
-            Modifier
-                .menuAnchor()
-                .fillMaxWidth(),
+            modifier = Modifier.menuAnchor().fillMaxWidth(),
         )
-        ExposedDropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-        ) {
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             options.forEach { option ->
                 DropdownMenuItem(
                     text = { Text(formatEnumName(option.name)) },
@@ -259,10 +243,7 @@ private fun RowWithSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit) 
         modifier = Modifier.fillMaxWidth(),
     ) {
         Text(text = "Already logged a meal")
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-        )
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
 
@@ -278,8 +259,8 @@ private fun NotificationContentPreview() {
         NotificationContent(
             log = "Welcome to Yazio notificator!",
             notificationContext = defaultNotificationContext,
-            onNotificationContextChange = { },
-            onPressButton = { },
+            onNotificationContextChange = {},
+            onPressButton = {},
             selectedModel = ModelCatalog.DEFAULT,
         )
     }

@@ -3,34 +3,30 @@ package com.monday8am.koogagent.oauth
 import android.content.Context
 import android.content.Intent
 import androidx.core.net.toUri
+import co.touchlab.kermit.Logger
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import net.openid.appauth.AuthorizationException
 import net.openid.appauth.AuthorizationRequest
 import net.openid.appauth.AuthorizationResponse
 import net.openid.appauth.AuthorizationService
 import net.openid.appauth.AuthorizationServiceConfiguration
-import net.openid.appauth.ResponseTypeValues
-import co.touchlab.kermit.Logger
 import net.openid.appauth.CodeVerifierUtil
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.MainScope
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.cancel
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
+import net.openid.appauth.ResponseTypeValues
 
-/**
- * Manages HuggingFace OAuth authentication flow using AppAuth library.
- */
-class HuggingFaceOAuthManager(
-    context: Context,
-    private val clientId: String,
-) {
-    private val serviceConfig = AuthorizationServiceConfiguration(
-        HuggingFaceOAuthConfig.AUTHORIZATION_ENDPOINT.toUri(),
-        HuggingFaceOAuthConfig.TOKEN_ENDPOINT.toUri()
-    )
+/** Manages HuggingFace OAuth authentication flow using AppAuth library. */
+class HuggingFaceOAuthManager(context: Context, private val clientId: String) {
+    private val serviceConfig =
+        AuthorizationServiceConfiguration(
+            HuggingFaceOAuthConfig.AUTHORIZATION_ENDPOINT.toUri(),
+            HuggingFaceOAuthConfig.TOKEN_ENDPOINT.toUri(),
+        )
 
     private val authService = AuthorizationService(context)
     private val scope = MainScope()
@@ -39,40 +35,39 @@ class HuggingFaceOAuthManager(
     val oAuthResultFlow = _oAuthResultFlow.asSharedFlow()
 
     /**
-     * Creates an authorization intent for launching the OAuth flow in Custom Chrome Tab.
-     * Uses PKCE (S256) for enhanced security.
+     * Creates an authorization intent for launching the OAuth flow in Custom Chrome Tab. Uses PKCE
+     * (S256) for enhanced security.
      */
     fun createAuthorizationIntent(): Intent {
-        val authRequest = AuthorizationRequest.Builder(
-            serviceConfig,
-            clientId,
-            ResponseTypeValues.CODE,
-            HuggingFaceOAuthConfig.REDIRECT_URI.toUri()
-        )
-            .setScope(HuggingFaceOAuthConfig.SCOPE)
-            .setCodeVerifier(CodeVerifierUtil.generateRandomCodeVerifier())
-            .build()
+        val authRequest =
+            AuthorizationRequest.Builder(
+                    serviceConfig,
+                    clientId,
+                    ResponseTypeValues.CODE,
+                    HuggingFaceOAuthConfig.REDIRECT_URI.toUri(),
+                )
+                .setScope(HuggingFaceOAuthConfig.SCOPE)
+                .setCodeVerifier(CodeVerifierUtil.generateRandomCodeVerifier())
+                .build()
 
         Logger.d { "Creating authorization intent for client: $clientId" }
         return authService.getAuthorizationRequestIntent(authRequest)
     }
 
     /**
-     * Handles incoming intents and checks if they contain an OAuth redirect.
-     * If a redirect is found, it's emitted to the result flow.
+     * Handles incoming intents and checks if they contain an OAuth redirect. If a redirect is
+     * found, it's emitted to the result flow.
      */
     fun onHandleIntent(intent: Intent) {
         if (intent.getBooleanExtra(OAuthRedirectActivity.EXTRA_OAUTH_REDIRECT, false)) {
             Logger.d { "OAuth redirect detected in intent" }
-            scope.launch {
-                _oAuthResultFlow.emit(intent)
-            }
+            scope.launch { _oAuthResultFlow.emit(intent) }
         }
     }
 
     /**
-     * Handles the authorization response from the OAuth callback.
-     * Extracts the authorization response and exchanges the code for an access token.
+     * Handles the authorization response from the OAuth callback. Extracts the authorization
+     * response and exchanges the code for an access token.
      *
      * @param intent The intent received from the OAuth redirect
      * @return The access token on success
@@ -111,7 +106,9 @@ class HuggingFaceOAuthManager(
                     }
 
                     exception != null -> {
-                        Logger.e(exception) { "Token exchange failed: ${exception.errorDescription}" }
+                        Logger.e(exception) {
+                            "Token exchange failed: ${exception.errorDescription}"
+                        }
                         continuation.resumeWithException(exception)
                     }
 
@@ -125,8 +122,8 @@ class HuggingFaceOAuthManager(
         }
 
     /**
-     * Releases resources held by the authorization service.
-     * Call this when the manager is no longer needed.
+     * Releases resources held by the authorization service. Call this when the manager is no longer
+     * needed.
      */
     fun dispose() {
         authService.dispose()

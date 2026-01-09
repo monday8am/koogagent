@@ -2,7 +2,6 @@ package com.monday8am.koogagent.ui.screens.modelselector
 
 import android.annotation.SuppressLint
 import android.content.Intent
-import androidx.core.net.toUri
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -36,14 +35,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.net.toUri
 import com.monday8am.koogagent.data.ModelCatalog
 import com.monday8am.koogagent.ui.theme.KoogAgentTheme
 import com.monday8am.presentation.modelselector.DownloadStatus
 import com.monday8am.presentation.modelselector.ModelInfo
 
-/**
- * Card displaying model information and download status
- */
+/** Card displaying model information and download status */
 @SuppressLint("DefaultLocale")
 @Composable
 internal fun ModelCard(
@@ -62,18 +60,12 @@ internal fun ModelCard(
         }
 
     Card(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .clickable(true) { onSelectClick() },
+        modifier = modifier.fillMaxWidth().clickable(true) { onSelectClick() },
         colors = CardDefaults.cardColors(containerColor = backgroundColor),
         border = if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
     ) {
         Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             // Left: Model info
@@ -88,11 +80,10 @@ internal fun ModelCard(
                     if (modelInfo.isGated) {
                         Icon(
                             imageVector = Icons.Default.Warning,
-                            contentDescription = "Gated model - may require Hugging Face authentication",
+                            contentDescription =
+                                "Gated model - may require Hugging Face authentication",
                             tint = MaterialTheme.colorScheme.error,
-                            modifier = Modifier
-                                .padding(start = 6.dp)
-                                .size(18.dp),
+                            modifier = Modifier.padding(start = 6.dp).size(18.dp),
                         )
                     }
                     // HuggingFace link button
@@ -101,12 +92,13 @@ internal fun ModelCard(
                             onClick = {
                                 context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
                             },
-                            modifier = Modifier.size(48.dp) // Accessibility min touch target
+                            modifier = Modifier.size(48.dp), // Accessibility min touch target
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Info,
                                 contentDescription = "View on HuggingFace",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                tint =
+                                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                 modifier = Modifier.size(24.dp),
                             )
                         }
@@ -127,7 +119,8 @@ internal fun ModelCard(
 
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "${modelInfo.config.parameterCount}B params • ${modelInfo.config.contextLength} tokens",
+                    text =
+                        "${modelInfo.config.parameterCount}B params • ${modelInfo.config.contextLength} tokens",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                 )
@@ -149,9 +142,7 @@ internal fun ModelCard(
 
             when (val downloadStatus = modelInfo.downloadStatus) {
                 is DownloadStatus.NotStarted -> {
-                    Button(onClick = onDownloadClick) {
-                        Text("Download")
-                    }
+                    Button(onClick = onDownloadClick) { Text("Download") }
                 }
 
                 is DownloadStatus.Queued -> {
@@ -187,19 +178,16 @@ internal fun ModelCard(
                                 color = MaterialTheme.colorScheme.error,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f, fill = false)
+                                modifier = Modifier.weight(1f, fill = false),
                             )
                             Icon(
                                 imageVector = Icons.Default.Error,
                                 contentDescription = "Failed",
                                 tint = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.padding(start = 4.dp).size(16.dp)
+                                modifier = Modifier.padding(start = 4.dp).size(16.dp),
                             )
                         }
-                        TextButton(
-                            onClick = onDownloadClick,
-                            modifier = Modifier.height(32.dp)
-                        ) {
+                        TextButton(onClick = onDownloadClick, modifier = Modifier.height(32.dp)) {
                             Text("Retry", fontSize = 12.sp)
                         }
                     }
@@ -211,10 +199,7 @@ internal fun ModelCard(
 
 @Composable
 private fun CircularProgressWithText(progress: Float, text: String, modifier: Modifier = Modifier) {
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = modifier.size(48.dp),
-    ) {
+    Box(contentAlignment = Alignment.Center, modifier = modifier.size(48.dp)) {
         CircularProgressIndicator(
             progress = { progress },
             modifier = Modifier.fillMaxSize(),

@@ -33,30 +33,23 @@ internal fun ToolBar(
     onAction: (UiAction) -> Unit,
     onNavigateToTesting: (String) -> Unit,
     onNavigateToNotification: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val iconSizeModifier = Modifier.size(18.dp)
 
     Row(
-        modifier =
-        modifier
-            .fillMaxWidth()
-            .padding(top = 16.dp),
+        modifier = modifier.fillMaxWidth().padding(top = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         // Delete/Cancel button - visible only when downloaded model is selected
         val downloadStatus =
-            models.find { it.config.modelId == selectedModelId }?.downloadStatus ?: DownloadStatus.NotStarted
+            models.find { it.config.modelId == selectedModelId }?.downloadStatus
+                ?: DownloadStatus.NotStarted
 
         when (downloadStatus) {
             is DownloadStatus.Downloading,
-            is DownloadStatus.Queued,
-            -> {
-                Button(
-                    onClick = {
-                        onAction(UiAction.CancelCurrentDownload)
-                    },
-                ) {
+            is DownloadStatus.Queued -> {
+                Button(onClick = { onAction(UiAction.CancelCurrentDownload) }) {
                     Icon(
                         imageVector = Icons.Default.Cancel,
                         contentDescription = "Cancel download",
@@ -68,15 +61,13 @@ internal fun ToolBar(
             is DownloadStatus.Completed -> {
                 Button(
                     onClick = {
-                        selectedModelId?.let { modelId ->
-                            onAction(UiAction.DeleteModel(modelId))
-                        }
+                        selectedModelId?.let { modelId -> onAction(UiAction.DeleteModel(modelId)) }
                     },
                     colors =
-                    ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error,
-                        contentColor = MaterialTheme.colorScheme.onError,
-                    ),
+                        ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error,
+                            contentColor = MaterialTheme.colorScheme.onError,
+                        ),
                 ) {
                     Icon(
                         imageVector = Icons.Default.Delete,
@@ -86,38 +77,33 @@ internal fun ToolBar(
                 }
             }
 
-            else -> {
-            }
+            else -> {}
         }
 
         Spacer(modifier = Modifier.weight(1f))
 
         Button(
-            onClick = {
-                selectedModelId?.let(onNavigateToTesting)
-            },
+            onClick = { selectedModelId?.let(onNavigateToTesting) },
             enabled = downloadStatus == DownloadStatus.Completed,
         ) {
             Text("Function")
-//            Icon(
-//                imageVector = Icons.Default.Memory,
-//                contentDescription = "Go forward",
-//                modifier = iconSizeModifier,
-//            )
+            //            Icon(
+            //                imageVector = Icons.Default.Memory,
+            //                contentDescription = "Go forward",
+            //                modifier = iconSizeModifier,
+            //            )
         }
 
         Button(
-            onClick = {
-                selectedModelId?.let(onNavigateToNotification)
-            },
+            onClick = { selectedModelId?.let(onNavigateToNotification) },
             enabled = downloadStatus == DownloadStatus.Completed,
         ) {
             Text("Agentic")
-//            Icon(
-//                imageVector = Icons.Filled.Psychology,
-//                contentDescription = "Go forward",
-//                modifier = iconSizeModifier,
-//            )
+            //            Icon(
+            //                imageVector = Icons.Filled.Psychology,
+            //                contentDescription = "Go forward",
+            //                modifier = iconSizeModifier,
+            //            )
         }
     }
 }
@@ -127,13 +113,15 @@ internal fun ToolBar(
 private fun ToolBarPreview_NotDownloaded() {
     KoogAgentTheme {
         ToolBar(
-            models = listOf(
-                ModelInfo(
-                    config = ModelCatalog.QWEN3_0_6B,
-                    isDownloaded = false,
-                    downloadStatus = DownloadStatus.NotStarted,
-                ),
-            ).toImmutableList(),
+            models =
+                listOf(
+                        ModelInfo(
+                            config = ModelCatalog.QWEN3_0_6B,
+                            isDownloaded = false,
+                            downloadStatus = DownloadStatus.NotStarted,
+                        )
+                    )
+                    .toImmutableList(),
             selectedModelId = ModelCatalog.QWEN3_0_6B.modelId,
             onAction = {},
             onNavigateToTesting = {},
@@ -148,13 +136,14 @@ private fun ToolBarPreview_DownloadedSelected() {
     KoogAgentTheme {
         ToolBar(
             models =
-            listOf(
-                ModelInfo(
-                    config = ModelCatalog.HAMMER2_1_0_5B,
-                    isDownloaded = true,
-                    downloadStatus = DownloadStatus.Completed,
-                ),
-            ).toImmutableList(),
+                listOf(
+                        ModelInfo(
+                            config = ModelCatalog.HAMMER2_1_0_5B,
+                            isDownloaded = true,
+                            downloadStatus = DownloadStatus.Completed,
+                        )
+                    )
+                    .toImmutableList(),
             selectedModelId = ModelCatalog.HAMMER2_1_0_5B.modelId,
             onAction = {},
             onNavigateToTesting = {},
@@ -169,13 +158,14 @@ private fun ToolBarPreview_Downloading() {
     KoogAgentTheme {
         ToolBar(
             models =
-            listOf(
-                ModelInfo(
-                    config = ModelCatalog.GEMMA3_1B,
-                    isDownloaded = false,
-                    downloadStatus = DownloadStatus.Downloading(42f),
-                ),
-            ).toImmutableList(),
+                listOf(
+                        ModelInfo(
+                            config = ModelCatalog.GEMMA3_1B,
+                            isDownloaded = false,
+                            downloadStatus = DownloadStatus.Downloading(42f),
+                        )
+                    )
+                    .toImmutableList(),
             selectedModelId = ModelCatalog.GEMMA3_1B.modelId,
             onAction = {},
             onNavigateToTesting = {},

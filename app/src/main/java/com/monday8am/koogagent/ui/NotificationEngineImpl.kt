@@ -25,8 +25,7 @@ class NotificationEngineImpl(val context: Context) : NotificationEngine {
         }
 
         val builder =
-            NotificationCompat
-                .Builder(context, CHANNEL_ID)
+            NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.ic_dialog_info)
                 .setContentTitle(result.title)
                 .setContentText(result.body)
@@ -39,7 +38,8 @@ class NotificationEngineImpl(val context: Context) : NotificationEngine {
 
     fun requestNotificationPermission(activity: Activity) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(
+            if (
+                ContextCompat.checkSelfPermission(
                     activity,
                     android.Manifest.permission.POST_NOTIFICATIONS,
                 ) != PackageManager.PERMISSION_GRANTED
@@ -55,11 +55,7 @@ class NotificationEngineImpl(val context: Context) : NotificationEngine {
 
     fun createChannel() {
         val channel =
-            NotificationChannel(
-                CHANNEL_ID,
-                CHANNEL_NAME,
-                NotificationManager.IMPORTANCE_DEFAULT,
-            )
+            NotificationChannel(CHANNEL_ID, CHANNEL_NAME, NotificationManager.IMPORTANCE_DEFAULT)
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         manager.createNotificationChannel(channel)
     }

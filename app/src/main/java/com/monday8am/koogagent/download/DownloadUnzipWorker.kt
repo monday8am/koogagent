@@ -18,60 +18,67 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 
-class DownloadUnzipWorker(appContext: Context, workerParams: WorkerParameters) : CoroutineWorker(appContext, workerParams) {
+class DownloadUnzipWorker(appContext: Context, workerParams: WorkerParameters) :
+    CoroutineWorker(appContext, workerParams) {
     // Redirects is needed to download the file from
     // Amazon S3 bucket
     private val client =
-        OkHttpClient
-            .Builder()
-            .followRedirects(true)
-            .followSslRedirects(true)
-            .build()
+        OkHttpClient.Builder().followRedirects(true).followSslRedirects(true).build()
 
-    override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
-        try {
-            val url =
-                inputData.getString(KEY_URL)
-                    ?: return@withContext Result.failure(workDataOf(KEY_ERROR_MESSAGE to "URL not provided"))
-            val destinationPath =
-                inputData.getString(KEY_DESTINATION_PATH)
-                    ?: return@withContext Result.failure(workDataOf(KEY_ERROR_MESSAGE to "Destination path not provided"))
-            val requiresUnzip = inputData.getBoolean(KEY_REQUIRES_UNZIP, true)
+    override suspend fun doWork(): Result =
+        withContext(Dispatchers.IO) {
+            try {
+                val url =
+                    inputData.getString(KEY_URL)
+                        ?: return@withContext Result.failure(
+                            workDataOf(KEY_ERROR_MESSAGE to "URL not provided")
+                        )
+                val destinationPath =
+                    inputData.getString(KEY_DESTINATION_PATH)
+                        ?: return@withContext Result.failure(
+                            workDataOf(KEY_ERROR_MESSAGE to "Destination path not provided")
+                        )
+                val requiresUnzip = inputData.getBoolean(KEY_REQUIRES_UNZIP, true)
 
-            val destinationFile = File(destinationPath)
-            val parentDir =
-                destinationFile.parentFile ?: return@withContext Result.failure(
-                    workDataOf(KEY_ERROR_MESSAGE to "Could not create destination directory: $destinationFile"),
-                )
-            if (!parentDir.exists()) {
-                if (!parentDir.mkdirs()) {
-                    return@withContext Result.failure(
-                        workDataOf(
-                            KEY_ERROR_MESSAGE to "Could not create destination directory: ${parentDir.absolutePath}"
-                        ),
-                    )
+                val destinationFile = File(destinationPath)
+                val parentDir =
+                    destinationFile.parentFile
+                        ?: return@withContext Result.failure(
+                            workDataOf(
+                                KEY_ERROR_MESSAGE to
+                                    "Could not create destination directory: $destinationFile"
+                            )
+                        )
+                if (!parentDir.exists()) {
+                    if (!parentDir.mkdirs()) {
+                        return@withContext Result.failure(
+                            workDataOf(
+                                KEY_ERROR_MESSAGE to
+                                    "Could not create destination directory: ${parentDir.absolutePath}"
+                            )
+                        )
+                    }
                 }
-            }
 
-            if (requiresUnzip) {
-                // ZIP download flow: download to temp file, extract, delete temp
-                // Download uses 0-85% of progress, extraction uses 85-100%
-                val zipFile = File(applicationContext.cacheDir, "model-download.zip")
-                downloadFile(url, zipFile, scaleForUnzip = true)
-                unzipWithProgress(zipFile, parentDir)
-                zipFile.delete()
-            } else {
-                // Direct download flow: download directly to destination (full 0-100%)
-                downloadFile(url, destinationFile, scaleForUnzip = false)
-            }
+                if (requiresUnzip) {
+                    // ZIP download flow: download to temp file, extract, delete temp
+                    // Download uses 0-85% of progress, extraction uses 85-100%
+                    val zipFile = File(applicationContext.cacheDir, "model-download.zip")
+                    downloadFile(url, zipFile, scaleForUnzip = true)
+                    unzipWithProgress(zipFile, parentDir)
+                    zipFile.delete()
+                } else {
+                    // Direct download flow: download directly to destination (full 0-100%)
+                    downloadFile(url, destinationFile, scaleForUnzip = false)
+                }
 
-            setProgress(workDataOf(KEY_PROGRESS to 100))
-            Result.success()
-        } catch (e: Exception) {
-            e.printStackTrace()
-            Result.failure(workDataOf(KEY_ERROR_MESSAGE to (e.message ?: "Unknown error")))
+                setProgress(workDataOf(KEY_PROGRESS to 100))
+                Result.success()
+            } catch (e: Exception) {
+                e.printStackTrace()
+                Result.failure(workDataOf(KEY_ERROR_MESSAGE to (e.message ?: "Unknown error")))
+            }
         }
-    }
 
     private suspend fun downloadFile(url: String, destFile: File, scaleForUnzip: Boolean = false) {
         val existingBytes = if (destFile.exists()) destFile.length() else 0L
@@ -91,25 +98,30 @@ class DownloadUnzipWorker(appContext: Context, workerParams: WorkerParameters) :
             if (response.code == 416) { // Requested Range Not Satisfiable
                 // File might be already fully downloaded or server doesn't support the range
                 // For safety, let's assume it might be corrupted or complete.
-                // If it's the exact same size as the content-length from a fresh request, it's complete.
-                // But for now, let's just log and return if it's already there and we can't get more.
+                // If it's the exact same size as the content-length from a fresh request, it's
+                // complete.
+                // But for now, let's just log and return if it's already there and we can't get
+                // more.
                 return
             }
             if (!response.isSuccessful) {
                 val errorCode = response.header("X-Error-Code")
                 val errorMessage = response.header("X-Error-Message")
-                val detail = when {
-                    errorCode == "GatedRepo" -> "Access restricted. Please visit the model page to accept the license agreement."
-                    !errorMessage.isNullOrBlank() -> errorMessage
-                    else -> "HTTP error ${response.code}"
-                }
+                val detail =
+                    when {
+                        errorCode == "GatedRepo" ->
+                            "Access restricted. Please visit the model page to accept the license agreement."
+                        !errorMessage.isNullOrBlank() -> errorMessage
+                        else -> "HTTP error ${response.code}"
+                    }
                 throw IOException(detail)
             }
 
             val body = response.body
             val isResuming = response.code == 206
             val contentLen = body.contentLength()
-            val totalBytes = if (isResuming) contentLen + existingBytes else contentLen.takeIf { it > 0 } ?: -1L
+            val totalBytes =
+                if (isResuming) contentLen + existingBytes else contentLen.takeIf { it > 0 } ?: -1L
 
             body.byteStream().use { input ->
                 FileOutputStream(destFile, isResuming).use { output ->
@@ -129,7 +141,8 @@ class DownloadUnzipWorker(appContext: Context, workerParams: WorkerParameters) :
     }
 
     private suspend fun unzipWithProgress(zipFile: File, targetDir: File) {
-        // Calculate total uncompressed size for byte-based progress (more accurate than entry count)
+        // Calculate total uncompressed size for byte-based progress (more accurate than entry
+        // count)
         val totalUncompressedSize = calculateTotalUncompressedSize(zipFile)
         var bytesExtracted = 0L
 
@@ -195,8 +208,12 @@ class DownloadUnzipWorker(appContext: Context, workerParams: WorkerParameters) :
                 val extractProgress = ((currentBytesExtracted + bytesCopied) * 100f) / totalBytes
 
                 // Throttle updates: at least 1% change or 500ms passed
-                if (extractProgress - lastUpdateProgress >= 1f || currentTime - lastUpdateTime >= 500L) {
-                    val scaledProgress = EXTRACT_PROGRESS_START + (extractProgress * EXTRACT_PROGRESS_WEIGHT)
+                if (
+                    extractProgress - lastUpdateProgress >= 1f ||
+                        currentTime - lastUpdateTime >= 500L
+                ) {
+                    val scaledProgress =
+                        EXTRACT_PROGRESS_START + (extractProgress * EXTRACT_PROGRESS_WEIGHT)
                     setProgress(workDataOf(KEY_PROGRESS to scaledProgress.coerceAtMost(100f)))
                     lastUpdateProgress = extractProgress
                     lastUpdateTime = currentTime

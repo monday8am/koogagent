@@ -12,7 +12,5 @@ plugins {
 subprojects {
     apply(plugin = "com.ncorti.ktfmt.gradle")
 
-    extensions.configure<com.ncorti.ktfmt.gradle.KtfmtExtension> {
-        kotlinLangStyle()
-    }
+    extensions.configure<com.ncorti.ktfmt.gradle.KtfmtExtension> { kotlinLangStyle() }
 }
