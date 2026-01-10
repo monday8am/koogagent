@@ -4,6 +4,7 @@ import co.touchlab.kermit.Logger
 import com.monday8am.agent.core.LocalInferenceEngine
 import com.monday8am.koogagent.data.HardwareBackend
 import com.monday8am.koogagent.data.ModelConfiguration
+import com.monday8am.koogagent.data.testing.AssetsTestRepository
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableMap
 import kotlinx.collections.immutable.persistentListOf
@@ -20,6 +21,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapConcat
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
@@ -66,28 +68,42 @@ class TestViewModelImpl(
     private val inferenceEngine: LocalInferenceEngine,
 ) : TestViewModel {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val testRepository = AssetsTestRepository()
 
-    private var currentTest: ToolCallingTest? = null
+    private var currentTestEngine: ToolCallingTestEngine? = null
     private val runTestsTrigger = MutableSharedFlow<Boolean>(extraBufferCapacity = 1)
+
+    // Load tests on init
+    private val loadedTests: StateFlow<List<TestCase>> =
+        flow {
+                try {
+                    val definitions = testRepository.getTests()
+                    emit(TestRuleValidator.convert(definitions))
+                } catch (e: Exception) {
+                    Logger.e("Failed to load tests", e)
+                    emit(emptyList())
+                }
+            }
+            .stateIn(scope, SharingStarted.Eagerly, emptyList())
+
     private val executionState: StateFlow<ExecutionState> =
         runTestsTrigger
-            .flatMapLatest { useGpu -> executeTests(useGpu) }
+            .flatMapLatest { useGpu -> executeTests(useGpu, loadedTests.value) }
             .stateIn(scope, SharingStarted.Eagerly, ExecutionState.Idle(initialModel))
 
-    // UI state derived from ExecutionState
+    // UI state derived from ExecutionState and Loaded Tests
     override val uiState: StateFlow<TestUiState> =
-        executionState
-            .map { state -> deriveUiState(state) }
+        combine(executionState, loadedTests) { execState, tests -> deriveUiState(execState, tests) }
             .stateIn(
                 scope = scope,
                 started = SharingStarted.Eagerly,
-                initialValue = deriveUiState(ExecutionState.Idle(initialModel)),
+                initialValue = deriveUiState(ExecutionState.Idle(initialModel), emptyList()),
             )
 
     override fun onUiAction(uiAction: TestUiAction) {
         when (uiAction) {
             is TestUiAction.RunTests -> runTestsTrigger.tryEmit(uiAction.useGpu)
-            TestUiAction.CancelTests -> currentTest?.cancel()
+            TestUiAction.CancelTests -> currentTestEngine?.cancel()
         }
     }
 
@@ -95,66 +111,71 @@ class TestViewModelImpl(
      * Pure flow transformation: triggers → ExecutionState emissions. Handles backend configuration,
      * engine initialization, and test execution.
      */
-    private fun executeTests(useGpu: Boolean): Flow<ExecutionState> = flow {
-        val modelConfig = prepareModelConfig(useGpu)
-        val initialResults =
-            TestResults(
-                statuses =
-                    ToolCallingTest.REGRESSION_TEST_SUITE.map {
-                            TestStatus(it.name, TestStatus.State.IDLE)
-                        }
-                        .toImmutableList()
-            )
+    private fun executeTests(useGpu: Boolean, testCases: List<TestCase>): Flow<ExecutionState> =
+        flow {
+            if (testCases.isEmpty()) {
+                Logger.w("No tests loaded to run")
+                return@flow
+            }
 
-        inferenceEngine
-            .initializeAsFlow(modelConfig, modelPath)
-            .onStart { emit(ExecutionState.Initializing(modelConfig)) }
-            .flatMapConcat { engine ->
-                ToolCallingTest(
-                        streamPromptExecutor = engine::promptStreaming,
-                        resetConversation = engine::resetConversation,
-                    )
-                    .also { currentTest = it }
-                    .runAllTest()
-            }
-            .runningFold(initialResults) { current, frame ->
+            val modelConfig = prepareModelConfig(useGpu)
+            val initialResults =
                 TestResults(
-                    frames = (current.frames + (frame.id to frame)).toImmutableMap(),
-                    statuses = updateTestStatuses(current.statuses, frame).toImmutableList(),
+                    statuses =
+                        testCases
+                            .map { TestStatus(it.name, TestStatus.State.IDLE) }
+                            .toImmutableList()
                 )
-            }
-            .map { results ->
-                if (
-                    results.statuses.last().state in
-                        listOf(TestStatus.State.FAIL, TestStatus.State.PASS)
-                ) {
-                    ExecutionState.Finish(modelConfig, results)
-                } else {
-                    ExecutionState.Running(modelConfig, results)
-                }
-            }
-            .catch { e ->
-                if (e is TestCancelledException) {
-                    emit(ExecutionState.Idle(modelConfig))
-                } else {
-                    Logger.e("Error: ${e.message}")
-                    val errorFrame =
-                        TestResultFrame.Validation(
-                            testName = "Error",
-                            result = ValidationResult.Fail("Error: ${e.message}"),
-                            duration = 0,
-                            fullContent = "",
+
+            inferenceEngine
+                .initializeAsFlow(modelConfig, modelPath)
+                .onStart { emit(ExecutionState.Initializing(modelConfig)) }
+                .flatMapConcat { engine ->
+                    ToolCallingTestEngine(
+                            streamPromptExecutor = engine::promptStreaming,
+                            resetConversation = engine::resetConversation,
                         )
-                    val errorResults =
-                        TestResults(
-                            frames = persistentMapOf(errorFrame.id to errorFrame),
-                            statuses = initialResults.statuses,
-                        )
-                    emit(ExecutionState.Finish(modelConfig, errorResults))
+                        .also { currentTestEngine = it }
+                        .runAllTests(testCases)
                 }
-            }
-            .collect { emit(it) }
-    }
+                .runningFold(initialResults) { current, frame ->
+                    TestResults(
+                        frames = (current.frames + (frame.id to frame)).toImmutableMap(),
+                        statuses = updateTestStatuses(current.statuses, frame).toImmutableList(),
+                    )
+                }
+                .map { results ->
+                    if (
+                        results.statuses.last().state in
+                            listOf(TestStatus.State.FAIL, TestStatus.State.PASS)
+                    ) {
+                        ExecutionState.Finish(modelConfig, results)
+                    } else {
+                        ExecutionState.Running(modelConfig, results)
+                    }
+                }
+                .catch { e ->
+                    if (e is TestCancelledException) {
+                        emit(ExecutionState.Idle(modelConfig))
+                    } else {
+                        Logger.e("Error: ${e.message}")
+                        val errorFrame =
+                            TestResultFrame.Validation(
+                                testName = "Error",
+                                result = ValidationResult.Fail("Error: ${e.message}"),
+                                duration = 0,
+                                fullContent = "",
+                            )
+                        val errorResults =
+                            TestResults(
+                                frames = persistentMapOf(errorFrame.id to errorFrame),
+                                statuses = initialResults.statuses,
+                            )
+                        emit(ExecutionState.Finish(modelConfig, errorResults))
+                    }
+                }
+                .collect { emit(it) }
+        }
 
     private fun prepareModelConfig(useGpu: Boolean): ModelConfiguration {
         val currentModel = executionState.value.model
@@ -168,19 +189,20 @@ class TestViewModelImpl(
     }
 
     /** Pure function: derives UI state from execution state. */
-    private fun deriveUiState(state: ExecutionState): TestUiState =
-        when (state) {
+    private fun deriveUiState(state: ExecutionState, tests: List<TestCase>): TestUiState {
+        // If we are IDLE or INITIALIZING, but have loaded tests, we should show them as IDLE
+        // statuses
+        val defaultStatuses =
+            tests.map { TestStatus(it.name, TestStatus.State.IDLE) }.toImmutableList()
+
+        return when (state) {
             is ExecutionState.Idle ->
                 TestUiState(
                     selectedModel = state.model,
                     isRunning = false,
                     isInitializing = false,
                     frames = persistentMapOf(),
-                    testStatuses =
-                        ToolCallingTest.REGRESSION_TEST_SUITE.map {
-                                TestStatus(it.name, TestStatus.State.IDLE)
-                            }
-                            .toImmutableList(),
+                    testStatuses = defaultStatuses,
                 )
 
             is ExecutionState.Initializing ->
@@ -189,11 +211,7 @@ class TestViewModelImpl(
                     isRunning = true,
                     isInitializing = true,
                     frames = persistentMapOf(),
-                    testStatuses =
-                        ToolCallingTest.REGRESSION_TEST_SUITE.map {
-                                TestStatus(it.name, TestStatus.State.IDLE)
-                            }
-                            .toImmutableList(),
+                    testStatuses = defaultStatuses,
                 )
 
             is ExecutionState.Running ->
@@ -202,7 +220,7 @@ class TestViewModelImpl(
                     isRunning = true,
                     isInitializing = false,
                     frames = state.results.frames,
-                    testStatuses = state.results.statuses,
+                    testStatuses = state.results.statuses.ifEmpty { defaultStatuses },
                 )
 
             is ExecutionState.Finish ->
@@ -211,9 +229,10 @@ class TestViewModelImpl(
                     isRunning = false,
                     isInitializing = false,
                     frames = state.results.frames,
-                    testStatuses = state.results.statuses,
+                    testStatuses = state.results.statuses.ifEmpty { defaultStatuses },
                 )
         }
+    }
 
     private fun updateTestStatuses(
         currentStatuses: List<TestStatus>,
@@ -268,7 +287,5 @@ private sealed class ExecutionState {
 
 private data class TestResults(
     val frames: ImmutableMap<String, TestResultFrame> = persistentMapOf(),
-    val statuses: ImmutableList<TestStatus> =
-        ToolCallingTest.REGRESSION_TEST_SUITE.map { TestStatus(it.name, TestStatus.State.IDLE) }
-            .toImmutableList(),
+    val statuses: ImmutableList<TestStatus> = persistentListOf(),
 )
