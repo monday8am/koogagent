@@ -48,7 +48,6 @@ fun ModelSelectorScreen(
     },
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     val oAuthManager = remember { Dependencies.oAuthManager }
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()

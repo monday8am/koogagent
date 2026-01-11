@@ -1,23 +1,70 @@
 package com.monday8am.koogagent.ui.theme
 
 import androidx.compose.material3.Typography
+import androidx.compose.ui.text.ExperimentalTextApi
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.googlefonts.Font
-import androidx.compose.ui.text.googlefonts.GoogleFont
+import androidx.compose.ui.text.font.FontVariation
+import androidx.compose.ui.text.font.FontWeight
 import com.monday8am.koogagent.R
 
-val provider =
-    GoogleFont.Provider(
-        providerAuthority = "com.google.android.gms.fonts",
-        providerPackage = "com.google.android.gms",
-        certificates = R.array.com_google_android_gms_fonts_certs,
+@OptIn(ExperimentalTextApi::class)
+val bodyFontFamily =
+    FontFamily(
+        Font(
+            resId = R.font.jetbrains_mono,
+            weight = FontWeight.Normal,
+            variationSettings =
+                FontVariation.Settings(
+                    FontVariation.weight(400),
+                ),
+        ),
+        Font(
+            resId = R.font.jetbrains_mono,
+            weight = FontWeight.Medium,
+            variationSettings =
+                FontVariation.Settings(
+                    FontVariation.weight(500),
+                ),
+        ),
+        Font(
+            resId = R.font.jetbrains_mono,
+            weight = FontWeight.Bold,
+            variationSettings =
+                FontVariation.Settings(
+                    FontVariation.weight(700),
+                ),
+        ),
     )
 
-val bodyFontFamily =
-    FontFamily(Font(googleFont = GoogleFont("JetBrains Mono"), fontProvider = provider))
-
+@OptIn(ExperimentalTextApi::class)
 val displayFontFamily =
-    FontFamily(Font(googleFont = GoogleFont("IBM Plex Serif"), fontProvider = provider))
+    FontFamily(
+        Font(
+            resId = R.font.crimson_pro,
+            weight = FontWeight.Normal,
+            variationSettings =
+                FontVariation.Settings(
+                    FontVariation.weight(400),
+                ),
+        ),
+        Font(
+            resId = R.font.crimson_pro,
+            weight = FontWeight.Medium,
+            variationSettings =
+                FontVariation.Settings(
+                    FontVariation.weight(500),
+                ),
+        ),
+        Font(
+            resId = R.font.crimson_pro,
+            weight = FontWeight.Bold,
+            variationSettings =
+                FontVariation.Settings(
+                    FontVariation.weight(700),
+                ),
+        ),
+    )
 
 val baseline = Typography()
 
