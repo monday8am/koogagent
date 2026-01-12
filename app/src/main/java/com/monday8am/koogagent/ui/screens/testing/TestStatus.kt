@@ -2,18 +2,23 @@ package com.monday8am.koogagent.ui.screens.testing
 
 import androidx.compose.foundation.layout.Arrangement.spacedBy
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -69,10 +74,43 @@ internal fun TestStatusList(
 
 @Composable
 internal fun TestStatusCard(status: TestStatus) {
-    Card(modifier = Modifier.width(160.dp).height(100.dp).padding(vertical = 4.dp)) {
-        Column(modifier = Modifier.padding(12.dp), verticalArrangement = spacedBy(8.dp)) {
-            Text(text = status.name, style = MaterialTheme.typography.bodySmall)
+    // Different colors for different domains
+    val containerColor =
+        when (status.domain) {
+            TestDomain.GENERIC -> MaterialTheme.colorScheme.surfaceVariant
+            TestDomain.YAZIO ->
+                MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
+        }
 
+    Card(
+        modifier = Modifier.width(160.dp).height(100.dp).padding(vertical = 4.dp),
+        colors = CardDefaults.cardColors(containerColor = containerColor)
+    ) {
+        Column(modifier = Modifier.padding(12.dp), verticalArrangement = spacedBy(8.dp)) {
+            // Header row with domain icon and test name
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector =
+                        when (status.domain) {
+                            TestDomain.GENERIC -> Icons.Default.Memory
+                            TestDomain.YAZIO -> Icons.Filled.Psychology
+                        },
+                    contentDescription = status.domain.name,
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = status.name,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            // State indicator
             when (status.state) {
                 TestStatus.State.IDLE ->
                     Icon(

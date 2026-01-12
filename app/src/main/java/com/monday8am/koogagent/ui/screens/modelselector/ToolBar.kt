@@ -10,6 +10,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Memory
+import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.Science
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -87,9 +89,10 @@ internal fun ToolBar(
             onClick = { selectedModelId?.let(onNavigateToTesting) },
             enabled = downloadStatus == DownloadStatus.Completed,
         ) {
-            Text("Test Function Call")
+            Text("Test Function Call", modifier = Modifier.padding(horizontal = 8.dp))
+            if (downloadStatus == DownloadStatus.Completed)
                 Icon(
-                    imageVector = Icons.Default.Memory,
+                    imageVector = Icons.Default.School,
                     contentDescription = "Go forward",
                     modifier = iconSizeModifier,
                 )
