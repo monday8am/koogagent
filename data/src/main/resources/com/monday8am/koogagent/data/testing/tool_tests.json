@@ -155,6 +155,106 @@
           }
         }
       ]
+    },
+    {
+      "id": "yazio_1",
+      "name": "YAZIO 1: Basic Meal Notification",
+      "domain": "yazio",
+      "description": [
+        "Generate a simple meal notification without any context."
+      ],
+      "context": {
+        "mealType": "LUNCH"
+      },
+      "available_tools": ["get_time", "get_meal_history"],
+      "mock_tool_responses": {
+        "get_time": "2024-01-15 12:30:00",
+        "get_meal_history": "{\"mealType\": \"LUNCH\", \"entries\": [], \"totalCalories\": 0}"
+      },
+      "queries": [
+        {
+          "text": "Generate a lunch notification for the user"
+        }
+      ],
+      "system_prompt": "You are a nutritionist assistant that generates personalized meal notifications. Use available tools to gather context.",
+      "rules": [
+        {
+          "type": "tool_match",
+          "tool_name": "get_time"
+        },
+        {
+          "type": "response_length_min",
+          "min": 20
+        }
+      ]
+    },
+    {
+      "id": "yazio_2",
+      "name": "YAZIO 2: Weather-Aware Notification",
+      "domain": "yazio",
+      "description": [
+        "Generate a lunch notification considering weather conditions.",
+        "Should call get_weather and reference weather in the notification."
+      ],
+      "context": {
+        "mealType": "LUNCH",
+        "latitude": 40.4,
+        "longitude": -3.7
+      },
+      "available_tools": ["get_weather", "get_time", "get_meal_history"],
+      "mock_tool_responses": {
+        "get_weather": "{\"condition\": \"sunny\", \"temperature_c\": 32}",
+        "get_time": "2024-07-20 13:00:00"
+      },
+      "queries": [
+        {
+          "text": "Generate a lunch notification considering the current weather at latitude 40.4, longitude -3.7"
+        }
+      ],
+      "system_prompt": "You are a nutritionist assistant that generates weather-aware meal notifications. Check the weather and suggest appropriate meals.",
+      "rules": [
+        {
+          "type": "tool_match",
+          "tool_name": "get_weather"
+        },
+        {
+          "type": "response_references_any",
+          "terms": ["hot", "warm", "sunny", "fresh", "light", "cold"]
+        }
+      ]
+    },
+    {
+      "id": "yazio_3",
+      "name": "YAZIO 3: Meal History Integration",
+      "domain": "yazio",
+      "description": [
+        "Generate a dinner notification based on user's meal history.",
+        "Should call get_meal_history and reference previous meals."
+      ],
+      "context": {
+        "mealType": "DINNER"
+      },
+      "available_tools": ["get_meal_history", "get_time"],
+      "mock_tool_responses": {
+        "get_meal_history": "{\"mealType\": \"DINNER\", \"entries\": [{\"food\": \"Salad\", \"calories\": 150}, {\"food\": \"Grilled Chicken\", \"calories\": 300}], \"totalCalories\": 450}",
+        "get_time": "2024-01-15 19:00:00"
+      },
+      "queries": [
+        {
+          "text": "Generate a dinner notification based on meal type DINNER"
+        }
+      ],
+      "system_prompt": "You are a nutritionist assistant. Generate personalized meal notifications based on meal history.",
+      "rules": [
+        {
+          "type": "tool_match",
+          "tool_name": "get_meal_history"
+        },
+        {
+          "type": "response_length_min",
+          "min": 30
+        }
+      ]
     }
   ]
 }

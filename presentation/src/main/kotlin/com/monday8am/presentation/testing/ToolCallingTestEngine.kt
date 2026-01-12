@@ -73,6 +73,10 @@ class ToolCallingTestEngine(
             )
         )
 
+        // Inject context and mocks before test execution
+        com.monday8am.agent.tools.TestContext.setVariables(testCase.context)
+        com.monday8am.agent.tools.ToolTrace.setMockResponses(testCase.mockToolResponses)
+
         testCase.queries
             .asFlow()
             .flatMapConcat { query -> runSingleQueryStream(testCase, query) }

@@ -63,4 +63,6 @@ data class TestCase(
     val systemPrompt: String,
     val validator: (result: String) -> ValidationResult,
     val parseThinkingTags: Boolean = true,
+    val context: Map<String, Any?> = emptyMap(),
+    val mockToolResponses: Map<String, String> = emptyMap(),
 )

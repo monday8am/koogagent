@@ -13,6 +13,7 @@ data class ToolCall(
  */
 object ToolTrace {
     private val _calls = mutableListOf<ToolCall>()
+    private val _mockResponses = mutableMapOf<String, String>()
 
     /** list of tool names called in order. */
     val calls: List<ToolCall>
@@ -25,6 +26,22 @@ object ToolTrace {
 
     /** Clear the trace history. */
     fun clear() {
-        synchronized(this) { _calls.clear() }
+        synchronized(this) {
+            _calls.clear()
+            _mockResponses.clear()
+        }
+    }
+
+    /** Set mock responses for tools (for testing). */
+    fun setMockResponses(mocks: Map<String, String>) {
+        synchronized(this) {
+            _mockResponses.clear()
+            _mockResponses.putAll(mocks)
+        }
+    }
+
+    /** Get mock response for a tool (returns null if not mocked). */
+    fun getMockResponse(toolName: String): String? {
+        return synchronized(this) { _mockResponses[toolName] }
     }
 }
