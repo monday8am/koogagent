@@ -35,7 +35,7 @@ import kotlinx.collections.immutable.toImmutableList
 /** Model Selector Screen - Entry point for model selection. */
 @Composable
 fun ModelSelectorScreen(
-    onNavigateToNotification: (String) -> Unit,
+
     onNavigateToTesting: (String) -> Unit,
     viewModel: AndroidModelSelectorViewModel = viewModel {
         AndroidModelSelectorViewModel(
@@ -112,7 +112,7 @@ fun ModelSelectorScreen(
         onSelectModel = { selectedModelId = it },
         onLoginClick = launchOAuth,
         onLogoutClick = { showLogoutDialog = true },
-        onNavigateToNotification = onNavigateToNotification,
+
         onNavigateToTesting = onNavigateToTesting,
     )
 
@@ -134,7 +134,7 @@ private fun ModelSelectorScreenContent(
     onSelectModel: (String) -> Unit = {},
     onLoginClick: () -> Unit = {},
     onLogoutClick: () -> Unit = {},
-    onNavigateToNotification: (String) -> Unit = {},
+
     onNavigateToTesting: (String) -> Unit = {},
 ) {
     Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
@@ -191,7 +191,7 @@ private fun ModelSelectorScreenContent(
             selectedModelId = selectedModelId,
             onAction = onIntent,
             onNavigateToTesting = onNavigateToTesting,
-            onNavigateToNotification = onNavigateToNotification,
+
         )
     }
 }

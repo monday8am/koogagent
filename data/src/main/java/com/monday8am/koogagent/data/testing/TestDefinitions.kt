@@ -4,6 +4,12 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 
+@Serializable
+enum class TestDomain {
+    @SerialName("generic") GENERIC,
+    @SerialName("yazio") YAZIO,
+}
+
 @Serializable data class TestSuiteDefinition(val tests: List<TestCaseDefinition>)
 
 @Serializable
@@ -11,7 +17,7 @@ data class TestCaseDefinition(
     val id: String,
     val name: String,
     val description: List<String> = emptyList(),
-    val domain: String = "generic",
+    val domain: TestDomain = TestDomain.GENERIC,
     val context: Map<String, JsonElement>? = null,
     @SerialName("available_tools") val availableTools: List<String>? = null,
     @SerialName("mock_tool_responses") val mockToolResponses: Map<String, JsonElement>? = null,

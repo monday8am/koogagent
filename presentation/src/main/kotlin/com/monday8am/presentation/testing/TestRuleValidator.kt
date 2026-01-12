@@ -22,6 +22,7 @@ object TestRuleValidator {
                 context = def.context?.mapValues { it.value.toString() } ?: emptyMap(),
                 mockToolResponses =
                     def.mockToolResponses?.mapValues { it.value.toString() } ?: emptyMap(),
+                domain = def.domain,
             )
         }
     }

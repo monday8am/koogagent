@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -22,18 +23,47 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.monday8am.koogagent.data.testing.TestDomain
 import com.monday8am.koogagent.ui.theme.KoogAgentTheme
 import com.monday8am.presentation.testing.TestStatus
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 
 @Composable
 internal fun TestStatusList(
     testStatuses: ImmutableList<TestStatus>,
+    filterDomain: TestDomain?,
+    availableDomains: ImmutableList<TestDomain>,
+    onSetDomainFilter: (TestDomain?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    LazyRow(modifier = modifier.fillMaxWidth(), horizontalArrangement = spacedBy(8.dp)) {
-        items(testStatuses) { status -> TestStatusCard(status = status) }
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = spacedBy(8.dp)) {
+        if (availableDomains.isNotEmpty()) {
+            LazyRow(
+                horizontalArrangement = spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                item {
+                    FilterChip(
+                        selected = filterDomain == null,
+                        onClick = { onSetDomainFilter(null) },
+                        label = { Text("All") }
+                    )
+                }
+                items(availableDomains) { domain ->
+                    FilterChip(
+                        selected = filterDomain == domain,
+                        onClick = { onSetDomainFilter(domain) },
+                        label = { Text(domain.name.lowercase().replaceFirstChar { it.uppercase() }) }
+                    )
+                }
+            }
+        }
+
+        LazyRow(modifier = Modifier.fillMaxWidth(), horizontalArrangement = spacedBy(8.dp)) {
+            items(testStatuses) { status -> TestStatusCard(status = status) }
+        }
     }
 }
 
@@ -79,11 +109,14 @@ private fun TestStatusListPreview() {
         TestStatusList(
             testStatuses =
                 listOf(
-                        TestStatus(name = "Test 1", state = TestStatus.State.PASS),
-                        TestStatus(name = "Test 2", state = TestStatus.State.RUNNING),
-                        TestStatus(name = "Test 3", state = TestStatus.State.IDLE),
+                        TestStatus(name = "Test 1", domain = TestDomain.GENERIC, state = TestStatus.State.PASS),
+                        TestStatus(name = "Test 2", domain = TestDomain.GENERIC, state = TestStatus.State.RUNNING),
+                        TestStatus(name = "Test 3", domain = TestDomain.GENERIC, state = TestStatus.State.IDLE),
                     )
-                    .toImmutableList()
+                    .toImmutableList(),
+            filterDomain = null,
+            availableDomains = persistentListOf(TestDomain.GENERIC, TestDomain.YAZIO),
+            onSetDomainFilter = {}
         )
     }
 }
@@ -92,6 +125,6 @@ private fun TestStatusListPreview() {
 @Composable
 private fun TestStatusCardPreview() {
     KoogAgentTheme {
-        TestStatusCard(status = TestStatus(name = "Test Name", state = TestStatus.State.PASS))
+        TestStatusCard(status = TestStatus(name = "Test Name", domain = TestDomain.GENERIC, state = TestStatus.State.PASS))
     }
 }

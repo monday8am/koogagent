@@ -5,6 +5,7 @@ import com.monday8am.agent.core.LocalInferenceEngine
 import com.monday8am.koogagent.data.HardwareBackend
 import com.monday8am.koogagent.data.ModelConfiguration
 import com.monday8am.koogagent.data.testing.AssetsTestRepository
+import com.monday8am.koogagent.data.testing.TestDomain
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableMap
 import kotlinx.collections.immutable.persistentListOf
@@ -36,9 +37,10 @@ data class TestUiState(
     val isRunning: Boolean = false,
     val isInitializing: Boolean = false,
     val testStatuses: ImmutableList<TestStatus> = persistentListOf(),
+    val availableDomains: ImmutableList<TestDomain> = persistentListOf(),
 )
 
-data class TestStatus(val name: String, val state: State) {
+data class TestStatus(val name: String, val domain: TestDomain, val state: State) {
     enum class State {
         IDLE,
         RUNNING,
@@ -48,7 +50,7 @@ data class TestStatus(val name: String, val state: State) {
 }
 
 sealed class TestUiAction {
-    data class RunTests(val useGpu: Boolean) : TestUiAction()
+    data class RunTests(val useGpu: Boolean, val filterDomain: TestDomain?) : TestUiAction()
 
     data object CancelTests : TestUiAction()
 }
@@ -65,13 +67,15 @@ interface TestViewModel {
 class TestViewModelImpl(
     initialModel: ModelConfiguration,
     private val modelPath: String,
+    private val testRepository: AssetsTestRepository = AssetsTestRepository(),
     private val inferenceEngine: LocalInferenceEngine,
 ) : TestViewModel {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private val testRepository = AssetsTestRepository()
+
+    private data class ViewModelState(val useGpu: Boolean, val filterDomain: TestDomain?)
 
     private var currentTestEngine: ToolCallingTestEngine? = null
-    private val runTestsTrigger = MutableSharedFlow<Boolean>(extraBufferCapacity = 1)
+    private val viewModelState = MutableSharedFlow<ViewModelState>(extraBufferCapacity = 1)
 
     // Load tests on init
     private val loadedTests: StateFlow<List<TestCase>> =
@@ -87,8 +91,14 @@ class TestViewModelImpl(
             .stateIn(scope, SharingStarted.Eagerly, emptyList())
 
     private val executionState: StateFlow<ExecutionState> =
-        runTestsTrigger
-            .flatMapLatest { useGpu -> executeTests(useGpu, loadedTests.value) }
+        viewModelState
+            .flatMapLatest { payload ->
+                val tests = loadedTests.value
+                val filteredTests =
+                    if (payload.filterDomain == null) tests
+                    else tests.filter { it.domain == payload.filterDomain }
+                executeTests(payload.useGpu, filteredTests)
+            }
             .stateIn(scope, SharingStarted.Eagerly, ExecutionState.Idle(initialModel))
 
     // UI state derived from ExecutionState and Loaded Tests
@@ -102,7 +112,9 @@ class TestViewModelImpl(
 
     override fun onUiAction(uiAction: TestUiAction) {
         when (uiAction) {
-            is TestUiAction.RunTests -> runTestsTrigger.tryEmit(uiAction.useGpu)
+            is TestUiAction.RunTests ->
+                viewModelState.tryEmit(ViewModelState(uiAction.useGpu, uiAction.filterDomain))
+
             TestUiAction.CancelTests -> currentTestEngine?.cancel()
         }
     }
@@ -123,7 +135,7 @@ class TestViewModelImpl(
                 TestResults(
                     statuses =
                         testCases
-                            .map { TestStatus(it.name, TestStatus.State.IDLE) }
+                            .map { TestStatus(it.name, it.domain, TestStatus.State.IDLE) }
                             .toImmutableList()
                 )
 
@@ -190,10 +202,11 @@ class TestViewModelImpl(
 
     /** Pure function: derives UI state from execution state. */
     private fun deriveUiState(state: ExecutionState, tests: List<TestCase>): TestUiState {
-        // If we are IDLE or INITIALIZING, but have loaded tests, we should show them as IDLE
-        // statuses
+        // Extract available domains from all tests (enum comparison is naturally ordered)
+        val availableDomains = tests.map { it.domain }.distinct().toImmutableList()
+
         val defaultStatuses =
-            tests.map { TestStatus(it.name, TestStatus.State.IDLE) }.toImmutableList()
+            tests.map { TestStatus(it.name, it.domain, TestStatus.State.IDLE) }.toImmutableList()
 
         return when (state) {
             is ExecutionState.Idle ->
@@ -203,6 +216,7 @@ class TestViewModelImpl(
                     isInitializing = false,
                     frames = persistentMapOf(),
                     testStatuses = defaultStatuses,
+                    availableDomains = availableDomains,
                 )
 
             is ExecutionState.Initializing ->
@@ -212,6 +226,7 @@ class TestViewModelImpl(
                     isInitializing = true,
                     frames = persistentMapOf(),
                     testStatuses = defaultStatuses,
+                    availableDomains = availableDomains,
                 )
 
             is ExecutionState.Running ->
@@ -221,6 +236,7 @@ class TestViewModelImpl(
                     isInitializing = false,
                     frames = state.results.frames,
                     testStatuses = state.results.statuses.ifEmpty { defaultStatuses },
+                    availableDomains = availableDomains,
                 )
 
             is ExecutionState.Finish ->
@@ -230,6 +246,7 @@ class TestViewModelImpl(
                     isInitializing = false,
                     frames = state.results.frames,
                     testStatuses = state.results.statuses.ifEmpty { defaultStatuses },
+                    availableDomains = availableDomains,
                 )
         }
     }

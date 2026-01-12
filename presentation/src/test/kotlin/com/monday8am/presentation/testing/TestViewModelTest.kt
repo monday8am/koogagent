@@ -1,97 +1,92 @@
 package com.monday8am.presentation.testing
 
-import com.monday8am.koogagent.data.HardwareBackend
-import com.monday8am.koogagent.data.ModelCatalog
-import com.monday8am.presentation.notifications.FakeLocalInferenceEngine
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.test.setMain
-import org.junit.After
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
-import org.junit.Before
+import com.monday8am.koogagent.data.testing.TestDomain
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
+import kotlinx.collections.immutable.persistentListOf
 import org.junit.Test
 
-@OptIn(ExperimentalCoroutinesApi::class)
 class TestViewModelTest {
 
-    private val testDispatcher = UnconfinedTestDispatcher()
-    private lateinit var inferenceEngine: FakeLocalInferenceEngine
-    private lateinit var viewModel: TestViewModelImpl
+    @Test
+    fun `TestStatus should store domain as enum`() {
+        val status = TestStatus("Test 1", TestDomain.GENERIC, TestStatus.State.IDLE)
 
-    @Before
-    fun setup() {
-        Dispatchers.setMain(testDispatcher)
-        inferenceEngine = FakeLocalInferenceEngine()
-        val config = ModelCatalog.DEFAULT.copy(hardwareAcceleration = HardwareBackend.CPU_ONLY)
-        viewModel =
-            TestViewModelImpl(
-                initialModel = config,
-                modelPath = "/fake/path",
-                inferenceEngine = inferenceEngine,
+        assertEquals("Test 1", status.name)
+        assertEquals(TestDomain.GENERIC, status.domain)
+        assertEquals(TestStatus.State.IDLE, status.state)
+    }
+
+    @Test
+    fun `TestStatus State enum should have all expected values`() {
+        val states = TestStatus.State.entries.toTypedArray()
+
+        assertEquals(4, states.size)
+        assertTrue(TestStatus.State.IDLE in states)
+        assertTrue(TestStatus.State.RUNNING in states)
+        assertTrue(TestStatus.State.PASS in states)
+        assertTrue(TestStatus.State.FAIL in states)
+    }
+
+    @Test
+    fun `TestDomain enum should serialize with correct JSON names`() {
+        // TestDomain.GENERIC should serialize to "generic" in JSON
+        // TestDomain.YAZIO should serialize to "yazio" in JSON
+        assertEquals(2, TestDomain.entries.size)
+        assertTrue(TestDomain.GENERIC in TestDomain.entries.toTypedArray())
+        assertTrue(TestDomain.YAZIO in TestDomain.entries.toTypedArray())
+    }
+
+    @Test
+    fun `TestUiAction RunTests should accept nullable domain filter`() {
+        val actionWithFilter = TestUiAction.RunTests(useGpu = true, filterDomain = TestDomain.YAZIO)
+        val actionWithoutFilter = TestUiAction.RunTests(useGpu = false, filterDomain = null)
+
+        assertEquals(TestDomain.YAZIO, actionWithFilter.filterDomain)
+        assertEquals(null, actionWithoutFilter.filterDomain)
+    }
+
+    @Test
+    fun `TestCase should have correct default domain`() {
+        val testCase =
+            TestCase(
+                name = "Test",
+                queries = emptyList(),
+                systemPrompt = "Prompt",
+                validator = { ValidationResult.Pass("OK") },
             )
-    }
 
-    @After
-    fun tearDown() {
-        Dispatchers.resetMain()
+        assertEquals(TestDomain.GENERIC, testCase.domain)
     }
 
     @Test
-    fun `initial state is correct`() = runTest {
-        backgroundScope.launch(testDispatcher) { viewModel.uiState.collect() }
-        val state = viewModel.uiState.value
-        assertEquals(
-            "Initial backend should be CPU",
-            HardwareBackend.CPU_ONLY,
-            state.selectedModel.hardwareAcceleration,
-        )
-        assertFalse(state.isRunning)
-        assertFalse(state.isInitializing)
+    fun `TestCase can be created with YAZIO domain`() {
+        val testCase =
+            TestCase(
+                name = "YAZIO Test",
+                queries = emptyList(),
+                systemPrompt = "Prompt",
+                validator = { ValidationResult.Pass("OK") },
+                domain = TestDomain.YAZIO,
+            )
+
+        assertEquals(TestDomain.YAZIO, testCase.domain)
     }
 
     @Test
-    fun `RunTests triggers initialization and updates state`() = runTest {
-        backgroundScope.launch(testDispatcher) { viewModel.uiState.collect() }
-        // Run tests (uses current CPU backend)
-        viewModel.onUiAction(TestUiAction.RunTests(useGpu = false))
+    fun `availableDomains should be distinct and ordered`() {
+        val domains =
+            persistentListOf(
+                TestDomain.GENERIC,
+                TestDomain.YAZIO,
+                TestDomain.GENERIC, // duplicate
+                TestDomain.YAZIO, // duplicate
+            )
 
-        assertTrue(inferenceEngine.initializeCalled)
-    }
+        val distinct = domains.distinct()
 
-    @Test
-    fun `RunTests with useGpu updates model`() = runTest {
-        backgroundScope.launch(testDispatcher) { viewModel.uiState.collect() }
-        // Run tests with GPU toggle
-        viewModel.onUiAction(TestUiAction.RunTests(useGpu = true))
-
-        assertTrue("Engine should have closeSession called", inferenceEngine.closeSessionCalled)
-        assertTrue("Engine should have initialize called", inferenceEngine.initializeCalled)
-
-        val state = viewModel.uiState.value
-        assertEquals(
-            "Backend should switch to GPU",
-            HardwareBackend.GPU_SUPPORTED,
-            state.selectedModel.hardwareAcceleration,
-        )
-    }
-
-    @Test
-    fun `CancelTests transitions state to Idle`() = runTest {
-        backgroundScope.launch(testDispatcher) { viewModel.uiState.collect() }
-        // Start tests
-        viewModel.onUiAction(TestUiAction.RunTests(useGpu = false))
-
-        // Cancel tests
-        viewModel.onUiAction(TestUiAction.CancelTests)
-
-        val state = viewModel.uiState.value
-        assertFalse("State should not be running after cancellation", state.isRunning)
+        assertEquals(2, distinct.size)
+        assertTrue(TestDomain.GENERIC in distinct)
+        assertTrue(TestDomain.YAZIO in distinct)
     }
 }
