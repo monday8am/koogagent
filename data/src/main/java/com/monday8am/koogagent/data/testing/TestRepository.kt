@@ -1,9 +1,13 @@
 package com.monday8am.koogagent.data.testing
 
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.json.Json
 
 interface TestRepository {
     suspend fun getTests(): List<TestCaseDefinition>
+
+    fun getTestsAsFlow(): Flow<List<TestCaseDefinition>>
 }
 
 class AssetsTestRepository : TestRepository {
@@ -23,5 +27,13 @@ class AssetsTestRepository : TestRepository {
                 ?: throw IllegalStateException("tool_tests.json not found in resources")
 
         return json.decodeFromString<TestSuiteDefinition>(jsonString).tests
+    }
+
+    override fun getTestsAsFlow(): Flow<List<TestCaseDefinition>> = flow {
+        try {
+            emit(getTests())
+        } catch (e: Exception) {
+            emit(emptyList())
+        }
     }
 }

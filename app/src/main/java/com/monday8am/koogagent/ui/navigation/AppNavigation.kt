@@ -8,7 +8,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.monday8am.koogagent.ui.screens.modelselector.ModelSelectorScreen
-
 import com.monday8am.koogagent.ui.screens.testing.TestScreen
 
 @Composable
@@ -23,8 +22,7 @@ fun AppNavigation(
     ) {
         composable<Route.ModelSelector> {
             ModelSelectorScreen(
-
-                onNavigateToTesting = { modelId -> navController.navigate(Route.Testing(modelId)) },
+                onNavigateToTesting = { modelId -> navController.navigate(Route.Testing(modelId)) }
             )
         }
 

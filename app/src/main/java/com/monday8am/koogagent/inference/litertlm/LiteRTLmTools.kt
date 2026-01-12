@@ -27,7 +27,9 @@ class LiteRTLmTools {
         )
 
         // Check for mock response
-        ToolTrace.getMockResponse("get_weather")?.let { return@runBlocking it }
+        ToolTrace.getMockResponse("get_weather")?.let {
+            return@runBlocking it
+        }
 
         try {
             val weatherCondition = weatherProvider.getCurrentWeather(latitude, longitude)
@@ -47,7 +49,9 @@ class LiteRTLmTools {
         ToolTrace.log(ToolCall(name = "get_time", args = emptyMap()))
 
         // Check for mock response
-        ToolTrace.getMockResponse("get_time")?.let { return it }
+        ToolTrace.getMockResponse("get_time")?.let {
+            return it
+        }
 
         val now = LocalDateTime.now()
         val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
@@ -61,7 +65,9 @@ class LiteRTLmTools {
         ToolTrace.log(ToolCall(name = "get_meal_history", args = mapOf("mealType" to mealType)))
 
         // Check for mock response
-        ToolTrace.getMockResponse("get_meal_history")?.let { return it }
+        ToolTrace.getMockResponse("get_meal_history")?.let {
+            return it
+        }
 
         // Default mock data for testing
         return """
@@ -73,7 +79,8 @@ class LiteRTLmTools {
                 ],
                 "totalCalories": 245
             }
-        """.trimIndent()
+        """
+            .trimIndent()
     }
 }
 
@@ -86,7 +93,9 @@ class NativeLocationTools {
         ToolTrace.log(ToolCall(name = "get_location", args = emptyMap()))
 
         // Check for mock response
-        ToolTrace.getMockResponse("get_location")?.let { return it }
+        ToolTrace.getMockResponse("get_location")?.let {
+            return it
+        }
 
         val result = """{"latitude": 40.4168, "longitude": -3.7038}"""
         Log.e("NativeLocationTools", "🔧 Returning: $result")

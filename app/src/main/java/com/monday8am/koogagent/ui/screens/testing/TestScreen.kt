@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Button
@@ -35,9 +34,9 @@ import com.monday8am.koogagent.Dependencies
 import com.monday8am.koogagent.data.HardwareBackend
 import com.monday8am.koogagent.data.ModelCatalog
 import com.monday8am.koogagent.data.ModelConfiguration
+import com.monday8am.koogagent.data.testing.TestDomain
 import com.monday8am.koogagent.download.ModelDownloadManagerImpl
 import com.monday8am.koogagent.inference.InferenceEngineFactory
-import com.monday8am.koogagent.data.testing.TestDomain
 import com.monday8am.koogagent.ui.theme.KoogAgentTheme
 import com.monday8am.presentation.testing.TestResultFrame
 import com.monday8am.presentation.testing.TestStatus
@@ -48,7 +47,6 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableMap
 import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.collections.immutable.toImmutableList
-import kotlinx.collections.immutable.toImmutableMap
 
 @Composable
 fun TestScreen(
@@ -153,7 +151,7 @@ private fun TestContent(
             filterDomain = filterDomain,
             availableDomains = availableDomains,
             onSetDomainFilter = { filterDomain = it },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
         )
 
         // 4. Run/Cancel Button
@@ -303,7 +301,7 @@ private fun TestContentPreview() {
                         TestStatus(
                             name = "TEST 0: Basic Response",
                             domain = TestDomain.GENERIC,
-                            state = TestStatus.State.PASS
+                            state = TestStatus.State.PASS,
                         )
                     )
                     .toImmutableList(),

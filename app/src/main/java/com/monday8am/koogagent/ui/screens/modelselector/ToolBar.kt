@@ -9,9 +9,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.School
-import androidx.compose.material.icons.filled.Science
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -35,7 +33,6 @@ internal fun ToolBar(
     selectedModelId: String?,
     onAction: (UiAction) -> Unit,
     onNavigateToTesting: (String) -> Unit,
-
     modifier: Modifier = Modifier,
 ) {
     val iconSizeModifier = Modifier.size(18.dp)
@@ -117,7 +114,6 @@ private fun ToolBarPreview_NotDownloaded() {
             selectedModelId = ModelCatalog.QWEN3_0_6B.modelId,
             onAction = {},
             onNavigateToTesting = {},
-
         )
     }
 }
@@ -139,7 +135,6 @@ private fun ToolBarPreview_DownloadedSelected() {
             selectedModelId = ModelCatalog.HAMMER2_1_0_5B.modelId,
             onAction = {},
             onNavigateToTesting = {},
-
         )
     }
 }
@@ -161,7 +156,6 @@ private fun ToolBarPreview_Downloading() {
             selectedModelId = ModelCatalog.GEMMA3_1B.modelId,
             onAction = {},
             onNavigateToTesting = {},
-
         )
     }
 }
