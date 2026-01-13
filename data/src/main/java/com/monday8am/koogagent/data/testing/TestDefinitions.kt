@@ -4,6 +4,12 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 
+@Serializable
+enum class TestDomain {
+    @SerialName("generic") GENERIC,
+    @SerialName("yazio") YAZIO,
+}
+
 @Serializable data class TestSuiteDefinition(val tests: List<TestCaseDefinition>)
 
 @Serializable
@@ -11,6 +17,10 @@ data class TestCaseDefinition(
     val id: String,
     val name: String,
     val description: List<String> = emptyList(),
+    val domain: TestDomain = TestDomain.GENERIC,
+    val context: Map<String, JsonElement>? = null,
+    @SerialName("available_tools") val availableTools: List<String>? = null,
+    @SerialName("mock_tool_responses") val mockToolResponses: Map<String, JsonElement>? = null,
     val queries: List<TestQueryDefinition>,
     @SerialName("system_prompt") val systemPrompt: String,
     val rules: List<ValidationRule>,
@@ -56,4 +66,19 @@ sealed class ValidationRule {
 
     /** PASS if result is not blank and no tools called */
     @Serializable @SerialName("chat_valid") data object ChatValid : ValidationRule()
+
+    /** PASS if response matches JSON schema */
+    @Serializable
+    @SerialName("valid_json_schema")
+    data class ValidJsonSchema(val schema: JsonElement) : ValidationRule()
+
+    /** PASS if response contains any of the specified terms */
+    @Serializable
+    @SerialName("response_references_any")
+    data class ResponseReferencesAny(val terms: List<String>) : ValidationRule()
+
+    /** PASS if response tone matches expectation (e.g., "friendly", "professional") */
+    @Serializable
+    @SerialName("response_tone")
+    data class ResponseTone(val tone: String) : ValidationRule()
 }

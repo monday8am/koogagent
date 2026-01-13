@@ -34,6 +34,7 @@ import com.monday8am.koogagent.Dependencies
 import com.monday8am.koogagent.data.HardwareBackend
 import com.monday8am.koogagent.data.ModelCatalog
 import com.monday8am.koogagent.data.ModelConfiguration
+import com.monday8am.koogagent.data.testing.TestDomain
 import com.monday8am.koogagent.download.ModelDownloadManagerImpl
 import com.monday8am.koogagent.inference.InferenceEngineFactory
 import com.monday8am.koogagent.ui.theme.KoogAgentTheme
@@ -84,10 +85,13 @@ fun TestScreen(
     TestContent(
         frames = state.frames,
         testStatuses = state.testStatuses,
+        availableDomains = state.availableDomains,
         selectedModel = state.selectedModel,
         isRunning = state.isRunning,
         isInitializing = state.isInitializing,
-        onRunTests = { useGpu -> viewModel.onUiAction(TestUiAction.RunTests(useGpu)) },
+        onRunTests = { useGpu, filter ->
+            viewModel.onUiAction(TestUiAction.RunTests(useGpu, filter))
+        },
         onCancelTests = { viewModel.onUiAction(TestUiAction.CancelTests) },
         modifier = Modifier,
     )
@@ -97,16 +101,22 @@ fun TestScreen(
 private fun TestContent(
     frames: ImmutableMap<String, TestResultFrame>,
     testStatuses: ImmutableList<TestStatus>,
+    availableDomains: ImmutableList<TestDomain>,
     selectedModel: ModelConfiguration,
     isRunning: Boolean,
     isInitializing: Boolean,
-    onRunTests: (Boolean) -> Unit,
+    onRunTests: (Boolean, TestDomain?) -> Unit,
     onCancelTests: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var filterDomain by rememberSaveable { mutableStateOf<TestDomain?>(null) }
     var useGpuBackend by rememberSaveable {
         mutableStateOf(selectedModel.hardwareAcceleration == HardwareBackend.GPU_SUPPORTED)
     }
+
+    val displayedTests =
+        if (isRunning || filterDomain == null) testStatuses
+        else testStatuses.filter { it.domain == filterDomain }.toImmutableList()
 
     var isCancelling by rememberSaveable { mutableStateOf(false) }
 
@@ -136,7 +146,13 @@ private fun TestContent(
         // 2. LazyColumn with cells (70% weight)
         TestResultsList(frames = frames, modifier = Modifier.fillMaxWidth().weight(1.0f))
 
-        TestStatusList(testStatuses = testStatuses, modifier = Modifier.fillMaxWidth())
+        TestStatusList(
+            testStatuses = displayedTests,
+            filterDomain = filterDomain,
+            availableDomains = availableDomains,
+            onSetDomainFilter = { filterDomain = it },
+            modifier = Modifier.fillMaxWidth(),
+        )
 
         // 4. Run/Cancel Button
         Button(
@@ -145,7 +161,7 @@ private fun TestContent(
                     isCancelling = true
                     onCancelTests()
                 } else {
-                    onRunTests(useGpuBackend)
+                    onRunTests(useGpuBackend, filterDomain)
                 }
             },
             enabled = !isInitializing && !isCancelling,
@@ -281,12 +297,19 @@ private fun TestContentPreview() {
                         ),
                 ),
             testStatuses =
-                listOf(TestStatus(name = "TEST 0: Basic Response", state = TestStatus.State.PASS))
+                listOf(
+                        TestStatus(
+                            name = "TEST 0: Basic Response",
+                            domain = TestDomain.GENERIC,
+                            state = TestStatus.State.PASS,
+                        )
+                    )
                     .toImmutableList(),
+            availableDomains = listOf(TestDomain.GENERIC, TestDomain.YAZIO).toImmutableList(),
             selectedModel = ModelCatalog.DEFAULT,
             isRunning = false,
             isInitializing = true,
-            onRunTests = {},
+            onRunTests = { _, _ -> },
             onCancelTests = {},
         )
     }

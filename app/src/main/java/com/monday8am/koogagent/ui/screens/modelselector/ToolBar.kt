@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.School
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -32,7 +33,6 @@ internal fun ToolBar(
     selectedModelId: String?,
     onAction: (UiAction) -> Unit,
     onNavigateToTesting: (String) -> Unit,
-    onNavigateToNotification: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val iconSizeModifier = Modifier.size(18.dp)
@@ -86,24 +86,13 @@ internal fun ToolBar(
             onClick = { selectedModelId?.let(onNavigateToTesting) },
             enabled = downloadStatus == DownloadStatus.Completed,
         ) {
-            Text("Function")
-            //            Icon(
-            //                imageVector = Icons.Default.Memory,
-            //                contentDescription = "Go forward",
-            //                modifier = iconSizeModifier,
-            //            )
-        }
-
-        Button(
-            onClick = { selectedModelId?.let(onNavigateToNotification) },
-            enabled = downloadStatus == DownloadStatus.Completed,
-        ) {
-            Text("Agentic")
-            //            Icon(
-            //                imageVector = Icons.Filled.Psychology,
-            //                contentDescription = "Go forward",
-            //                modifier = iconSizeModifier,
-            //            )
+            Text("Test Function Call", modifier = Modifier.padding(horizontal = 8.dp))
+            if (downloadStatus == DownloadStatus.Completed)
+                Icon(
+                    imageVector = Icons.Default.School,
+                    contentDescription = "Go forward",
+                    modifier = iconSizeModifier,
+                )
         }
     }
 }
@@ -125,7 +114,6 @@ private fun ToolBarPreview_NotDownloaded() {
             selectedModelId = ModelCatalog.QWEN3_0_6B.modelId,
             onAction = {},
             onNavigateToTesting = {},
-            onNavigateToNotification = {},
         )
     }
 }
@@ -147,7 +135,6 @@ private fun ToolBarPreview_DownloadedSelected() {
             selectedModelId = ModelCatalog.HAMMER2_1_0_5B.modelId,
             onAction = {},
             onNavigateToTesting = {},
-            onNavigateToNotification = {},
         )
     }
 }
@@ -169,7 +156,6 @@ private fun ToolBarPreview_Downloading() {
             selectedModelId = ModelCatalog.GEMMA3_1B.modelId,
             onAction = {},
             onNavigateToTesting = {},
-            onNavigateToNotification = {},
         )
     }
 }

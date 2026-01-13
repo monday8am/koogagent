@@ -1,5 +1,7 @@
 package com.monday8am.presentation.testing
 
+import com.monday8am.koogagent.data.testing.TestDomain
+
 /** A single test query with optional description. */
 data class TestQuery(val text: String, val description: String? = null)
 
@@ -63,4 +65,7 @@ data class TestCase(
     val systemPrompt: String,
     val validator: (result: String) -> ValidationResult,
     val parseThinkingTags: Boolean = true,
+    val context: Map<String, Any?> = emptyMap(),
+    val mockToolResponses: Map<String, String> = emptyMap(),
+    val domain: TestDomain = TestDomain.GENERIC,
 )

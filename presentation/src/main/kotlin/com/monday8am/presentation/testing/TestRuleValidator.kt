@@ -19,6 +19,10 @@ object TestRuleValidator {
                 systemPrompt = def.systemPrompt,
                 parseThinkingTags = def.parseThinkingTags,
                 validator = createValidator(def.rules),
+                context = def.context?.mapValues { it.value.toString() } ?: emptyMap(),
+                mockToolResponses =
+                    def.mockToolResponses?.mapValues { it.value.toString() } ?: emptyMap(),
+                domain = def.domain,
             )
         }
     }
@@ -151,6 +155,48 @@ object TestRuleValidator {
                     ValidationResult.Fail(
                         "Chat invalid. Tools: ${ToolTrace.calls.size}, Result len: ${result.length}"
                     )
+                }
+            }
+
+            is ValidationRule.ValidJsonSchema -> {
+                // Simple JSON validation - check if result is valid JSON
+                try {
+                    kotlinx.serialization.json.Json.parseToJsonElement(result)
+                    ValidationResult.Pass("Response is valid JSON")
+                } catch (e: Exception) {
+                    ValidationResult.Fail("Response is not valid JSON: ${e.message}")
+                }
+            }
+
+            is ValidationRule.ResponseReferencesAny -> {
+                val foundTerms =
+                    rule.terms.filter { term -> result.contains(term, ignoreCase = true) }
+                if (foundTerms.isNotEmpty()) {
+                    ValidationResult.Pass("Response contains: ${foundTerms.joinToString(", ")}")
+                } else {
+                    ValidationResult.Fail(
+                        "Response does not contain any of: ${rule.terms.joinToString(", ")}"
+                    )
+                }
+            }
+
+            is ValidationRule.ResponseTone -> {
+                // Simple heuristic-based tone detection
+                val lowerResult = result.lowercase()
+                val matched =
+                    when (rule.tone.lowercase()) {
+                        "friendly" ->
+                            lowerResult.contains("!") ||
+                                lowerResult.contains("great") ||
+                                lowerResult.contains("wonderful")
+                        "professional" -> !lowerResult.contains("!") && !lowerResult.contains("wow")
+                        else -> true // Unknown tone, pass by default
+                    }
+
+                if (matched) {
+                    ValidationResult.Pass("Response tone matches '${rule.tone}'")
+                } else {
+                    ValidationResult.Fail("Response tone does not match '${rule.tone}'")
                 }
             }
         }
