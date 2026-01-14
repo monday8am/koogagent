@@ -87,16 +87,16 @@ internal class TagProcessor(private val testName: String, private val parseTags:
         val index = content.lastIndexOf(tag)
         if (index != -1) {
             if (clearBefore) {
-                val remaining = content.substring(index + tag.length)
+                // When removing closing tag, trim leading whitespace after it
+                val remaining = content.substring(index + tag.length).trimStart()
                 currentBlock.clear()
                 currentBlock.append(remaining)
             } else {
-                // Just remove the tag itself if we're starting a new block
-                // Actually, if we're starting <think>, we might want to clear previous content
-                // if it's just whitespace or if the contract is "one block at a time".
-                // The original code cleared on END tags.
-                // For start tags, let's just keep everything for now but remove the tag.
-                currentBlock.delete(index, index + tag.length)
+                // When removing opening tag, trim leading whitespace after it
+                val before = content.substring(0, index)
+                val after = content.substring(index + tag.length).trimStart()
+                currentBlock.clear()
+                currentBlock.append(before).append(after)
             }
         }
     }

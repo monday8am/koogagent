@@ -33,8 +33,8 @@ internal fun DescriptionCell(frame: TestResultFrame.Description) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
                 text = "${frame.testName} • Description",
-                style = MaterialTheme.typography.titleSmall,
-                color = border,
+                style = MaterialTheme.typography.labelSmall,
+                color = onContainer.copy(alpha = 0.6f),
             )
             if (frame.description.isNotEmpty()) {
                 Text(
@@ -46,7 +46,7 @@ internal fun DescriptionCell(frame: TestResultFrame.Description) {
             Text(
                 text = "System Prompt: ${frame.systemPrompt}",
                 style = MaterialTheme.typography.bodySmall,
-                color = onContainer.copy(alpha = 0.7f),
+                color = onContainer.copy(alpha = 0.8f),
             )
         }
     }
@@ -135,7 +135,7 @@ internal fun ContentCell(frame: TestResultFrame.Content) {
     // Success/Content: tertiaryContainer
     val container = colorScheme.tertiaryContainer
     val onContainer = colorScheme.onTertiaryContainer
-    val border = colorScheme.tertiary
+    val border = colorScheme.onTertiaryContainer.copy(alpha = 0.8f)
 
     Card(
         colors = CardDefaults.cardColors(containerColor = container, contentColor = onContainer),
@@ -166,7 +166,7 @@ internal fun ValidationCell(frame: TestResultFrame.Validation) {
                 Triple(
                     colorScheme.tertiaryContainer,
                     colorScheme.onTertiaryContainer,
-                    colorScheme.tertiary,
+                    colorScheme.onTertiaryContainer.copy(alpha = 0.8f),
                 )
 
             is ValidationResult.Fail ->
@@ -181,13 +181,13 @@ internal fun ValidationCell(frame: TestResultFrame.Validation) {
 
     Card(
         colors = CardDefaults.cardColors(containerColor = container, contentColor = onContainer),
-        border = BorderStroke(2.dp, border),
+        border = BorderStroke(1.dp, border),
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
                 text = "${frame.testName} • Validation",
-                style = MaterialTheme.typography.titleSmall,
+                style = MaterialTheme.typography.labelSmall,
                 color = border,
             )
             Text(
