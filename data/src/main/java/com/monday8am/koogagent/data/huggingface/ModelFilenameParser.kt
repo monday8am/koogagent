@@ -27,7 +27,7 @@ object ModelFilenameParser {
     // Regex patterns for metadata extraction
     private val PARAM_REGEX_B = Regex("""(\d+\.?\d*)B""", RegexOption.IGNORE_CASE)
     private val PARAM_REGEX_M = Regex("""(\d+\.?\d*)M""", RegexOption.IGNORE_CASE)
-    private val QUANT_REGEX = Regex("""[_-](q\d+|int\d+|f32|f16|fp16)""", RegexOption.IGNORE_CASE)
+    private val QUANT_REGEX = Regex("""[._-](q\d+|int\d+|f32|f16|fp16)""", RegexOption.IGNORE_CASE)
     private val CONTEXT_REGEX = Regex("""ekv(\d+)""", RegexOption.IGNORE_CASE)
 
     // Device suffixes to filter out (hardware-specific builds)

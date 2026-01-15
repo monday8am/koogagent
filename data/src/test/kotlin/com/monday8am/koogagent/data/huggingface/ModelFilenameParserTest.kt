@@ -27,7 +27,7 @@ class ModelFilenameParserTest {
             )
 
         assertNotNull(result)
-        assertEquals("gemma3", result!!.modelFamily)
+        assertEquals("gemma3", result.modelFamily)
         assertEquals(1.0f, result.parameterCount)
         assertEquals("q4", result.quantization)
         assertEquals(4096, result.contextLength)
@@ -114,7 +114,7 @@ class ModelFilenameParserTest {
 
         assertNotNull(result)
         // Display name should contain family and params
-        val displayName = result!!.displayName
+        val displayName = result.displayName
         assert(displayName.contains("Gemma3", ignoreCase = true)) {
             "Expected 'Gemma3' in '$displayName'"
         }
@@ -168,7 +168,7 @@ class ModelFilenameParserTest {
 
         assertNotNull(result)
         // When context is not specified in filename, it should be null
-        assertNull(result!!.contextLength)
+        assertNull(result.contextLength)
     }
 
     @Test
@@ -177,6 +177,56 @@ class ModelFilenameParserTest {
             ModelFilenameParser.parse("model_q8_ekv1280.litertlm", "litert-community/Model")
 
         assertNotNull(result)
-        assertEquals(1280, result!!.contextLength)
+        assertEquals(1280, result.contextLength)
+    }
+
+    @Test
+    fun `parse million parameter count`() {
+        val result = ModelFilenameParser.parse("Model-500M.litertlm", "litert-community/Model-500M")
+
+        assertNotNull(result)
+        assertEquals(0.5f, result.parameterCount)
+    }
+
+    @Test
+    fun `parse various quantization formats`() {
+        val fp16 = ModelFilenameParser.parse("model_fp16.litertlm", "org/model")
+        assertEquals("fp16", fp16?.quantization)
+
+        val f16 = ModelFilenameParser.parse("model_f16.litertlm", "org/model")
+        assertEquals("f16", f16?.quantization)
+
+        val unknown = ModelFilenameParser.parse("model_none.litertlm", "org/model")
+        assertEquals("unknown", unknown?.quantization)
+    }
+
+    @Test
+    fun `extract family fallback when no prefix matches`() {
+        val result = ModelFilenameParser.parse("CustomModel-1B.litertlm", "user/CustomModel-1B")
+
+        assertNotNull(result)
+        assertEquals("custommodel", result.modelFamily)
+    }
+
+    @Test
+    fun `parse mixed case and multiple dots`() {
+        val result =
+            ModelFilenameParser.parse("My.Model.Name.V1.Q4.LITerTLm", "org/My.Model.Name.V1")
+
+        assertNotNull(result)
+        assertEquals(InferenceLibrary.LITERT, result.inferenceLibrary)
+        assertEquals("q4", result.quantization)
+    }
+
+    @Test
+    fun `verify display name formatting`() {
+        val gemma = ModelFilenameParser.parse("gemma-2b.litertlm", "google/gemma-2b")
+        assertEquals("Gemma-2B", gemma?.displayName)
+
+        val qwen = ModelFilenameParser.parse("qwen-0.5b.litertlm", "qwen/qwen-0.5b")
+        assertEquals("Qwen-0.5B", qwen?.displayName)
+
+        val smol = ModelFilenameParser.parse("smollm-135m.litertlm", "org/smollm-135m")
+        assertEquals("Smollm-0.135B", smol?.displayName)
     }
 }
