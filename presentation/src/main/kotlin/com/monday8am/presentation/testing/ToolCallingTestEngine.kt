@@ -2,6 +2,7 @@ package com.monday8am.presentation.testing
 
 import co.touchlab.kermit.Logger
 import co.touchlab.kermit.Severity
+import com.monday8am.agent.tools.TestContext
 import com.monday8am.agent.tools.ToolTrace
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -74,8 +75,8 @@ class ToolCallingTestEngine(
         )
 
         // Inject context and mocks before test execution
-        com.monday8am.agent.tools.TestContext.setVariables(testCase.context)
-        com.monday8am.agent.tools.ToolTrace.setMockResponses(testCase.mockToolResponses)
+        TestContext.setVariables(testCase.context)
+        ToolTrace.setMockResponses(testCase.mockToolResponses)
 
         testCase.queries
             .asFlow()
