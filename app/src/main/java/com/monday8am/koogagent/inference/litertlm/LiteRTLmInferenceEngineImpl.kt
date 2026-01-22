@@ -3,6 +3,7 @@ package com.monday8am.koogagent.inference.litertlm
 import co.touchlab.kermit.Logger
 import com.google.ai.edge.litertlm.Backend
 import com.google.ai.edge.litertlm.Content
+import com.google.ai.edge.litertlm.Contents
 import com.google.ai.edge.litertlm.Conversation
 import com.google.ai.edge.litertlm.ConversationConfig
 import com.google.ai.edge.litertlm.Engine
@@ -75,7 +76,7 @@ class LiteRTLmInferenceEngineImpl(
                 // Configure conversation with tools for native tool calling
                 val conversationConfig =
                     ConversationConfig(
-                        systemMessage = Message.of("You are a helpful assistant."),
+                        systemMessage = Message.model("You are a helpful assistant."),
                         tools = tools, // Native LiteRT-LM tools with @Tool annotations
                         samplerConfig =
                             SamplerConfig(
@@ -129,7 +130,7 @@ class LiteRTLmInferenceEngineImpl(
                 }
                 val startTime = System.currentTimeMillis()
 
-                val userMessage = Message.of(prompt)
+                val userMessage = Contents.of(prompt)
                 val response = instance.conversation.sendMessageWithCallback(userMessage)
 
                 val duration = System.currentTimeMillis() - startTime
@@ -154,13 +155,13 @@ class LiteRTLmInferenceEngineImpl(
                     Logger.e("LocalInferenceEngine") { "Inference instance is not available." }
                     return emptyFlow() // Return an empty flow if there's no instance.
                 }
-        val userMessage = Message.of(prompt)
+        val userMessage = Contents.of(prompt)
         var startTime = 0L
 
         return instance.conversation
             .sendMessageAsync(userMessage)
             .map { message ->
-                message.contents.filterIsInstance<Content.Text>().joinToString("") { it.text }
+                message.contents.contents.filterIsInstance<Content.Text>().joinToString("") { it.text }
             }
             .filter { it.isNotEmpty() }
             .onStart {
@@ -191,6 +192,7 @@ class LiteRTLmInferenceEngineImpl(
             instance.conversation.close()
             val conversationConfig =
                 ConversationConfig(
+                    systemInstruction = Contents.of("You are a helpful assistant."),
                     tools = tools, // Maintain tools across conversation resets
                     samplerConfig =
                         SamplerConfig(
@@ -215,7 +217,7 @@ class LiteRTLmInferenceEngineImpl(
 }
 
 @OptIn(InternalCoroutinesApi::class)
-private suspend fun Conversation.sendMessageWithCallback(message: Message): String =
+private suspend fun Conversation.sendMessageWithCallback(content: Contents): String =
     suspendCancellableCoroutine { continuation ->
         val resultBuilder = StringBuilder()
 
@@ -223,7 +225,7 @@ private suspend fun Conversation.sendMessageWithCallback(message: Message): Stri
             object : MessageCallback {
                 override fun onMessage(message: Message) {
                     // Extract text content from message and append it
-                    message.contents.filterIsInstance<Content.Text>().forEach { content ->
+                    message.contents.contents.filterIsInstance<Content.Text>().forEach { content ->
                         resultBuilder.append(content.text)
                     }
                 }
@@ -237,7 +239,7 @@ private suspend fun Conversation.sendMessageWithCallback(message: Message): Stri
                 }
             }
 
-        this.sendMessageAsync(message, callback)
+        this.sendMessageAsync(content, callback)
 
         // Handle coroutine cancellation.
         // LiteRT-LM's Conversation API does not currently offer a direct way to interrupt an
