@@ -76,7 +76,7 @@ class LiteRTLmInferenceEngineImpl(
                 // Configure conversation with tools for native tool calling
                 val conversationConfig =
                     ConversationConfig(
-                        systemMessage = Message.model("You are a helpful assistant."),
+                        systemInstruction = Contents.of("You are a helpful assistant."),
                         tools = tools, // Native LiteRT-LM tools with @Tool annotations
                         samplerConfig =
                             SamplerConfig(
