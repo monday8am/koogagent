@@ -101,8 +101,8 @@ class LiteRTLmInferenceEngineImpl(
                     Result.failure(
                         IllegalStateException(
                             "Model incompatible: The model signature does not match the expected format. " +
-                                "This usually happens when using a MediaPipe model with LiteRT-LM runtime, " +
-                                "or an outdated model conversion. Please try a different model or check for updates.",
+                                "This may be due to an outdated model conversion or an incompatible model format. " +
+                                "Please try a different model or check for updates.",
                             e,
                         )
                     )

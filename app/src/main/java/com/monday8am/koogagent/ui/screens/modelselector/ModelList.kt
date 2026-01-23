@@ -21,7 +21,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.monday8am.koogagent.data.HardwareBackend
-import com.monday8am.koogagent.data.InferenceLibrary
 import com.monday8am.koogagent.data.ModelConfiguration
 import com.monday8am.koogagent.ui.theme.KoogAgentTheme
 import com.monday8am.presentation.modelselector.DownloadStatus
@@ -106,7 +105,6 @@ private fun ModelListPreview() {
                         contextLength = 4096,
                         downloadUrl = "https://example.com/model.litertlm",
                         bundleFilename = "model1.litertlm",
-                        inferenceLibrary = InferenceLibrary.LITERT,
                         hardwareAcceleration = HardwareBackend.CPU_ONLY,
                     ),
                 isDownloaded = true,
@@ -122,7 +120,6 @@ private fun ModelListPreview() {
                         contextLength = 4096,
                         downloadUrl = "https://example.com/model2.litertlm",
                         bundleFilename = "model2.litertlm",
-                        inferenceLibrary = InferenceLibrary.LITERT,
                         hardwareAcceleration = HardwareBackend.GPU_SUPPORTED,
                     ),
                 isDownloaded = false,

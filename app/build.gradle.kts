@@ -126,8 +126,6 @@ dependencies {
     implementation(libs.androidx.browser)
 
     implementation(libs.litertlm.android)
-    implementation(libs.mediapipe.tasks.genai)
-    implementation(libs.localagents.fc)
 
     // Firebase
     implementation(platform(libs.firebase.bom))

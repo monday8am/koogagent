@@ -1,7 +1,6 @@
 package com.monday8am.koogagent
 
 import android.content.Context
-import com.google.ai.edge.localagents.core.proto.Tool
 import com.monday8am.koogagent.data.AuthRepository
 import com.monday8am.koogagent.data.AuthRepositoryImpl
 import com.monday8am.koogagent.data.LocationProvider
@@ -17,7 +16,6 @@ import com.monday8am.koogagent.data.huggingface.HuggingFaceModelCatalogProvider
 import com.monday8am.koogagent.download.ModelDownloadManagerImpl
 import com.monday8am.koogagent.inference.litertlm.LiteRTLmTools
 import com.monday8am.koogagent.inference.litertlm.NativeLocationTools
-import com.monday8am.koogagent.inference.mediapipe.MediaPipeTools
 import com.monday8am.koogagent.oauth.HuggingFaceOAuthManager
 import com.monday8am.koogagent.ui.DeviceContextProviderImpl
 import com.monday8am.koogagent.ui.NotificationEngineImpl
@@ -77,6 +75,4 @@ object Dependencies {
     val modelRepository: ModelRepository by lazy { ModelRepositoryImpl(modelCatalogProvider) }
 
     val nativeTools: List<Any> by lazy { listOf(NativeLocationTools(), LiteRTLmTools()) }
-
-    val mediaPipeTools: List<Tool> by lazy { listOf(MediaPipeTools.createAllTools()) }
 }

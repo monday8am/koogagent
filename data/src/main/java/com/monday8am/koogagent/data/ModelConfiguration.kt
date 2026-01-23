@@ -1,10 +1,5 @@
 package com.monday8am.koogagent.data
 
-enum class InferenceLibrary {
-    LITERT,
-    MEDIAPIPE,
-}
-
 enum class HardwareBackend {
     CPU_ONLY,
     GPU_SUPPORTED,
@@ -22,9 +17,7 @@ enum class HardwareBackend {
  * @property quantization Quantization format (e.g., "int8", "int4", "fp16")
  * @property contextLength Maximum context window in tokens (e.g., 4096, 1024)
  * @property downloadUrl Remote URL for model download
- * @property bundleFilename Expected filename after download (e.g., "model.litertlm" or
- *   "model.task")
- * @property inferenceLibrary Which inference library to use
+ * @property bundleFilename Expected filename after download (e.g., "model.litertlm")
  * @property hardwareAcceleration Supported hardware acceleration
  * @property defaultTopK Default top-K sampling parameter
  * @property defaultTopP Default top-P sampling parameter
@@ -43,7 +36,6 @@ data class ModelConfiguration(
     val contextLength: Int,
     val downloadUrl: String,
     val bundleFilename: String,
-    val inferenceLibrary: InferenceLibrary,
     val hardwareAcceleration: HardwareBackend,
     val defaultTopK: Int = 40,
     val defaultTopP: Float = 0.85f,
@@ -56,10 +48,10 @@ data class ModelConfiguration(
 ) {
     /**
      * Model identifier without file extension (used by NotificationAgent). Examples:
-     * "qwen3_0.6b_q8_ekv4096-litert", "gemma3-1b-it-int4-mediapipe" or "gemma3-1b-it-int4-litert"
+     * "qwen3_0.6b_q8_ekv4096", "gemma3-1b-it-int4"
      */
     val modelId: String
-        get() = bundleFilename.substringBeforeLast(".") + "-" + inferenceLibrary.toString()
+        get() = bundleFilename.substringBeforeLast(".")
 
     /** Helper to format file size into human readable string. */
     val readableFileSize: String?

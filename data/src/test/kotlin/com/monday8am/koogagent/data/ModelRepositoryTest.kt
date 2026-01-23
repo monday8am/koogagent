@@ -64,13 +64,4 @@ class ModelRepositoryTest {
 
         assertTrue(result.all { it.modelFamily.equals("qwen3", ignoreCase = true) })
     }
-
-    @Test
-    fun `getByInferenceLibrary should filter by library`() {
-        repository.setModels(listOf(model1, model2))
-
-        val result = repository.getByInferenceLibrary(InferenceLibrary.LITERT)
-
-        assertTrue(result.all { it.inferenceLibrary == InferenceLibrary.LITERT })
-    }
 }
