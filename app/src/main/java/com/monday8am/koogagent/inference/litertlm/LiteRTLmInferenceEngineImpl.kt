@@ -39,7 +39,6 @@ private data class LlmModelInstance(
 
 /** LiteRT-LM implementation with native tool calling support. */
 class LiteRTLmInferenceEngineImpl(
-    private val tools: List<Any> = emptyList(),
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : LocalInferenceEngine {
     private var currentInstance: LlmModelInstance? = null
@@ -77,7 +76,6 @@ class LiteRTLmInferenceEngineImpl(
                 val conversationConfig =
                     ConversationConfig(
                         systemInstruction = Contents.of("You are a helpful assistant."),
-                        tools = tools, // Native LiteRT-LM tools with @Tool annotations
                         samplerConfig =
                             SamplerConfig(
                                 topK = modelConfig.defaultTopK,

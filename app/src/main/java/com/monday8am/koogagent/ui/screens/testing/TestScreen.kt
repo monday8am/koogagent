@@ -36,7 +36,7 @@ import com.monday8am.koogagent.data.ModelCatalog
 import com.monday8am.koogagent.data.ModelConfiguration
 import com.monday8am.koogagent.data.testing.TestDomain
 import com.monday8am.koogagent.download.ModelDownloadManagerImpl
-import com.monday8am.koogagent.inference.InferenceEngineFactory
+import com.monday8am.koogagent.inference.litertlm.LiteRTLmInferenceEngineImpl
 import com.monday8am.koogagent.ui.theme.KoogAgentTheme
 import com.monday8am.presentation.testing.TestResultFrame
 import com.monday8am.presentation.testing.TestStatus
@@ -56,7 +56,7 @@ fun TestScreen(
             val selectedModel =
                 Dependencies.modelRepository.findById(modelId) ?: ModelCatalog.DEFAULT
 
-            val inferenceEngine = InferenceEngineFactory.create()
+            val inferenceEngine = LiteRTLmInferenceEngineImpl()
 
             val modelPath =
                 (Dependencies.modelDownloadManager as ModelDownloadManagerImpl).getModelPath(
@@ -273,27 +273,27 @@ private fun TestContentPreview() {
             frames =
                 persistentMapOf(
                     "1" to
-                        TestResultFrame.Content(
-                            testName = "TEST 0: Basic Response",
-                            chunk = "",
-                            accumulator = "Hello! I'm doing great, thanks for asking!",
-                        ),
+                            TestResultFrame.Content(
+                                testName = "TEST 0: Basic Response",
+                                chunk = "",
+                                accumulator = "Hello! I'm doing great, thanks for asking!",
+                            ),
                     "2" to
-                        TestResultFrame.Validation(
-                            testName = "TEST 0: Basic Response",
-                            result = ValidationResult.Pass("Valid response received"),
-                            duration = 1234,
-                            fullContent = "Hello! I'm doing great, thanks for asking!",
-                        ),
+                            TestResultFrame.Validation(
+                                testName = "TEST 0: Basic Response",
+                                result = ValidationResult.Pass("Valid response received"),
+                                duration = 1234,
+                                fullContent = "Hello! I'm doing great, thanks for asking!",
+                            ),
                 ),
             testStatuses =
                 listOf(
-                        TestStatus(
-                            name = "TEST 0: Basic Response",
-                            domain = TestDomain.GENERIC,
-                            state = TestStatus.State.PASS,
-                        )
+                    TestStatus(
+                        name = "TEST 0: Basic Response",
+                        domain = TestDomain.GENERIC,
+                        state = TestStatus.State.PASS,
                     )
+                )
                     .toImmutableList(),
             availableDomains = listOf(TestDomain.GENERIC, TestDomain.YAZIO).toImmutableList(),
             selectedModel = ModelCatalog.DEFAULT,
