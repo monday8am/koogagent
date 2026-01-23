@@ -5,6 +5,7 @@ import com.monday8am.agent.core.LocalInferenceEngine
 import com.monday8am.koogagent.data.LocationProvider
 import com.monday8am.koogagent.data.MealType
 import com.monday8am.koogagent.data.ModelCatalog
+import com.monday8am.koogagent.data.ModelConfiguration
 import com.monday8am.koogagent.data.MotivationLevel
 import com.monday8am.koogagent.data.NotificationContext
 import com.monday8am.koogagent.data.NotificationResult
@@ -18,6 +19,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -156,13 +158,8 @@ class NotificationViewModelIntegrationTest {
     fun `Error during initialization should emit Error message`() = runTest {
         val failingEngine =
             object : LocalInferenceEngine by FakeLocalInferenceEngine() {
-                override fun initializeAsFlow(
-                    modelConfig: com.monday8am.koogagent.data.ModelConfiguration,
-                    modelPath: String,
-                ) =
-                    kotlinx.coroutines.flow.flow<LocalInferenceEngine> {
-                        throw Exception("Initialization failed")
-                    }
+                override fun initializeAsFlow(modelConfig: ModelConfiguration, modelPath: String) =
+                    flow<LocalInferenceEngine> { throw Exception("Initialization failed") }
             }
         val viewModel = createViewModel(inferenceEngine = failingEngine)
 
