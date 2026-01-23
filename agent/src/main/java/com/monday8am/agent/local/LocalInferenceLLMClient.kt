@@ -15,10 +15,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onEach
 
-/**
- * Bridge LLMClient between Koog's agent framework and local native inference. LiteRT-LM or
- * Mediapipe
- */
+/** Bridge LLMClient between Koog's agent framework and local native inference. */
 class LocalInferenceLLMClient(
     private val promptExecutor: suspend (String) -> String?,
     private val streamPromptExecutor: ((String) -> Flow<String>)? = null,

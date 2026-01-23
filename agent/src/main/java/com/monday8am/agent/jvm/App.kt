@@ -1,6 +1,7 @@
 package com.monday8am.agent.jvm
 
 import com.google.ai.edge.litertlm.Backend
+import com.google.ai.edge.litertlm.Contents
 import com.google.ai.edge.litertlm.ConversationConfig
 import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
@@ -28,8 +29,8 @@ suspend fun main() {
 
         val conversationConfig =
             ConversationConfig(
-                systemMessage =
-                    Message.of(
+                systemInstruction =
+                    Contents.of(
                         "You are Qwen, created by Alibaba Cloud. You are a helpful assistant."
                     ),
                 tools =
@@ -46,7 +47,7 @@ suspend fun main() {
     }
 }
 
-class NativeLocationTools {
+private class NativeLocationTools {
     @Tool(
         description =
             "No arguments required. Get the user's current location in latitude and longitude format"
