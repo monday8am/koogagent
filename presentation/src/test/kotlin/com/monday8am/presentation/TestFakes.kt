@@ -1,13 +1,7 @@
-package com.monday8am.presentation.notifications
+package com.monday8am.presentation
 
 import com.monday8am.agent.core.LocalInferenceEngine
-import com.monday8am.koogagent.data.DeviceContext
-import com.monday8am.koogagent.data.Location
-import com.monday8am.koogagent.data.LocationProvider
 import com.monday8am.koogagent.data.ModelConfiguration
-import com.monday8am.koogagent.data.NotificationResult
-import com.monday8am.koogagent.data.WeatherCondition
-import com.monday8am.koogagent.data.WeatherProvider
 import com.monday8am.presentation.modelselector.ModelDownloadManager
 import java.io.File
 import kotlinx.coroutines.flow.Flow
@@ -46,29 +40,6 @@ internal class FakeLocalInferenceEngine : LocalInferenceEngine {
         closeSessionCalled = true
         return Result.success(Unit)
     }
-}
-
-internal class FakeNotificationEngine : NotificationEngine {
-    var showNotificationCalled = false
-    var lastNotification: NotificationResult? = null
-
-    override fun showNotification(result: NotificationResult) {
-        showNotificationCalled = true
-        lastNotification = result
-    }
-}
-
-internal class FakeWeatherProvider : WeatherProvider {
-    override suspend fun getCurrentWeather(latitude: Double, longitude: Double) =
-        WeatherCondition.SUNNY
-}
-
-internal class FakeLocationProvider : LocationProvider {
-    override suspend fun getLocation() = Location(latitude = 40.4168, longitude = -3.7038)
-}
-
-internal class FakeDeviceContextProvider : DeviceContextProvider {
-    override fun getDeviceContext() = DeviceContext(language = "en-US", country = "US")
 }
 
 internal class FakeModelDownloadManager(

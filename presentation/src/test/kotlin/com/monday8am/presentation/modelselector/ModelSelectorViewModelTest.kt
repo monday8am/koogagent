@@ -5,7 +5,7 @@ import com.monday8am.koogagent.data.ModelCatalog
 import com.monday8am.koogagent.data.ModelCatalogProvider
 import com.monday8am.koogagent.data.ModelConfiguration
 import com.monday8am.koogagent.data.ModelRepositoryImpl
-import com.monday8am.presentation.notifications.FakeModelDownloadManager
+import com.monday8am.presentation.FakeModelDownloadManager
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
