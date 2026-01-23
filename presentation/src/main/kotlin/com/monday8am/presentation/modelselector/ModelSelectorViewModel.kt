@@ -2,7 +2,6 @@ package com.monday8am.presentation.modelselector
 
 import com.monday8am.koogagent.data.AuthRepository
 import com.monday8am.koogagent.data.HardwareBackend
-import com.monday8am.koogagent.data.InferenceLibrary
 import com.monday8am.koogagent.data.ModelConfiguration
 import com.monday8am.koogagent.data.ModelRepository
 import com.monday8am.koogagent.data.RepositoryState
@@ -40,7 +39,6 @@ enum class GroupingMode {
     None,
     Family,
     Hardware,
-    Library,
     Access,
 }
 
@@ -371,24 +369,6 @@ class ModelSelectorViewModelImpl(
                             title = hardwareName,
                             models = groupModels.toImmutableList(),
                             isExpanded = !collapsedGroupIds.contains("hw_${hardware.name}"),
-                        )
-                    }
-                    .sortedBy { it.title }
-            }
-
-            GroupingMode.Library -> {
-                models
-                    .groupBy { it.config.inferenceLibrary }
-                    .map { (library, groupModels) ->
-                        ModelGroup(
-                            id = "lib_${library.name}",
-                            title =
-                                when (library) {
-                                    InferenceLibrary.LITERT -> "LiteRT (TensorFlow Lite)"
-                                    InferenceLibrary.MEDIAPIPE -> "MediaPipe"
-                                },
-                            models = groupModels.toImmutableList(),
-                            isExpanded = !collapsedGroupIds.contains("lib_${library.name}"),
                         )
                     }
                     .sortedBy { it.title }

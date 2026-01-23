@@ -124,11 +124,6 @@ internal fun ModelCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                 )
-                Text(
-                    text = "Library: ${modelInfo.config.inferenceLibrary.name}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                )
 
                 // File size
                 modelInfo.config.readableFileSize?.let { sizeText ->
@@ -275,7 +270,7 @@ private fun ModelCardPreview_DownloadedSelected() {
         ModelCard(
             modelInfo =
                 ModelInfo(
-                    config = ModelCatalog.HAMMER2_1_0_5B,
+                    config = ModelCatalog.GEMMA3_1B,
                     isDownloaded = true,
                     downloadStatus = DownloadStatus.Completed,
                 ),
@@ -293,7 +288,7 @@ private fun ModelCardPreview_Failed() {
         ModelCard(
             modelInfo =
                 ModelInfo(
-                    config = ModelCatalog.HAMMER2_1_0_5B,
+                    config = ModelCatalog.GEMMA3_1B,
                     isDownloaded = false,
                     downloadStatus = DownloadStatus.Failed("Network error"),
                 ),

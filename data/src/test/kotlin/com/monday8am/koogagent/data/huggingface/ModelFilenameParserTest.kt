@@ -1,6 +1,5 @@
 package com.monday8am.koogagent.data.huggingface
 
-import com.monday8am.koogagent.data.InferenceLibrary
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -15,7 +14,6 @@ class ModelFilenameParserTest {
         assertNotNull(result)
         assertEquals("qwen3", result.modelFamily)
         assertEquals(0.6f, result.parameterCount)
-        assertEquals(InferenceLibrary.LITERT, result.inferenceLibrary)
     }
 
     @Test
@@ -31,23 +29,17 @@ class ModelFilenameParserTest {
         assertEquals(1.0f, result.parameterCount)
         assertEquals("q4", result.quantization)
         assertEquals(4096, result.contextLength)
-        assertEquals(InferenceLibrary.LITERT, result.inferenceLibrary)
     }
 
     @Test
-    fun `parse task file for MediaPipe`() {
+    fun `skip task files`() {
         val result =
             ModelFilenameParser.parse(
                 "SmolLM-135M-Instruct_multi-prefill-seq_f32_ekv1280.task",
                 "litert-community/SmolLM-135M-Instruct",
             )
 
-        assertNotNull(result)
-        assertEquals("smollm", result.modelFamily)
-        assertEquals(0.135f, result.parameterCount)
-        assertEquals("f32", result.quantization)
-        assertEquals(1280, result.contextLength)
-        assertEquals(InferenceLibrary.MEDIAPIPE, result.inferenceLibrary)
+        assertNull(result)
     }
 
     @Test
@@ -214,7 +206,6 @@ class ModelFilenameParserTest {
             ModelFilenameParser.parse("My.Model.Name.V1.Q4.LITerTLm", "org/My.Model.Name.V1")
 
         assertNotNull(result)
-        assertEquals(InferenceLibrary.LITERT, result.inferenceLibrary)
         assertEquals("q4", result.quantization)
     }
 

@@ -3,7 +3,6 @@ package com.monday8am.koogagent.data.huggingface
 import co.touchlab.kermit.Logger
 import com.monday8am.koogagent.data.AuthRepository
 import com.monday8am.koogagent.data.HardwareBackend
-import com.monday8am.koogagent.data.InferenceLibrary
 import com.monday8am.koogagent.data.ModelCatalogProvider
 import com.monday8am.koogagent.data.ModelConfiguration
 import java.io.IOException
@@ -312,9 +311,7 @@ class HuggingFaceModelCatalogProvider(
                 contextLength = parsed.contextLength ?: DEFAULT_CONTEXT_LENGTH,
                 downloadUrl = downloadUrl,
                 bundleFilename = file.rfilename,
-                inferenceLibrary = parsed.inferenceLibrary,
-                hardwareAcceleration =
-                    determineHardwareBackend(parsed.inferenceLibrary, hasGpuSupport),
+                hardwareAcceleration = determineHardwareBackend(hasGpuSupport),
                 isGated = details.gated.isGated,
                 description =
                     null, // TODO: Fetch from README.md or implement in-app markdown viewer
@@ -325,15 +322,11 @@ class HuggingFaceModelCatalogProvider(
     }
 
     /**
-     * Determines hardware acceleration support based on inference library and README analysis.
+     * Determines hardware acceleration support based on README analysis.
      *
-     * @param library The inference library being used
      * @param hasGpuSupport Whether GPU keywords were found in the model's README
      */
-    private fun determineHardwareBackend(
-        library: InferenceLibrary,
-        hasGpuSupport: Boolean,
-    ): HardwareBackend {
+    private fun determineHardwareBackend(hasGpuSupport: Boolean): HardwareBackend {
         return if (hasGpuSupport) {
             HardwareBackend.GPU_SUPPORTED
         } else {

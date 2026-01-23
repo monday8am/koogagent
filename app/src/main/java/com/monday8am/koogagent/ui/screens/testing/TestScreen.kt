@@ -57,12 +57,7 @@ fun TestScreen(
                 Dependencies.modelRepository.findById(modelId) ?: ModelCatalog.DEFAULT
 
             val inferenceEngine =
-                InferenceEngineFactory.create(
-                    context = Dependencies.appContext,
-                    inferenceLibrary = selectedModel.inferenceLibrary,
-                    liteRtTools = Dependencies.nativeTools,
-                    mediaPipeTools = Dependencies.mediaPipeTools,
-                )
+                InferenceEngineFactory.create(tools = Dependencies.nativeTools)
 
             val modelPath =
                 (Dependencies.modelDownloadManager as ModelDownloadManagerImpl).getModelPath(
@@ -202,10 +197,6 @@ private fun ModelInfoCard(
                 )
                 Text(
                     text = "${model.parameterCount}B params • ${model.contextLength} tokens",
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                Text(
-                    text = "Library: ${model.inferenceLibrary.name}",
                     style = MaterialTheme.typography.bodySmall,
                 )
             }

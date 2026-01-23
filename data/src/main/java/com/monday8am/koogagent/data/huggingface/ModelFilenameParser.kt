@@ -1,14 +1,11 @@
 package com.monday8am.koogagent.data.huggingface
 
-import com.monday8am.koogagent.data.InferenceLibrary
-
 /**
  * Parses model filenames to extract metadata.
  *
  * Observed filename patterns:
  * - Qwen3-0.6B.litertlm
  * - Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096.litertlm
- * - Qwen2.5-1.5B-Instruct_seq128_q8_ekv1280.task
  * - gemma3-1b-it-int4.litertlm
  * - Gemma3-1B-IT_q4_ekv1280_sm8650.litertlm (device-specific - skip)
  */
@@ -20,7 +17,6 @@ object ModelFilenameParser {
         val parameterCount: Float?,
         val quantization: String,
         val contextLength: Int?,
-        val inferenceLibrary: InferenceLibrary,
         val displayName: String,
     )
 
@@ -33,8 +29,8 @@ object ModelFilenameParser {
     // Device suffixes to filter out (hardware-specific builds)
     private val DEVICE_SUFFIXES = listOf("mt6989", "mt6991", "mt6993", "sm8550", "sm8650", "sm8750")
 
-    // Valid model file extensions
-    private val VALID_EXTENSIONS = listOf(".litertlm", ".task")
+    // Valid model file extension
+    private const val VALID_EXTENSION = ".litertlm"
 
     /**
      * Parses a filename and returns extracted metadata.
@@ -44,8 +40,8 @@ object ModelFilenameParser {
      * @return Parsed metadata, or null if the file should be skipped
      */
     fun parse(filename: String, modelId: String): ParsedMetadata? {
-        // Skip non-model files
-        if (!VALID_EXTENSIONS.any { filename.endsWith(it, ignoreCase = true) }) {
+        // Skip non-LiteRT model files
+        if (!filename.endsWith(VALID_EXTENSION, ignoreCase = true)) {
             return null
         }
 
@@ -55,15 +51,6 @@ object ModelFilenameParser {
         }
 
         val baseName = filename.substringBeforeLast(".")
-        val extension = filename.substringAfterLast(".")
-
-        // Determine inference library from extension
-        val library =
-            when (extension.lowercase()) {
-                "litertlm" -> InferenceLibrary.LITERT
-                "task" -> InferenceLibrary.MEDIAPIPE
-                else -> return null
-            }
 
         // Extract parameters from filename or modelId
         val params = extractParameters(baseName) ?: extractParameters(modelId)
@@ -85,7 +72,6 @@ object ModelFilenameParser {
             parameterCount = params,
             quantization = quant,
             contextLength = context,
-            inferenceLibrary = library,
             displayName = displayName,
         )
     }

@@ -126,13 +126,13 @@ private fun ToolBarPreview_DownloadedSelected() {
             models =
                 listOf(
                         ModelInfo(
-                            config = ModelCatalog.HAMMER2_1_0_5B,
+                            config = ModelCatalog.GEMMA3_1B,
                             isDownloaded = true,
                             downloadStatus = DownloadStatus.Completed,
                         )
                     )
                     .toImmutableList(),
-            selectedModelId = ModelCatalog.HAMMER2_1_0_5B.modelId,
+            selectedModelId = ModelCatalog.GEMMA3_1B.modelId,
             onAction = {},
             onNavigateToTesting = {},
         )
