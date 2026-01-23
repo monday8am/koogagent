@@ -19,15 +19,22 @@ data class TestCaseDefinition(
     val description: List<String> = emptyList(),
     val domain: TestDomain = TestDomain.GENERIC,
     val context: Map<String, JsonElement>? = null,
+    val tools: List<ToolSpecification>? = null,
     @SerialName("available_tools") val availableTools: List<String>? = null,
     @SerialName("mock_tool_responses") val mockToolResponses: Map<String, JsonElement>? = null,
-    val queries: List<TestQueryDefinition>,
+    val query: TestQueryDefinition,
     @SerialName("system_prompt") val systemPrompt: String,
     val rules: List<ValidationRule>,
     @SerialName("parse_thinking_tags") val parseThinkingTags: Boolean = true,
 )
 
 @Serializable data class TestQueryDefinition(val text: String, val description: String? = null)
+
+@Serializable
+data class ToolSpecification(val type: String = "function", val function: FunctionSpec)
+
+@Serializable
+data class FunctionSpec(val name: String, val description: String, val parameters: JsonElement)
 
 @Serializable
 sealed class ValidationRule {

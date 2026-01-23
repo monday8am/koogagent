@@ -51,9 +51,9 @@ class TestViewModelTest {
         val testCase =
             TestCase(
                 name = "Test",
-                queries = emptyList(),
+                query = TestQuery("Test query"),
                 systemPrompt = "Prompt",
-                validator = { ValidationResult.Pass("OK") },
+                validator = { _, _ -> ValidationResult.Pass("OK") },
             )
 
         assertEquals(TestDomain.GENERIC, testCase.domain)
@@ -64,9 +64,9 @@ class TestViewModelTest {
         val testCase =
             TestCase(
                 name = "YAZIO Test",
-                queries = emptyList(),
+                query = TestQuery("Test query"),
                 systemPrompt = "Prompt",
-                validator = { ValidationResult.Pass("OK") },
+                validator = { _, _ -> ValidationResult.Pass("OK") },
                 domain = TestDomain.YAZIO,
             )
 

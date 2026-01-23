@@ -34,7 +34,7 @@ internal class FakeLocalInferenceEngine : LocalInferenceEngine {
         return flowOf(this)
     }
 
-    override fun resetConversation(): Result<Unit> = Result.success(Unit)
+    override fun setToolsAndResetConversation(tools: List<Any>): Result<Unit> = Result.success(Unit)
 
     override suspend fun prompt(prompt: String): Result<String> = Result.success("Test response")
 

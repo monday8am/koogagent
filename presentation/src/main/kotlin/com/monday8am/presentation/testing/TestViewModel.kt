@@ -177,7 +177,7 @@ class TestViewModelImpl(
             .flatMapConcat { engine ->
                 ToolCallingTestEngine(
                         streamPromptExecutor = engine::promptStreaming,
-                        resetConversation = engine::resetConversation,
+                        setToolsAndReset = engine::setToolsAndResetConversation,
                     )
                     .also { currentTestEngine = it }
                     .runAllTests(filteredTests)
