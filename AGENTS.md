@@ -25,6 +25,53 @@ KoogAgent is an Android prototype for on-device agentic notifications using Lite
 - Kotlin-first, using Jetpack Compose for UI.
 - MVI pattern in the presentation layer.
 
+## Testing Framework
+
+### OpenAPI Tool System
+The testing framework uses OpenAPI-based tools for LLM tool calling tests:
+
+- **Tool definitions**: Inline in each test using OpenAPI JSON format
+- **Tool execution**: Mock responses only (defined per test)
+- **Architecture**: `ToolHandler` interface with `OpenApiToolHandler` implementation
+- **Factory pattern**: `ToolHandlerFactory` creates handlers without exposing implementation details
+
+### Test Structure
+Each test case contains:
+- Single query per test (simplified from previous multi-query design)
+- Inline tool definitions in OpenAPI format
+- Mock tool responses
+- Validation rules
+
+Test files:
+- Test definitions: `data/src/main/resources/com/monday8am/koogagent/data/testing/tool_tests.json`
+- Test engine: `presentation/src/main/kotlin/com/monday8am/presentation/testing/ToolCallingTestEngine.kt`
+- Tool handlers: `agent/src/main/java/com/monday8am/agent/tools/`
+
+### Key Components
+- **ToolHandler**: Interface for tool handlers that track calls
+- **OpenApiToolHandler**: Extends LiteRT-LM's `OpenApiTool`, returns mock responses, tracks calls
+- **ToolHandlerFactory**: Creates tool handlers without exposing `OpenApiTool` dependency
+- **TestCase**: Single query with validator function and tool definitions
+- **TestRuleValidator**: Converts JSON test definitions to executable test cases
+
+### Per-Test Tool Configuration
+Each test creates its own tool handlers and resets the conversation:
+1. Tool handlers created from test's OpenAPI definitions
+2. `setToolsAndResetConversation()` called with test-specific tools
+3. Query executed with those tools
+4. Tool calls validated against test rules
+5. Next test repeats the process with different tools
+
+This design eliminates global state and enables full test isolation.
+
+## Module Structure
+- **agent**: Core inference interfaces, tool handlers, tool definitions
+- **data**: Model catalog, test definitions, repositories
+- **presentation**: ViewModels, test engine, UI state management
+- **app**: Android app, inference implementation, dependency injection
+
+Module dependencies: `agent` → `presentation` → `app` (never circular)
+
 ## Workflow Automation & Permissions
 Agents can run commands automatically (without manual approval) if they are defined in workflows with specific annotations.
 
