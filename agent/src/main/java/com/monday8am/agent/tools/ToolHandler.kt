@@ -5,9 +5,5 @@ package com.monday8am.agent.tools
  * responses.
  */
 interface ToolHandler {
-    /** Returns a list of all recorded tool calls. */
     val calls: List<ToolCall>
-
-    /** Clears all recorded tool calls. */
-    fun clear()
 }

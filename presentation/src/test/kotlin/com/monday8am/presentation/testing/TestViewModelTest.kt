@@ -51,7 +51,7 @@ class TestViewModelTest {
         val testCase =
             TestCase(
                 name = "Test",
-                queries = emptyList(),
+                query = TestQuery("Test query"),
                 systemPrompt = "Prompt",
                 validator = { _, _ -> ValidationResult.Pass("OK") },
             )
@@ -64,7 +64,7 @@ class TestViewModelTest {
         val testCase =
             TestCase(
                 name = "YAZIO Test",
-                queries = emptyList(),
+                query = TestQuery("Test query"),
                 systemPrompt = "Prompt",
                 validator = { _, _ -> ValidationResult.Pass("OK") },
                 domain = TestDomain.YAZIO,

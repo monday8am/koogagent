@@ -15,7 +15,7 @@ object TestRuleValidator {
             TestCase(
                 name = def.name,
                 description = def.description,
-                queries = def.queries.map { TestQuery(it.text, it.description) },
+                query = TestQuery(def.query.text, def.query.description),
                 systemPrompt = def.systemPrompt,
                 parseThinkingTags = def.parseThinkingTags,
                 validator = createValidator(def.rules),

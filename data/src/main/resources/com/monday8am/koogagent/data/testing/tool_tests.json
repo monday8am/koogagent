@@ -3,7 +3,7 @@
     {
       "id": "test_0",
       "name": "TEST 0: Basic Response",
-      "queries": [{"text": "Hello, how are you?"}],
+      "query": {"text": "Hello, how are you?"},
       "system_prompt": "You are a helpful assistant.",
       "tools": [],
       "rules": [
@@ -15,7 +15,7 @@
       "id": "test_1",
       "name": "TEST 1: Location Query",
       "description": ["Expects model to use location tool. 'get_location' should be called."],
-      "queries": [{"text": "Where am I located?"}],
+      "query": {"text": "Where am I located?"},
       "system_prompt": "You are a helpful assistant with access to location tools.",
       "tools": [
         {
@@ -42,7 +42,7 @@
       "id": "test_2",
       "name": "TEST 2: Weather Query (Sequential)",
       "description": ["Expects weather check for current location. Should call get_location then get_weather."],
-      "queries": [{"text": "What's the weather like here?"}],
+      "query": {"text": "What's the weather like here?"},
       "system_prompt": "You are a weather assistant with access to weather tools. First you should call get_location to get the location, and then call get_weather with the obtained location.",
       "tools": [
         {
@@ -94,7 +94,7 @@
       "id": "test_3",
       "name": "TEST 3: Specific Weather (One Tool)",
       "description": ["Expects weather check for specific coordinates."],
-      "queries": [{"text": "What is the weather at lat 35.6 and lon 139.7?"}],
+      "query": {"text": "What is the weather at lat 35.6 and lon 139.7?"},
       "system_prompt": "You are a weather assistant.",
       "tools": [
         {
@@ -134,7 +134,7 @@
       "id": "test_4",
       "name": "TEST 4: No Tool Needed",
       "description": ["General knowledge question. No tools should be called."],
-      "queries": [{"text": "What is the capital of France?"}],
+      "query": {"text": "What is the capital of France?"},
       "system_prompt": "You are a helpful assistant.",
       "tools": [],
       "rules": [
@@ -145,7 +145,7 @@
       "id": "test_5",
       "name": "TEST 5: Chat with Tool Awareness",
       "description": ["Chit-chat. No tools should be called."],
-      "queries": [{"text": "Tell me a short joke."}],
+      "query": {"text": "Tell me a short joke."},
       "system_prompt": "You are a funny assistant.",
       "tools": [],
       "rules": [
@@ -159,7 +159,7 @@
         "Expects multiple get_weather calls for different cities.",
         "Model should call get_weather at least twice."
       ],
-      "queries": [{"text": "What's the weather in Tokyo (lat 35.6, lon 139.7) and Paris (lat 48.8, lon 2.3)?"}],
+      "query": {"text": "What's the weather in Tokyo (lat 35.6, lon 139.7) and Paris (lat 48.8, lon 2.3)?"},
       "system_prompt": "You are a weather assistant. When asked about weather in multiple locations, call get_weather for each location.",
       "tools": [
         {
@@ -207,7 +207,7 @@
       "domain": "yazio",
       "description": ["Generate a simple meal notification without any context."],
       "context": {"mealType": "LUNCH"},
-      "queries": [{"text": "Generate a lunch notification for the user"}],
+      "query": {"text": "Generate a lunch notification for the user"},
       "system_prompt": "You are a nutritionist assistant that generates personalized meal notifications. Use available tools to gather context.",
       "tools": [
         {
@@ -262,7 +262,7 @@
         "latitude": 40.4,
         "longitude": -3.7
       },
-      "queries": [{"text": "Generate a lunch notification considering the current weather at latitude 40.4, longitude -3.7"}],
+      "query": {"text": "Generate a lunch notification considering the current weather at latitude 40.4, longitude -3.7"},
       "system_prompt": "You are a nutritionist assistant that generates weather-aware meal notifications. Check the weather and suggest appropriate meals.",
       "tools": [
         {
@@ -337,7 +337,7 @@
         "Should call get_meal_history and reference previous meals."
       ],
       "context": {"mealType": "DINNER"},
-      "queries": [{"text": "Generate a dinner notification based on meal type DINNER"}],
+      "query": {"text": "Generate a dinner notification based on meal type DINNER"},
       "system_prompt": "You are a nutritionist assistant. Generate personalized meal notifications based on meal history.",
       "tools": [
         {

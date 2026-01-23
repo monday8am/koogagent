@@ -2,9 +2,8 @@ package com.monday8am.presentation.testing
 
 import co.touchlab.kermit.Logger
 import co.touchlab.kermit.Severity
-import com.monday8am.agent.tools.OpenApiToolHandler
-import com.monday8am.agent.tools.TestContext
 import com.monday8am.agent.tools.ToolHandler
+import com.monday8am.agent.tools.ToolHandlerFactory
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,7 +32,6 @@ class ToolCallingTestEngine(
     private val logger = Logger.withTag("ToolCallingTestEngine")
     private val cancelled = MutableStateFlow(false)
 
-    /** Cancels the test run gracefully. Tests will stop after the current query completes. */
     fun cancel() {
         cancelled.value = true
     }
@@ -42,7 +40,6 @@ class ToolCallingTestEngine(
         if (cancelled.value) throw TestCancelledException()
     }
 
-    /** Runs all provided tests and emits streaming results. */
     fun runAllTests(testCases: List<TestCase>): Flow<TestResultFrame> {
         Logger.setMinSeverity(Severity.Debug)
         cancelled.value = false
@@ -75,11 +72,9 @@ class ToolCallingTestEngine(
             )
         )
 
-        // Create tool handlers from test definitions
-
         val toolHandlers =
             testCase.toolDefinitions.map { toolDef ->
-                OpenApiToolHandler(
+                ToolHandlerFactory.createOpenApiHandler(
                     toolSpec = toolDef,
                     mockResponse = testCase.mockToolResponses[toolDef.function.name] ?: "",
                 )
@@ -88,16 +83,8 @@ class ToolCallingTestEngine(
         // Set tools and reset conversation for this test
         setToolsAndReset(toolHandlers).getOrThrow()
 
-        // Inject context
-        TestContext.setVariables(testCase.context)
-
-        // Execute queries with tool tracking
-        testCase.queries
-            .asFlow()
-            .flatMapConcat { query -> runSingleQueryStream(testCase, query, toolHandlers) }
-            .collect { emit(it) }
-
-        // No cleanup needed - next test will call setToolsAndReset()
+        // Execute query with tool tracking
+        runSingleQueryStream(testCase, testCase.query, toolHandlers).collect { emit(it) }
     }
 
     /** Executes a single query using streaming and returns result frames. */
@@ -111,9 +98,6 @@ class ToolCallingTestEngine(
         val processor = TagProcessor(testCase.name, testCase.parseThinkingTags)
         val startTime = System.currentTimeMillis()
         val prompt = "${testCase.systemPrompt}\n\n${query.text}"
-
-        // Clear tool handler state before each query
-        toolHandlers.forEach { it.clear() }
 
         streamPromptExecutor(prompt)
             .onEach { checkCancellation() }
@@ -139,7 +123,6 @@ class ToolCallingTestEngine(
                 if (e is TestCancelledException) throw e
                 logger.e(e) { "Test failed: ${query.text}" }
                 val duration = System.currentTimeMillis() - startTime
-                val allToolCalls = toolHandlers.flatMap { it.calls }
                 emit(
                     TestResultFrame.Validation(
                         testName = testCase.name,

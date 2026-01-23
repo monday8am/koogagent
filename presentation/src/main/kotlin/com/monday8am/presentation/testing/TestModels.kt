@@ -63,7 +63,7 @@ sealed interface TestResultFrame {
 data class TestCase(
     val name: String,
     val description: List<String> = emptyList(),
-    val queries: List<TestQuery>,
+    val query: TestQuery,
     val systemPrompt: String,
     val validator: (result: String, toolCalls: List<ToolCall>) -> ValidationResult,
     val parseThinkingTags: Boolean = true,

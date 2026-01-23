@@ -22,7 +22,7 @@ data class TestCaseDefinition(
     val tools: List<ToolSpecification>? = null,
     @SerialName("available_tools") val availableTools: List<String>? = null,
     @SerialName("mock_tool_responses") val mockToolResponses: Map<String, JsonElement>? = null,
-    val queries: List<TestQueryDefinition>,
+    val query: TestQueryDefinition,
     @SerialName("system_prompt") val systemPrompt: String,
     val rules: List<ValidationRule>,
     @SerialName("parse_thinking_tags") val parseThinkingTags: Boolean = true,
@@ -30,10 +30,6 @@ data class TestCaseDefinition(
 
 @Serializable data class TestQueryDefinition(val text: String, val description: String? = null)
 
-/**
- * OpenAPI tool specification following OpenAPI 3.0 format. Used for dynamic tool definition in
- * tests.
- */
 @Serializable
 data class ToolSpecification(val type: String = "function", val function: FunctionSpec)
 

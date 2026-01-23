@@ -5,9 +5,11 @@ import com.google.ai.edge.litertlm.OpenApiTool
 import com.monday8am.koogagent.data.testing.ToolSpecification
 import java.util.Collections
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 
 /**
  * OpenAPI-based tool handler that extends LiteRT-LM's OpenApiTool. Handles tool invocations,
@@ -24,14 +26,9 @@ class OpenApiToolHandler(
     private val logger = Logger.withTag("OpenApiToolHandler")
     private val _calls = Collections.synchronizedList(mutableListOf<ToolCall>())
 
-    /** Returns a thread-safe copy of all tool calls recorded by this handler. */
     override val calls: List<ToolCall>
         get() = synchronized(_calls) { _calls.toList() }
 
-    /**
-     * Returns the OpenAPI tool description as a JSON string. This is used by LiteRT-LM to
-     * understand the tool's schema.
-     */
     override fun getToolDescriptionJsonString(): String {
         return Json.encodeToString(
             OpenApiToolSchema(
@@ -42,13 +39,6 @@ class OpenApiToolHandler(
         )
     }
 
-    /**
-     * Executes the tool with the provided parameters. Logs the call for test validation and returns
-     * the mock response.
-     *
-     * @param paramsJsonString JSON string containing tool parameters from the model
-     * @return Mock response as JSON string
-     */
     override fun execute(paramsJsonString: String): String {
         logger.d { "Tool '${toolSpec.function.name}' called with params: $paramsJsonString" }
 
@@ -75,16 +65,10 @@ class OpenApiToolHandler(
         return mockResponse
     }
 
-    /** Clears all recorded tool calls. Should be called before each test query to reset state. */
-    override fun clear() {
-        synchronized(_calls) { _calls.clear() }
-        logger.d { "Cleared call history for '${toolSpec.function.name}'" }
-    }
-
     /** Converts a JsonElement to a Map<String, Any?> for tool call logging. */
     private fun parseJsonToMap(element: JsonElement): Map<String, Any?> {
         return when {
-            element is kotlinx.serialization.json.JsonObject -> {
+            element is JsonObject -> {
                 element.entries.associate { (key, value) -> key to parseJsonValue(value) }
             }
             else -> emptyMap()
@@ -94,7 +78,7 @@ class OpenApiToolHandler(
     /** Converts JsonElement values to Kotlin primitives. */
     private fun parseJsonValue(element: JsonElement): Any? {
         return when (element) {
-            is kotlinx.serialization.json.JsonPrimitive -> {
+            is JsonPrimitive -> {
                 when {
                     element.isString -> element.content
                     element.content == "null" -> null
@@ -106,13 +90,12 @@ class OpenApiToolHandler(
                     else -> element.content
                 }
             }
-            is kotlinx.serialization.json.JsonArray -> {
+            is JsonArray -> {
                 element.map { parseJsonValue(it) }
             }
-            is kotlinx.serialization.json.JsonObject -> {
+            is JsonObject -> {
                 parseJsonToMap(element)
             }
-            else -> null
         }
     }
 }
