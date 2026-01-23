@@ -14,8 +14,6 @@ import com.monday8am.koogagent.data.WeatherProviderImpl
 import com.monday8am.koogagent.data.huggingface.FallbackModelCatalogProvider
 import com.monday8am.koogagent.data.huggingface.HuggingFaceModelCatalogProvider
 import com.monday8am.koogagent.download.ModelDownloadManagerImpl
-import com.monday8am.koogagent.inference.litertlm.LiteRTLmTools
-import com.monday8am.koogagent.inference.litertlm.NativeLocationTools
 import com.monday8am.koogagent.oauth.HuggingFaceOAuthManager
 import com.monday8am.koogagent.ui.DeviceContextProviderImpl
 import com.monday8am.koogagent.ui.NotificationEngineImpl
@@ -73,6 +71,4 @@ object Dependencies {
     }
 
     val modelRepository: ModelRepository by lazy { ModelRepositoryImpl(modelCatalogProvider) }
-
-    val nativeTools: List<Any> by lazy { listOf(NativeLocationTools(), LiteRTLmTools()) }
 }

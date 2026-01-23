@@ -15,7 +15,7 @@ interface LocalInferenceEngine {
         modelPath: String,
     ): Flow<LocalInferenceEngine>
 
-    fun resetConversation(): Result<Unit>
+    fun setToolsAndResetConversation(tools: List<Any>): Result<Unit>
 
     fun closeSession(): Result<Unit>
 }

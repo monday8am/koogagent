@@ -53,7 +53,7 @@ class TestViewModelTest {
                 name = "Test",
                 queries = emptyList(),
                 systemPrompt = "Prompt",
-                validator = { ValidationResult.Pass("OK") },
+                validator = { _, _ -> ValidationResult.Pass("OK") },
             )
 
         assertEquals(TestDomain.GENERIC, testCase.domain)
@@ -66,7 +66,7 @@ class TestViewModelTest {
                 name = "YAZIO Test",
                 queries = emptyList(),
                 systemPrompt = "Prompt",
-                validator = { ValidationResult.Pass("OK") },
+                validator = { _, _ -> ValidationResult.Pass("OK") },
                 domain = TestDomain.YAZIO,
             )
 

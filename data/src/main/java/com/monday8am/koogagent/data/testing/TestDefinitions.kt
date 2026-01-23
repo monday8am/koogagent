@@ -19,6 +19,7 @@ data class TestCaseDefinition(
     val description: List<String> = emptyList(),
     val domain: TestDomain = TestDomain.GENERIC,
     val context: Map<String, JsonElement>? = null,
+    val tools: List<ToolSpecification>? = null,
     @SerialName("available_tools") val availableTools: List<String>? = null,
     @SerialName("mock_tool_responses") val mockToolResponses: Map<String, JsonElement>? = null,
     val queries: List<TestQueryDefinition>,
@@ -28,6 +29,16 @@ data class TestCaseDefinition(
 )
 
 @Serializable data class TestQueryDefinition(val text: String, val description: String? = null)
+
+/**
+ * OpenAPI tool specification following OpenAPI 3.0 format. Used for dynamic tool definition in
+ * tests.
+ */
+@Serializable
+data class ToolSpecification(val type: String = "function", val function: FunctionSpec)
+
+@Serializable
+data class FunctionSpec(val name: String, val description: String, val parameters: JsonElement)
 
 @Serializable
 sealed class ValidationRule {

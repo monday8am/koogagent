@@ -56,8 +56,7 @@ fun TestScreen(
             val selectedModel =
                 Dependencies.modelRepository.findById(modelId) ?: ModelCatalog.DEFAULT
 
-            val inferenceEngine =
-                InferenceEngineFactory.create(tools = Dependencies.nativeTools)
+            val inferenceEngine = InferenceEngineFactory.create()
 
             val modelPath =
                 (Dependencies.modelDownloadManager as ModelDownloadManagerImpl).getModelPath(

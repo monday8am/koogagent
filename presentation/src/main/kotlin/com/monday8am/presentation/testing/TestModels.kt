@@ -1,6 +1,8 @@
 package com.monday8am.presentation.testing
 
+import com.monday8am.agent.tools.ToolCall
 import com.monday8am.koogagent.data.testing.TestDomain
+import com.monday8am.koogagent.data.testing.ToolSpecification
 
 /** A single test query with optional description. */
 data class TestQuery(val text: String, val description: String? = null)
@@ -63,9 +65,10 @@ data class TestCase(
     val description: List<String> = emptyList(),
     val queries: List<TestQuery>,
     val systemPrompt: String,
-    val validator: (result: String) -> ValidationResult,
+    val validator: (result: String, toolCalls: List<ToolCall>) -> ValidationResult,
     val parseThinkingTags: Boolean = true,
     val context: Map<String, Any?> = emptyMap(),
+    val toolDefinitions: List<ToolSpecification> = emptyList(),
     val mockToolResponses: Map<String, String> = emptyMap(),
     val domain: TestDomain = TestDomain.GENERIC,
 )

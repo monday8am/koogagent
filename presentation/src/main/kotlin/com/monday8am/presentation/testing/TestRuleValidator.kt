@@ -1,6 +1,6 @@
 package com.monday8am.presentation.testing
 
-import com.monday8am.agent.tools.ToolTrace
+import com.monday8am.agent.tools.ToolCall
 import com.monday8am.koogagent.data.testing.TestCaseDefinition
 import com.monday8am.koogagent.data.testing.ValidationRule
 import kotlin.math.abs
@@ -20,6 +20,7 @@ object TestRuleValidator {
                 parseThinkingTags = def.parseThinkingTags,
                 validator = createValidator(def.rules),
                 context = def.context?.mapValues { it.value.toString() } ?: emptyMap(),
+                toolDefinitions = def.tools ?: emptyList(),
                 mockToolResponses =
                     def.mockToolResponses?.mapValues { it.value.toString() } ?: emptyMap(),
                 domain = def.domain,
@@ -27,16 +28,14 @@ object TestRuleValidator {
         }
     }
 
-    private fun createValidator(rules: List<ValidationRule>): (String) -> ValidationResult {
-        return { result ->
-            // If there are no rules, we default to passing? Or maybe fail?
-            // Existing logic had specific checks. We should try to check ALL rules.
-            // If any rule fails, we fail. Passing means all rules pass.
-
+    private fun createValidator(
+        rules: List<ValidationRule>
+    ): (String, List<ToolCall>) -> ValidationResult {
+        return { result, toolCalls ->
             var failure: ValidationResult.Fail? = null
 
             for (rule in rules) {
-                val validation = validateRule(rule, result)
+                val validation = validateRule(rule, result, toolCalls)
                 if (validation is ValidationResult.Fail) {
                     failure = validation
                     break
@@ -47,30 +46,32 @@ object TestRuleValidator {
         }
     }
 
-    private fun validateRule(rule: ValidationRule, result: String): ValidationResult {
+    private fun validateRule(
+        rule: ValidationRule,
+        result: String,
+        toolCalls: List<ToolCall>,
+    ): ValidationResult {
         return when (rule) {
             is ValidationRule.NoToolCalls -> {
-                if (ToolTrace.calls.isEmpty()) {
+                if (toolCalls.isEmpty()) {
                     ValidationResult.Pass("No tools called")
                 } else {
-                    ValidationResult.Fail(
-                        "Unexpected tool calls: ${ToolTrace.calls.map { it.name }}"
-                    )
+                    ValidationResult.Fail("Unexpected tool calls: ${toolCalls.map { it.name }}")
                 }
             }
 
             is ValidationRule.ToolMatch -> {
-                if (ToolTrace.calls.any { it.name == rule.toolName }) {
+                if (toolCalls.any { it.name == rule.toolName }) {
                     ValidationResult.Pass("Tool '${rule.toolName}' was called")
                 } else {
                     ValidationResult.Fail(
-                        "Tool '${rule.toolName}' NOT called. Calls: ${ToolTrace.calls.map { it.name }}"
+                        "Tool '${rule.toolName}' NOT called. Calls: ${toolCalls.map { it.name }}"
                     )
                 }
             }
 
             is ValidationRule.ToolMatchAll -> {
-                val callNames = ToolTrace.calls.map { it.name }
+                val callNames = toolCalls.map { it.name }
                 val missing = rule.toolNames.filter { it !in callNames }
                 if (missing.isEmpty()) {
                     ValidationResult.Pass("All required tools called: ${rule.toolNames}")
@@ -80,7 +81,7 @@ object TestRuleValidator {
             }
 
             is ValidationRule.ToolArgsMatch -> {
-                val toolCall = ToolTrace.calls.find { it.name == rule.toolName }
+                val toolCall = toolCalls.find { it.name == rule.toolName }
                 if (toolCall != null) {
                     val allMatch =
                         rule.args.entries.all { entry ->
@@ -116,7 +117,7 @@ object TestRuleValidator {
                     }
                 } else {
                     ValidationResult.Fail(
-                        "Tool '${rule.toolName}' NOT called (cannot check args). Calls: ${ToolTrace.calls.map { it.name }}"
+                        "Tool '${rule.toolName}' NOT called (cannot check args). Calls: ${toolCalls.map { it.name }}"
                     )
                 }
             }
@@ -124,9 +125,9 @@ object TestRuleValidator {
             is ValidationRule.ToolCountMin -> {
                 val matchingCalls =
                     if (rule.toolName != null) {
-                        ToolTrace.calls.filter { it.name == rule.toolName }
+                        toolCalls.filter { it.name == rule.toolName }
                     } else {
-                        ToolTrace.calls
+                        toolCalls
                     }
 
                 if (matchingCalls.size >= rule.min) {
@@ -149,11 +150,11 @@ object TestRuleValidator {
             }
 
             is ValidationRule.ChatValid -> {
-                if (ToolTrace.calls.isEmpty() && result.isNotBlank()) {
+                if (toolCalls.isEmpty() && result.isNotBlank()) {
                     ValidationResult.Pass("Chat response valid (no tools)")
                 } else {
                     ValidationResult.Fail(
-                        "Chat invalid. Tools: ${ToolTrace.calls.size}, Result len: ${result.length}"
+                        "Chat invalid. Tools: ${toolCalls.size}, Result len: ${result.length}"
                     )
                 }
             }

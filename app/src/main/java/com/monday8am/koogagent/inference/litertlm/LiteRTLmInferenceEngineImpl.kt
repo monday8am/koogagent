@@ -184,7 +184,7 @@ class LiteRTLmInferenceEngineImpl(
             .onFailure { throw it }
     }
 
-    override fun resetConversation(): Result<Unit> {
+    override fun setToolsAndResetConversation(tools: List<Any>): Result<Unit> {
         val instance =
             currentInstance
                 ?: return Result.failure(IllegalStateException("Engine not initialized"))
@@ -193,7 +193,7 @@ class LiteRTLmInferenceEngineImpl(
             val conversationConfig =
                 ConversationConfig(
                     systemInstruction = Contents.of("You are a helpful assistant."),
-                    tools = tools, // Maintain tools across conversation resets
+                    tools = tools, // Use provided test-specific tools
                     samplerConfig =
                         SamplerConfig(
                             topK = instance.modelConfig.defaultTopK,
@@ -201,7 +201,7 @@ class LiteRTLmInferenceEngineImpl(
                             temperature = instance.modelConfig.defaultTemperature.toDouble(),
                         ),
                 )
-            Logger.i("LocalInferenceEngine") { "\uD83D\uDCAC Reset conversation!" }
+            Logger.i("LocalInferenceEngine") { "\uD83D\uDCAC Reset conversation with ${tools.size} tools" }
             instance.conversation = instance.engine.createConversation(conversationConfig)
         }
     }
