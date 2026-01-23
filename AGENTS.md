@@ -72,6 +72,11 @@ This design eliminates global state and enables full test isolation.
 
 Module dependencies: `agent` → `presentation` → `app` (never circular)
 
+## Recent Changes
+
+### Removed Features
+- **Notification screens**: All notification-related UI screens have been removed from the project. The app now focuses on model selection, chat, and testing functionality.
+
 ## Workflow Automation & Permissions
 Agents can run commands automatically (without manual approval) if they are defined in workflows with specific annotations.
 
