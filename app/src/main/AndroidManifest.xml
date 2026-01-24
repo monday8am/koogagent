@@ -26,9 +26,9 @@
 			</intent-filter>
 		</activity>
 
-		<!-- OAuth redirect handler for HuggingFace login -->
+		<!-- OAuth redirect handler - uses AppAuth implementation -->
 		<activity
-			android:name=".oauth.OAuthRedirectActivity"
+			android:name="net.openid.appauth.RedirectUriReceiverActivity"
 			android:exported="true"
 			android:launchMode="singleTask"
 			android:theme="@android:style/Theme.Translucent.NoTitleBar">

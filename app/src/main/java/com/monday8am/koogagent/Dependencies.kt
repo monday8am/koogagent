@@ -12,6 +12,9 @@ import com.monday8am.koogagent.data.huggingface.HuggingFaceModelCatalogProvider
 import com.monday8am.koogagent.download.ModelDownloadManagerImpl
 import com.monday8am.koogagent.oauth.HuggingFaceOAuthManager
 import com.monday8am.presentation.modelselector.ModelDownloadManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 
 /**
  * Simple service locator for app dependencies. Centralizes dependency creation and avoids factory
@@ -20,11 +23,15 @@ import com.monday8am.presentation.modelselector.ModelDownloadManager
 object Dependencies {
     lateinit var appContext: Context
 
+    val applicationScope by lazy { CoroutineScope(SupervisorJob() + Dispatchers.Main) }
+
     val modelDownloadManager: ModelDownloadManager by lazy {
         ModelDownloadManagerImpl(appContext, authRepository)
     }
 
-    val authRepository: AuthRepository by lazy { AuthRepositoryImpl(appContext) }
+    val authRepository: AuthRepository by lazy {
+        AuthRepositoryImpl(appContext, applicationScope)
+    }
 
     private var _oAuthManager: HuggingFaceOAuthManager? = null
     val oAuthManager: HuggingFaceOAuthManager
