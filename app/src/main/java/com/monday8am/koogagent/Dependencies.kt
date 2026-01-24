@@ -1,5 +1,6 @@
 package com.monday8am.koogagent
 
+import android.annotation.SuppressLint
 import android.content.Context
 import com.monday8am.koogagent.data.AuthRepository
 import com.monday8am.koogagent.data.AuthRepositoryImpl
@@ -33,6 +34,7 @@ object Dependencies {
         AuthRepositoryImpl(appContext, applicationScope)
     }
 
+    @SuppressLint("StaticFieldLeak") // appContext is Application context, safe to hold statically
     private var _oAuthManager: HuggingFaceOAuthManager? = null
     val oAuthManager: HuggingFaceOAuthManager
         get() {
