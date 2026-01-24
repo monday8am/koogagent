@@ -113,6 +113,12 @@ jobs:
           mv app/build/outputs/bundle/release/app-release.aab app/build/outputs/bundle/release/koogagent-v${{ inputs.version_name }}.aab
           mv app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/koogagent-v${{ inputs.version_name }}.apk
 
+      - name: Size reporting
+        run: |
+          echo "=== Artifact Sizes ==="
+          ls -lh app/build/outputs/bundle/release/koogagent-v${{ inputs.version_name }}.aab
+          ls -lh app/build/outputs/apk/release/koogagent-v${{ inputs.version_name }}.apk
+
       - name: Upload AAB artifact
         uses: actions/upload-artifact@v4
         with:
