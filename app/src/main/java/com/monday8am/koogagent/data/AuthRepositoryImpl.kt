@@ -1,40 +1,38 @@
 package com.monday8am.koogagent.data
 
 import android.content.Context
-import androidx.core.content.edit
-import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKey
-import kotlinx.coroutines.flow.MutableStateFlow
+import androidx.datastore.core.DataStore
+import androidx.datastore.dataStore
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import java.io.File
 
-class AuthRepositoryImpl(context: Context) : AuthRepository {
-    private val masterKey =
-        MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build()
+class AuthRepositoryImpl(
+    private val context: Context,
+    private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+) : AuthRepository {
 
-    private val sharedPreferences =
-        EncryptedSharedPreferences.create(
-            context,
-            "hf_auth_prefs",
-            masterKey,
-            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
+    private val dataStore = androidx.datastore.core.DataStoreFactory.create(
+        serializer = AuthTokenSerializer.factory(context),
+        produceFile = { context.filesDir.resolve("auth_token.pb") }
+    )
+
+    override val authToken: StateFlow<String?> = dataStore.data
+        .stateIn(
+            scope = scope,
+            started = SharingStarted.Eagerly,
+            initialValue = null
         )
 
-    private val _authToken = MutableStateFlow(sharedPreferences.getString(TOKEN_KEY, null))
-    override val authToken: StateFlow<String?> = _authToken.asStateFlow()
-
     override suspend fun saveToken(token: String) {
-        sharedPreferences.edit { putString(TOKEN_KEY, token) }
-        _authToken.value = token
+        dataStore.updateData { token }
     }
 
     override suspend fun clearToken() {
-        sharedPreferences.edit { remove(TOKEN_KEY) }
-        _authToken.value = null
-    }
-
-    companion object {
-        private const val TOKEN_KEY = "hf_auth_token"
+        dataStore.updateData { null }
     }
 }
