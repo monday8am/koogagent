@@ -20,7 +20,12 @@ class MainActivity : ComponentActivity() {
 
         // Initialize service locator with application context
         Dependencies.appContext = applicationContext
-        Dependencies.oAuthManager.onHandleIntent(intent)
+
+        // Only handle intent if we are starting fresh, to avoid re-processing 
+        // stale intents on recreation (e.g. rotation or process restoration)
+        if (savedInstanceState == null) {
+            Dependencies.oAuthManager.onHandleIntent(intent)
+        }
 
         setContent {
             KoogAgentTheme {

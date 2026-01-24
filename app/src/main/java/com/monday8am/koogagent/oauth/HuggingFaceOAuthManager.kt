@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.core.net.toUri
 import co.touchlab.kermit.Logger
+import com.monday8am.koogagent.MainActivity
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.MainScope
@@ -21,7 +22,7 @@ import net.openid.appauth.CodeVerifierUtil
 import net.openid.appauth.ResponseTypeValues
 
 /** Manages HuggingFace OAuth authentication flow using AppAuth library. */
-class HuggingFaceOAuthManager(context: Context, private val clientId: String) {
+class HuggingFaceOAuthManager(private val context: Context, private val clientId: String) {
     private val serviceConfig =
         AuthorizationServiceConfiguration(
             HuggingFaceOAuthConfig.AUTHORIZATION_ENDPOINT.toUri(),
@@ -35,23 +36,36 @@ class HuggingFaceOAuthManager(context: Context, private val clientId: String) {
     val oAuthResultFlow = _oAuthResultFlow.asSharedFlow()
 
     /**
-     * Creates an authorization intent for launching the OAuth flow in Custom Chrome Tab. Uses PKCE
-     * (S256) for enhanced security.
+     * Launches the OAuth flow using AppAuth's performAuthorizationRequest.
+     * This ensures the request state is preserved and the response is properly formatted.
      */
-    fun createAuthorizationIntent(): Intent {
+    fun startAuthorization() {
         val authRequest =
             AuthorizationRequest.Builder(
-                    serviceConfig,
-                    clientId,
-                    ResponseTypeValues.CODE,
-                    HuggingFaceOAuthConfig.REDIRECT_URI.toUri(),
-                )
+                serviceConfig,
+                clientId,
+                ResponseTypeValues.CODE,
+                HuggingFaceOAuthConfig.REDIRECT_URI.toUri(),
+            )
                 .setScope(HuggingFaceOAuthConfig.SCOPE)
                 .setCodeVerifier(CodeVerifierUtil.generateRandomCodeVerifier())
                 .build()
 
-        Logger.d { "Creating authorization intent for client: $clientId" }
-        return authService.getAuthorizationRequestIntent(authRequest)
+        Logger.d { "Starting authorization flow for client: $clientId" }
+
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            putExtra(HuggingFaceOAuthConfig.EXTRA_OAUTH_REDIRECT, true) // Still use this marker
+        }
+
+        val pendingIntent = android.app.PendingIntent.getActivity(
+            context,
+            0,
+            intent,
+            android.app.PendingIntent.FLAG_MUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
+        authService.performAuthorizationRequest(authRequest, pendingIntent)
     }
 
     /**
@@ -59,7 +73,7 @@ class HuggingFaceOAuthManager(context: Context, private val clientId: String) {
      * found, it's emitted to the result flow.
      */
     fun onHandleIntent(intent: Intent) {
-        if (intent.getBooleanExtra(OAuthRedirectActivity.EXTRA_OAUTH_REDIRECT, false)) {
+        if (intent.getBooleanExtra(HuggingFaceOAuthConfig.EXTRA_OAUTH_REDIRECT, false)) {
             Logger.d { "OAuth redirect detected in intent" }
             scope.launch { _oAuthResultFlow.emit(intent) }
         }

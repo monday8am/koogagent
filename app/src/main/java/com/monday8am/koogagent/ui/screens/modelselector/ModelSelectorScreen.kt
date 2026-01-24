@@ -79,8 +79,7 @@ fun ModelSelectorScreen(
 
     // Function to launch OAuth flow
     val launchOAuth: () -> Unit = {
-        val authIntent = oAuthManager.createAuthorizationIntent()
-        context.startActivity(authIntent)
+        oAuthManager.startAuthorization()
     }
 
     val displayStatusMessage =
@@ -200,17 +199,17 @@ private fun ModelSelectorScreenPreview() {
                 UiState(
                     models =
                         ModelCatalog.ALL_MODELS.map {
-                                ModelInfo(
-                                    config = it,
-                                    isDownloaded = it.modelId != ModelCatalog.GEMMA3_1B.modelId,
-                                    downloadStatus =
-                                        if (it.modelId == ModelCatalog.GEMMA3_1B.modelId) {
-                                            DownloadStatus.Downloading(10f)
-                                        } else {
-                                            DownloadStatus.Completed
-                                        },
-                                )
-                            }
+                            ModelInfo(
+                                config = it,
+                                isDownloaded = it.modelId != ModelCatalog.GEMMA3_1B.modelId,
+                                downloadStatus =
+                                    if (it.modelId == ModelCatalog.GEMMA3_1B.modelId) {
+                                        DownloadStatus.Downloading(10f)
+                                    } else {
+                                        DownloadStatus.Completed
+                                    },
+                            )
+                        }
                             .toImmutableList(),
                     currentDownload = DownloadInfo(ModelCatalog.GEMMA3_1B.modelId, 10f),
                     statusMessage = "Downloading model: GEMMA3_1B",

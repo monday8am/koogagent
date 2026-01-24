@@ -251,7 +251,7 @@
     },
     {
       "id": "yazio_2",
-      "name": "YAZIO 2: Weather-Aware Notification",
+      "name": "YAZIO 2: Weather Aware Notification",
       "domain": "yazio",
       "description": [
         "Generate a lunch notification considering weather conditions.",

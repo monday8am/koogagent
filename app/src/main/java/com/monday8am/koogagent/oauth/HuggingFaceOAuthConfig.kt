@@ -6,4 +6,5 @@ object HuggingFaceOAuthConfig {
     const val TOKEN_ENDPOINT = "https://huggingface.co/oauth/token"
     const val REDIRECT_URI = "koogagent://oauth/callback"
     const val SCOPE = "openid profile"
+    const val EXTRA_OAUTH_REDIRECT = "oauth_redirect"
 }

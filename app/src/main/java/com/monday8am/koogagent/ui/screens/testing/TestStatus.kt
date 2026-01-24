@@ -1,6 +1,8 @@
 package com.monday8am.koogagent.ui.screens.testing
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement.spacedBy
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -26,6 +28,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.monday8am.koogagent.data.testing.TestDomain
@@ -81,15 +84,15 @@ internal fun TestStatusCard(status: TestStatus) {
         }
 
     Card(
-        modifier = Modifier.width(160.dp).height(100.dp).padding(vertical = 4.dp),
+        modifier = Modifier.width(160.dp).height(120.dp).padding(vertical = 4.dp),
         colors = CardDefaults.cardColors(containerColor = containerColor),
     ) {
         Column(modifier = Modifier.padding(12.dp), verticalArrangement = spacedBy(8.dp)) {
             // Header row with domain icon and test name
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().weight(1.0f),
                 horizontalArrangement = spacedBy(4.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                verticalAlignment = Alignment.Top,
             ) {
                 Icon(
                     imageVector =
@@ -108,31 +111,36 @@ internal fun TestStatusCard(status: TestStatus) {
                 )
             }
 
-            // State indicator
-            when (status.state) {
-                TestStatus.State.IDLE ->
-                    Icon(
-                        Icons.Default.PlayArrow,
-                        contentDescription = "Idle",
-                        tint = MaterialTheme.colorScheme.outline,
-                    )
+            Box(
+                contentAlignment = Alignment.CenterStart,
+                modifier = Modifier.height(24.dp).fillMaxWidth(),
+            ) {
+                // State indicator
+                when (status.state) {
+                    TestStatus.State.IDLE ->
+                        Icon(
+                            Icons.Default.PlayArrow,
+                            contentDescription = "Idle",
+                            tint = MaterialTheme.colorScheme.outline,
+                        )
 
-                TestStatus.State.RUNNING ->
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                    TestStatus.State.RUNNING ->
+                        CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.dp)
 
-                TestStatus.State.PASS ->
-                    Icon(
-                        Icons.Default.CheckCircle,
-                        contentDescription = "Pass",
-                        tint = MaterialTheme.colorScheme.primary,
-                    )
+                    TestStatus.State.PASS ->
+                        Icon(
+                            Icons.Default.CheckCircle,
+                            contentDescription = "Pass",
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
 
-                TestStatus.State.FAIL ->
-                    Icon(
-                        Icons.Default.Close,
-                        contentDescription = "Fail",
-                        tint = MaterialTheme.colorScheme.error,
-                    )
+                    TestStatus.State.FAIL ->
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = "Fail",
+                            tint = MaterialTheme.colorScheme.error,
+                        )
+                }
             }
         }
     }
