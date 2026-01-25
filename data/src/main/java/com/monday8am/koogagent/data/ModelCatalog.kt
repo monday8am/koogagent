@@ -67,6 +67,4 @@ object ModelCatalog {
     val ALL_MODELS = listOf(QWEN3_0_6B, GEMMA3_1B, QWEN2_5_1_5B)
 
     val DEFAULT = GEMMA3_1B
-
-    fun findById(id: String): ModelConfiguration? = ALL_MODELS.find { it.modelId == id }
 }

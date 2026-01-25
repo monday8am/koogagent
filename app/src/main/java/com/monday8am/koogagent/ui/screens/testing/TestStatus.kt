@@ -1,6 +1,5 @@
 package com.monday8am.koogagent.ui.screens.testing
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement.spacedBy
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,6 +11,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
@@ -26,9 +27,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.monday8am.koogagent.data.testing.TestDomain
@@ -46,6 +47,30 @@ internal fun TestStatusList(
     onSetDomainFilter: (TestDomain?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val listState = rememberLazyListState()
+
+    val runningIndex = remember(testStatuses) {
+        testStatuses.indexOfFirst { it.state == TestStatus.State.RUNNING }
+    }
+
+    LaunchedEffect(runningIndex) {
+        if (runningIndex >= 0) {
+            var runningItemInfo = listState.layoutInfo.visibleItemsInfo.find { it.index == runningIndex }
+
+            if (runningItemInfo == null) {
+                listState.scrollToItem(runningIndex)
+                runningItemInfo = listState.layoutInfo.visibleItemsInfo.find { it.index == runningIndex }
+            }
+
+            if (runningItemInfo != null) {
+                val viewportWidth = listState.layoutInfo.viewportEndOffset - listState.layoutInfo.viewportStartOffset
+                val centerOffset = (viewportWidth / 2) - (runningItemInfo.size / 2)
+                val scrollOffset = centerOffset.coerceAtLeast(0)
+                listState.animateScrollToItem(runningIndex, scrollOffset)
+            }
+        }
+    }
+
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = spacedBy(8.dp)) {
         if (availableDomains.isNotEmpty()) {
             LazyRow(horizontalArrangement = spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
@@ -68,7 +93,7 @@ internal fun TestStatusList(
             }
         }
 
-        LazyRow(modifier = Modifier.fillMaxWidth(), horizontalArrangement = spacedBy(8.dp)) {
+        LazyRow(state = listState, modifier = Modifier.fillMaxWidth(), horizontalArrangement = spacedBy(8.dp)) {
             items(testStatuses) { status -> TestStatusCard(status = status) }
         }
     }
@@ -153,22 +178,22 @@ private fun TestStatusListPreview() {
         TestStatusList(
             testStatuses =
                 listOf(
-                        TestStatus(
-                            name = "Test 1",
-                            domain = TestDomain.GENERIC,
-                            state = TestStatus.State.PASS,
-                        ),
-                        TestStatus(
-                            name = "Test 2",
-                            domain = TestDomain.GENERIC,
-                            state = TestStatus.State.RUNNING,
-                        ),
-                        TestStatus(
-                            name = "Test 3",
-                            domain = TestDomain.GENERIC,
-                            state = TestStatus.State.IDLE,
-                        ),
-                    )
+                    TestStatus(
+                        name = "Test 1",
+                        domain = TestDomain.GENERIC,
+                        state = TestStatus.State.PASS,
+                    ),
+                    TestStatus(
+                        name = "Test 2",
+                        domain = TestDomain.GENERIC,
+                        state = TestStatus.State.RUNNING,
+                    ),
+                    TestStatus(
+                        name = "Test 3",
+                        domain = TestDomain.GENERIC,
+                        state = TestStatus.State.IDLE,
+                    ),
+                )
                     .toImmutableList(),
             filterDomain = null,
             availableDomains = persistentListOf(TestDomain.GENERIC, TestDomain.YAZIO),
