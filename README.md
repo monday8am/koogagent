@@ -90,4 +90,10 @@ The project uses a **four-module KMP-ready architecture**:
 <img src="screenshots/screenshots.jpg" width="700" />
 
 
+
 ---
+
+### License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
