@@ -224,10 +224,21 @@ private fun TestResultsList(
 ) {
     val listState = rememberLazyListState()
 
-    // Auto-scroll to latest item
-    LaunchedEffect(frames.size) {
+    LaunchedEffect(frames.size, frames.values.lastOrNull()) {
         if (frames.isNotEmpty()) {
-            listState.animateScrollToItem(frames.size - 1)
+            val lastIndex = frames.size - 1
+            var lastItemInfo = listState.layoutInfo.visibleItemsInfo.lastOrNull()
+
+            if (lastItemInfo != null && lastItemInfo.index != lastIndex) {
+                listState.scrollToItem(lastIndex)
+                lastItemInfo = listState.layoutInfo.visibleItemsInfo.lastOrNull()
+            }
+
+            if (lastItemInfo != null && lastItemInfo.index == lastIndex) {
+                val viewportHeight = listState.layoutInfo.viewportEndOffset - listState.layoutInfo.viewportStartOffset
+                val scrollOffset = (lastItemInfo.size - viewportHeight).coerceAtLeast(0)
+                listState.scrollToItem(lastIndex, scrollOffset)
+            }
         }
     }
 

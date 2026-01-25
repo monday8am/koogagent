@@ -9,7 +9,7 @@ package com.monday8am.koogagent.data.huggingface
  * - gemma3-1b-it-int4.litertlm
  * - Gemma3-1B-IT_q4_ekv1280_sm8650.litertlm (device-specific - skip)
  */
-object ModelFilenameParser {
+internal object ModelFilenameParser {
 
     /** Metadata extracted from a model filename. */
     data class ParsedMetadata(

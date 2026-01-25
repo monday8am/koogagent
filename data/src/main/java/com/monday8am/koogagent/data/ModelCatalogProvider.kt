@@ -5,6 +5,5 @@ package com.monday8am.koogagent.data
  * return hardcoded catalog.
  */
 interface ModelCatalogProvider {
-    /** Fetches available models. Returns Result to handle failures gracefully. */
     suspend fun fetchModels(): Result<List<ModelConfiguration>>
 }
