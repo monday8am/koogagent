@@ -65,7 +65,7 @@ internal fun TestStatusList(
             if (runningItemInfo != null) {
                 val viewportWidth = listState.layoutInfo.viewportEndOffset - listState.layoutInfo.viewportStartOffset
                 val centerOffset = (viewportWidth / 2) - (runningItemInfo.size / 2)
-                val scrollOffset = -centerOffset.coerceAtLeast(0)
+                val scrollOffset = centerOffset.coerceAtLeast(0)
                 listState.animateScrollToItem(runningIndex, scrollOffset)
             }
         }
