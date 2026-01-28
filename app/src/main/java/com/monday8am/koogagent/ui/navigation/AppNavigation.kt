@@ -8,6 +8,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.monday8am.koogagent.ui.screens.modelselector.ModelSelectorScreen
+import com.monday8am.koogagent.ui.screens.testdetails.TestDetailsScreen
 import com.monday8am.koogagent.ui.screens.testing.TestScreen
 
 @Composable
@@ -28,7 +29,16 @@ fun AppNavigation(
 
         composable<Route.Testing> { backStackEntry ->
             val args = backStackEntry.toRoute<Route.Testing>()
-            TestScreen(modelId = args.modelId)
+            TestScreen(
+                modelId = args.modelId,
+                onNavigateToTestDetails = { navController.navigate(Route.TestDetails) },
+            )
+        }
+
+        composable<Route.TestDetails> {
+            TestDetailsScreen(
+                onNavigateBack = { navController.popBackStack() },
+            )
         }
     }
 }

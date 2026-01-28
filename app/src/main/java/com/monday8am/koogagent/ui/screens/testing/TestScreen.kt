@@ -4,18 +4,24 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Arrangement.spacedBy
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -51,6 +57,7 @@ import kotlinx.collections.immutable.toImmutableList
 @Composable
 fun TestScreen(
     modelId: String,
+    onNavigateToTestDetails: () -> Unit = {},
     viewModel: AndroidTestViewModel =
         viewModel(key = modelId) {
             val selectedModel =
@@ -87,6 +94,7 @@ fun TestScreen(
             viewModel.onUiAction(TestUiAction.RunTests(useGpu, filter))
         },
         onCancelTests = { viewModel.onUiAction(TestUiAction.CancelTests) },
+        onNavigateToTestDetails = onNavigateToTestDetails,
         modifier = Modifier,
     )
 }
@@ -101,6 +109,7 @@ private fun TestContent(
     isInitializing: Boolean,
     onRunTests: (Boolean, TestDomain?) -> Unit,
     onCancelTests: () -> Unit,
+    onNavigateToTestDetails: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var filterDomain by rememberSaveable { mutableStateOf<TestDomain?>(null) }
@@ -132,6 +141,15 @@ private fun TestContent(
             isRunning = isRunning || isInitializing,
             onBackendToggle = { useGpuBackend = it },
         )
+
+        OutlinedButton(
+            onClick = onNavigateToTestDetails,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Icon(Icons.Default.List, contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            Text("View All Tests")
+        }
 
         if (isInitializing) {
             InitializationIndicator(message = "Initializing model...")
@@ -312,6 +330,7 @@ private fun TestContentPreview() {
             isInitializing = true,
             onRunTests = { _, _ -> },
             onCancelTests = {},
+            onNavigateToTestDetails = {},
         )
     }
 }
