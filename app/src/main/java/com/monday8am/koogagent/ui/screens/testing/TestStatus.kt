@@ -59,19 +59,16 @@ internal fun TestStatusList(
 
     LaunchedEffect(runningIndex) {
         if (runningIndex >= 0) {
-            var runningItemInfo = listState.layoutInfo.visibleItemsInfo.find { it.index == runningIndex }
+            // Get item info if already visible
+            val runningItemInfo = listState.layoutInfo.visibleItemsInfo.find { it.index == runningIndex }
 
-            if (runningItemInfo == null) {
-                listState.scrollToItem(runningIndex)
-                runningItemInfo = listState.layoutInfo.visibleItemsInfo.find { it.index == runningIndex }
-            }
+            // Calculate center offset based on item size (use 160dp default if not visible yet)
+            val itemSize = runningItemInfo?.size ?: 480  // 160dp * 3 (approximate)
+            val viewportWidth = listState.layoutInfo.viewportEndOffset - listState.layoutInfo.viewportStartOffset
+            val centerOffset = ((viewportWidth / 2) - (itemSize / 2)).coerceAtLeast(0)
 
-            if (runningItemInfo != null) {
-                val viewportWidth = listState.layoutInfo.viewportEndOffset - listState.layoutInfo.viewportStartOffset
-                val centerOffset = (viewportWidth / 2) - (runningItemInfo.size / 2)
-                val scrollOffset = centerOffset.coerceAtLeast(0)
-                listState.animateScrollToItem(runningIndex, scrollOffset)
-            }
+            // Animate scroll to center the running item
+            listState.animateScrollToItem(runningIndex, -centerOffset)
         }
     }
 
