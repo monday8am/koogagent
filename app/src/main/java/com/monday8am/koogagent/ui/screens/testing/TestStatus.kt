@@ -1,5 +1,6 @@
 package com.monday8am.koogagent.ui.screens.testing
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Arrangement.spacedBy
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,6 +17,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Psychology
@@ -24,6 +26,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -45,6 +48,7 @@ internal fun TestStatusList(
     filterDomain: TestDomain?,
     availableDomains: ImmutableList<TestDomain>,
     onSetDomainFilter: (TestDomain?) -> Unit,
+    onNavigateToTestDetails: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
@@ -55,39 +59,53 @@ internal fun TestStatusList(
 
     LaunchedEffect(runningIndex) {
         if (runningIndex >= 0) {
-            var runningItemInfo = listState.layoutInfo.visibleItemsInfo.find { it.index == runningIndex }
+            // Get item info if already visible
+            val runningItemInfo = listState.layoutInfo.visibleItemsInfo.find { it.index == runningIndex }
 
-            if (runningItemInfo == null) {
-                listState.scrollToItem(runningIndex)
-                runningItemInfo = listState.layoutInfo.visibleItemsInfo.find { it.index == runningIndex }
-            }
+            // Calculate center offset based on item size (use 160dp default if not visible yet)
+            val itemSize = runningItemInfo?.size ?: 480  // 160dp * 3 (approximate)
+            val viewportWidth = listState.layoutInfo.viewportEndOffset - listState.layoutInfo.viewportStartOffset
+            val centerOffset = ((viewportWidth / 2) - (itemSize / 2)).coerceAtLeast(0)
 
-            if (runningItemInfo != null) {
-                val viewportWidth = listState.layoutInfo.viewportEndOffset - listState.layoutInfo.viewportStartOffset
-                val centerOffset = (viewportWidth / 2) - (runningItemInfo.size / 2)
-                val scrollOffset = centerOffset.coerceAtLeast(0)
-                listState.animateScrollToItem(runningIndex, scrollOffset)
-            }
+            // Animate scroll to center the running item
+            listState.animateScrollToItem(runningIndex, -centerOffset)
         }
     }
 
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = spacedBy(8.dp)) {
         if (availableDomains.isNotEmpty()) {
-            LazyRow(horizontalArrangement = spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                item {
-                    FilterChip(
-                        selected = filterDomain == null,
-                        onClick = { onSetDomainFilter(null) },
-                        label = { Text("All") },
-                    )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                LazyRow(
+                    horizontalArrangement = spacedBy(8.dp),
+                    modifier = Modifier.weight(1f, fill = false),
+                ) {
+                    item {
+                        FilterChip(
+                            selected = filterDomain == null,
+                            onClick = { onSetDomainFilter(null) },
+                            label = { Text("All") },
+                        )
+                    }
+                    items(availableDomains) { domain ->
+                        FilterChip(
+                            selected = filterDomain == domain,
+                            onClick = { onSetDomainFilter(domain) },
+                            label = {
+                                Text(domain.name.lowercase().replaceFirstChar { it.uppercase() })
+                            },
+                        )
+                    }
                 }
-                items(availableDomains) { domain ->
-                    FilterChip(
-                        selected = filterDomain == domain,
-                        onClick = { onSetDomainFilter(domain) },
-                        label = {
-                            Text(domain.name.lowercase().replaceFirstChar { it.uppercase() })
-                        },
+
+                IconButton(onClick = onNavigateToTestDetails) {
+                    Icon(
+                        imageVector = Icons.Default.List,
+                        contentDescription = "View All Tests",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
@@ -136,9 +154,11 @@ internal fun TestStatusCard(status: TestStatus) {
                 )
             }
 
-            Box(
-                contentAlignment = Alignment.CenterStart,
-                modifier = Modifier.height(24.dp).fillMaxWidth(),
+            // State indicator and speed
+            Row(
+                horizontalArrangement = spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.height(24.dp),
             ) {
                 // State indicator
                 when (status.state) {
@@ -165,6 +185,27 @@ internal fun TestStatusCard(status: TestStatus) {
                             contentDescription = "Fail",
                             tint = MaterialTheme.colorScheme.error,
                         )
+                }
+
+                // Token speed display
+                val currentSpeed = status.currentTokensPerSecond
+                val avgSpeed = status.averageTokensPerSecond
+                when {
+                    status.state == TestStatus.State.RUNNING && currentSpeed != null -> {
+                        Text(
+                            text = "${currentSpeed.toInt()} tok/s",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                    (status.state == TestStatus.State.PASS || status.state == TestStatus.State.FAIL) &&
+                        avgSpeed != null -> {
+                        Text(
+                            text = "⌀ ${avgSpeed.toInt()} tok/s",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
         }
@@ -198,6 +239,7 @@ private fun TestStatusListPreview() {
             filterDomain = null,
             availableDomains = persistentListOf(TestDomain.GENERIC, TestDomain.YAZIO),
             onSetDomainFilter = {},
+            onNavigateToTestDetails = {},
         )
     }
 }

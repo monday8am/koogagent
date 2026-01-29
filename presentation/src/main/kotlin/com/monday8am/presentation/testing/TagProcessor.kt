@@ -76,9 +76,20 @@ internal class TagProcessor(private val testName: String, private val parseTags:
 
         return when (state) {
             ParserState.Thinking ->
-                TestResultFrame.Thinking(testName, chunk, currentBlock.toString())
+                TestResultFrame.Thinking(
+                    testName,
+                    chunk,
+                    currentBlock.toString(),
+                    System.currentTimeMillis(),
+                )
             ParserState.ToolCall -> TestResultFrame.Tool(testName, chunk, currentBlock.toString())
-            ParserState.Content -> TestResultFrame.Content(testName, chunk, currentBlock.toString())
+            ParserState.Content ->
+                TestResultFrame.Content(
+                    testName,
+                    chunk,
+                    currentBlock.toString(),
+                    System.currentTimeMillis(),
+                )
         }
     }
 

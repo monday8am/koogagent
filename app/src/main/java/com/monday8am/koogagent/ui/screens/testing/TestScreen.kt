@@ -142,15 +142,6 @@ private fun TestContent(
             onBackendToggle = { useGpuBackend = it },
         )
 
-        OutlinedButton(
-            onClick = onNavigateToTestDetails,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Icon(Icons.Default.List, contentDescription = null)
-            Spacer(Modifier.width(8.dp))
-            Text("View All Tests")
-        }
-
         if (isInitializing) {
             InitializationIndicator(message = "Initializing model...")
         }
@@ -163,6 +154,7 @@ private fun TestContent(
             filterDomain = filterDomain,
             availableDomains = availableDomains,
             onSetDomainFilter = { filterDomain = it },
+            onNavigateToTestDetails = onNavigateToTestDetails,
             modifier = Modifier.fillMaxWidth(),
         )
 
