@@ -1,5 +1,6 @@
 package com.monday8am.koogagent.ui.screens.testing
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Arrangement.spacedBy
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,6 +17,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Psychology
@@ -24,6 +26,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -45,6 +48,7 @@ internal fun TestStatusList(
     filterDomain: TestDomain?,
     availableDomains: ImmutableList<TestDomain>,
     onSetDomainFilter: (TestDomain?) -> Unit,
+    onNavigateToTestDetails: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
@@ -73,21 +77,38 @@ internal fun TestStatusList(
 
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = spacedBy(8.dp)) {
         if (availableDomains.isNotEmpty()) {
-            LazyRow(horizontalArrangement = spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                item {
-                    FilterChip(
-                        selected = filterDomain == null,
-                        onClick = { onSetDomainFilter(null) },
-                        label = { Text("All") },
-                    )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                LazyRow(
+                    horizontalArrangement = spacedBy(8.dp),
+                    modifier = Modifier.weight(1f, fill = false),
+                ) {
+                    item {
+                        FilterChip(
+                            selected = filterDomain == null,
+                            onClick = { onSetDomainFilter(null) },
+                            label = { Text("All") },
+                        )
+                    }
+                    items(availableDomains) { domain ->
+                        FilterChip(
+                            selected = filterDomain == domain,
+                            onClick = { onSetDomainFilter(domain) },
+                            label = {
+                                Text(domain.name.lowercase().replaceFirstChar { it.uppercase() })
+                            },
+                        )
+                    }
                 }
-                items(availableDomains) { domain ->
-                    FilterChip(
-                        selected = filterDomain == domain,
-                        onClick = { onSetDomainFilter(domain) },
-                        label = {
-                            Text(domain.name.lowercase().replaceFirstChar { it.uppercase() })
-                        },
+
+                IconButton(onClick = onNavigateToTestDetails) {
+                    Icon(
+                        imageVector = Icons.Default.List,
+                        contentDescription = "View All Tests",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
@@ -137,36 +158,36 @@ internal fun TestStatusCard(status: TestStatus) {
             }
 
             // State indicator and speed
-            Column(verticalArrangement = spacedBy(4.dp)) {
-                Box(
-                    contentAlignment = Alignment.CenterStart,
-                    modifier = Modifier.height(24.dp).fillMaxWidth(),
-                ) {
-                    when (status.state) {
-                        TestStatus.State.IDLE ->
-                            Icon(
-                                Icons.Default.PlayArrow,
-                                contentDescription = "Idle",
-                                tint = MaterialTheme.colorScheme.outline,
-                            )
+            Row(
+                horizontalArrangement = spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.height(24.dp),
+            ) {
+                // State indicator
+                when (status.state) {
+                    TestStatus.State.IDLE ->
+                        Icon(
+                            Icons.Default.PlayArrow,
+                            contentDescription = "Idle",
+                            tint = MaterialTheme.colorScheme.outline,
+                        )
 
-                        TestStatus.State.RUNNING ->
-                            CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.dp)
+                    TestStatus.State.RUNNING ->
+                        CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.dp)
 
-                        TestStatus.State.PASS ->
-                            Icon(
-                                Icons.Default.CheckCircle,
-                                contentDescription = "Pass",
-                                tint = MaterialTheme.colorScheme.primary,
-                            )
+                    TestStatus.State.PASS ->
+                        Icon(
+                            Icons.Default.CheckCircle,
+                            contentDescription = "Pass",
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
 
-                        TestStatus.State.FAIL ->
-                            Icon(
-                                Icons.Default.Close,
-                                contentDescription = "Fail",
-                                tint = MaterialTheme.colorScheme.error,
-                            )
-                    }
+                    TestStatus.State.FAIL ->
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = "Fail",
+                            tint = MaterialTheme.colorScheme.error,
+                        )
                 }
 
                 // Token speed display
@@ -221,6 +242,7 @@ private fun TestStatusListPreview() {
             filterDomain = null,
             availableDomains = persistentListOf(TestDomain.GENERIC, TestDomain.YAZIO),
             onSetDomainFilter = {},
+            onNavigateToTestDetails = {},
         )
     }
 }
