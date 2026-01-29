@@ -39,13 +39,21 @@ sealed interface TestResultFrame {
         override val id: String = "$testName-tool"
     }
 
-    data class Content(override val testName: String, val chunk: String, val accumulator: String) :
-        TestResultFrame {
+    data class Content(
+        override val testName: String,
+        val chunk: String,
+        val accumulator: String,
+        val timestamp: Long = System.currentTimeMillis(),
+    ) : TestResultFrame {
         override val id: String = "$testName-content"
     }
 
-    data class Thinking(override val testName: String, val chunk: String, val accumulator: String) :
-        TestResultFrame {
+    data class Thinking(
+        override val testName: String,
+        val chunk: String,
+        val accumulator: String,
+        val timestamp: Long = System.currentTimeMillis(),
+    ) : TestResultFrame {
         override val id: String = "$testName-thinking"
     }
 

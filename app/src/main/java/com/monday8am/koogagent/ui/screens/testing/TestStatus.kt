@@ -136,35 +136,58 @@ internal fun TestStatusCard(status: TestStatus) {
                 )
             }
 
-            Box(
-                contentAlignment = Alignment.CenterStart,
-                modifier = Modifier.height(24.dp).fillMaxWidth(),
-            ) {
-                // State indicator
-                when (status.state) {
-                    TestStatus.State.IDLE ->
-                        Icon(
-                            Icons.Default.PlayArrow,
-                            contentDescription = "Idle",
-                            tint = MaterialTheme.colorScheme.outline,
-                        )
+            // State indicator and speed
+            Column(verticalArrangement = spacedBy(4.dp)) {
+                Box(
+                    contentAlignment = Alignment.CenterStart,
+                    modifier = Modifier.height(24.dp).fillMaxWidth(),
+                ) {
+                    when (status.state) {
+                        TestStatus.State.IDLE ->
+                            Icon(
+                                Icons.Default.PlayArrow,
+                                contentDescription = "Idle",
+                                tint = MaterialTheme.colorScheme.outline,
+                            )
 
-                    TestStatus.State.RUNNING ->
-                        CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.dp)
+                        TestStatus.State.RUNNING ->
+                            CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.dp)
 
-                    TestStatus.State.PASS ->
-                        Icon(
-                            Icons.Default.CheckCircle,
-                            contentDescription = "Pass",
-                            tint = MaterialTheme.colorScheme.primary,
-                        )
+                        TestStatus.State.PASS ->
+                            Icon(
+                                Icons.Default.CheckCircle,
+                                contentDescription = "Pass",
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
 
-                    TestStatus.State.FAIL ->
-                        Icon(
-                            Icons.Default.Close,
-                            contentDescription = "Fail",
-                            tint = MaterialTheme.colorScheme.error,
+                        TestStatus.State.FAIL ->
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "Fail",
+                                tint = MaterialTheme.colorScheme.error,
+                            )
+                    }
+                }
+
+                // Token speed display
+                val currentSpeed = status.currentTokensPerSecond
+                val avgSpeed = status.averageTokensPerSecond
+                when {
+                    status.state == TestStatus.State.RUNNING && currentSpeed != null -> {
+                        Text(
+                            text = "${currentSpeed.toInt()} tok/s",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
                         )
+                    }
+                    (status.state == TestStatus.State.PASS || status.state == TestStatus.State.FAIL) &&
+                        avgSpeed != null -> {
+                        Text(
+                            text = "⌀ ${avgSpeed.toInt()} tok/s",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
         }
