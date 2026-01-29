@@ -142,15 +142,6 @@ private fun TestContent(
             onBackendToggle = { useGpuBackend = it },
         )
 
-        OutlinedButton(
-            onClick = onNavigateToTestDetails,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Icon(Icons.Default.List, contentDescription = null)
-            Spacer(Modifier.width(8.dp))
-            Text("View All Tests")
-        }
-
         if (isInitializing) {
             InitializationIndicator(message = "Initializing model...")
         }
@@ -166,27 +157,43 @@ private fun TestContent(
             modifier = Modifier.fillMaxWidth(),
         )
 
-        // 4. Run/Cancel Button
-        Button(
-            onClick = {
-                if (isRunning) {
-                    isCancelling = true
-                    onCancelTests()
-                } else {
-                    onRunTests(useGpuBackend, filterDomain)
-                }
-            },
-            enabled = !isInitializing && !isCancelling,
+        // 4. Action Buttons Row
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = spacedBy(8.dp),
         ) {
-            if (isCancelling) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(16.dp),
-                    strokeWidth = 2.dp,
-                    color = MaterialTheme.colorScheme.onPrimary,
-                )
-                Text(text = "Cancelling...", modifier = Modifier.padding(start = 8.dp))
-            } else {
-                Text(text = if (isRunning) "Cancel Tests" else "Run Tests")
+            OutlinedButton(
+                onClick = onNavigateToTestDetails,
+                modifier = Modifier.weight(1f),
+            ) {
+                Icon(Icons.Default.List, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(4.dp))
+                Text("View All")
+            }
+
+            Button(
+                onClick = {
+                    if (isRunning) {
+                        isCancelling = true
+                        onCancelTests()
+                    } else {
+                        onRunTests(useGpuBackend, filterDomain)
+                    }
+                },
+                enabled = !isInitializing && !isCancelling,
+                modifier = Modifier.weight(1f),
+            ) {
+                if (isCancelling) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(text = "Cancelling...")
+                } else {
+                    Text(text = if (isRunning) "Cancel Tests" else "Run Tests")
+                }
             }
         }
     }
