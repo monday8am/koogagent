@@ -190,11 +190,9 @@ class TestViewModelImpl(
                     .runAllTests(filteredTests)
             }
             .runningFold(initialResults) { current, frame ->
-                val updatedFrames = (current.frames + (frame.id to frame)).toImmutableMap()
                 TestResults(
-                    frames = updatedFrames,
-                    statuses =
-                        updateTestStatuses(current.statuses, frame, updatedFrames).toImmutableList(),
+                    frames = (current.frames + (frame.id to frame)).toImmutableMap(),
+                    statuses = updateTestStatuses(current.statuses, frame).toImmutableList(),
                 )
             }
             .map { results ->
@@ -292,7 +290,6 @@ class TestViewModelImpl(
     private fun updateTestStatuses(
         currentStatuses: List<TestStatus>,
         frame: TestResultFrame,
-        allFrames: ImmutableMap<String, TestResultFrame>,
     ): List<TestStatus> {
         return when (frame) {
             is TestResultFrame.Description -> {
@@ -305,7 +302,7 @@ class TestViewModelImpl(
             is TestResultFrame.Thinking -> {
                 currentStatuses.map {
                     if (it.name == frame.testName) {
-                        val (currentSpeed, totalTokens) = calculateCurrentSpeed(frame, allFrames)
+                        val (currentSpeed, totalTokens) = calculateCurrentSpeed(frame)
                         it.copy(currentTokensPerSecond = currentSpeed, totalTokens = totalTokens)
                     } else {
                         it
@@ -322,7 +319,7 @@ class TestViewModelImpl(
                             } else {
                                 TestStatus.State.FAIL
                             }
-                        val (avgSpeed, totalTokens) = calculateAverageSpeed(frame, allFrames)
+                        val (avgSpeed, totalTokens) = calculateAverageSpeed(frame)
                         it.copy(
                             state = state,
                             averageTokensPerSecond = avgSpeed,
@@ -339,43 +336,15 @@ class TestViewModelImpl(
         }
     }
 
-    private fun calculateCurrentSpeed(
-        frame: TestResultFrame,
-        allFrames: ImmutableMap<String, TestResultFrame>,
-    ): Pair<Double?, Int?> {
-        val testName = frame.testName
-
-        // Find first content/thinking frame for this test
-        val firstFrame =
-            allFrames.values.firstOrNull {
-                it.testName == testName &&
-                    (it is TestResultFrame.Content || it is TestResultFrame.Thinking)
-            }
-
-        if (firstFrame == null) return Pair(null, null)
-
-        val startTime =
-            when (firstFrame) {
-                is TestResultFrame.Content -> firstFrame.timestamp
-                is TestResultFrame.Thinking -> firstFrame.timestamp
+    private fun calculateCurrentSpeed(frame: TestResultFrame): Pair<Double?, Int?> {
+        val (elapsedMillis, tokens) =
+            when (frame) {
+                is TestResultFrame.Content -> frame.elapsedMillis to frame.accumulator.length
+                is TestResultFrame.Thinking -> frame.elapsedMillis to frame.accumulator.length
                 else -> return Pair(null, null)
             }
 
-        val currentTime =
-            when (frame) {
-                is TestResultFrame.Content -> frame.timestamp
-                is TestResultFrame.Thinking -> frame.timestamp
-                else -> return Pair(null, null)
-            }
-
-        val tokens =
-            when (frame) {
-                is TestResultFrame.Content -> frame.accumulator.length
-                is TestResultFrame.Thinking -> frame.accumulator.length
-                else -> 0
-            }
-
-        val elapsedSeconds = (currentTime - startTime) / 1000.0
+        val elapsedSeconds = elapsedMillis / 1000.0
         if (elapsedSeconds <= 0) return Pair(null, tokens)
 
         val speed = tokens / elapsedSeconds
@@ -383,8 +352,7 @@ class TestViewModelImpl(
     }
 
     private fun calculateAverageSpeed(
-        validationFrame: TestResultFrame.Validation,
-        allFrames: ImmutableMap<String, TestResultFrame>,
+        validationFrame: TestResultFrame.Validation
     ): Pair<Double?, Int?> {
         val totalTokens = validationFrame.fullContent.length
         val durationSeconds = validationFrame.duration / 1000.0

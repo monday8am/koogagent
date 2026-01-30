@@ -44,6 +44,7 @@ sealed interface TestResultFrame {
         val chunk: String,
         val accumulator: String,
         val timestamp: Long = System.currentTimeMillis(),
+        val elapsedMillis: Long = 0,
     ) : TestResultFrame {
         override val id: String = "$testName-content"
     }
@@ -53,6 +54,7 @@ sealed interface TestResultFrame {
         val chunk: String,
         val accumulator: String,
         val timestamp: Long = System.currentTimeMillis(),
+        val elapsedMillis: Long = 0,
     ) : TestResultFrame {
         override val id: String = "$testName-thinking"
     }

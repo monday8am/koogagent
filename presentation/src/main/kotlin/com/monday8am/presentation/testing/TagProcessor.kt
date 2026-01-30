@@ -17,6 +17,7 @@ internal class TagProcessor(private val testName: String, private val parseTags:
     private val currentBlock = StringBuilder()
     private var state = ParserState.Content
     private var thinkingTagType: String? = null // Track which thinking tag type is being used
+    private var startTime: Long? = null // Track when content/thinking starts
 
     /** The content accumulated for validation (after stripping tags if enabled) */
     val resultContent: String
@@ -74,22 +75,21 @@ internal class TagProcessor(private val testName: String, private val parseTags:
             }
         }
 
+        val now = System.currentTimeMillis()
+
+        // Initialize start time on first content/thinking frame
+        if (startTime == null && (state == ParserState.Content || state == ParserState.Thinking)) {
+            startTime = now
+        }
+
+        val elapsed = startTime?.let { now - it } ?: 0L
+
         return when (state) {
             ParserState.Thinking ->
-                TestResultFrame.Thinking(
-                    testName,
-                    chunk,
-                    currentBlock.toString(),
-                    System.currentTimeMillis(),
-                )
+                TestResultFrame.Thinking(testName, chunk, currentBlock.toString(), now, elapsed)
             ParserState.ToolCall -> TestResultFrame.Tool(testName, chunk, currentBlock.toString())
             ParserState.Content ->
-                TestResultFrame.Content(
-                    testName,
-                    chunk,
-                    currentBlock.toString(),
-                    System.currentTimeMillis(),
-                )
+                TestResultFrame.Content(testName, chunk, currentBlock.toString(), now, elapsed)
         }
     }
 
@@ -104,7 +104,7 @@ internal class TagProcessor(private val testName: String, private val parseTags:
                 currentBlock.append(remaining)
             } else {
                 // When removing opening tag, trim leading whitespace after it
-                val before = content.substring(0, index)
+                val before = content.take(index)
                 val after = content.substring(index + tag.length).trimStart()
                 currentBlock.clear()
                 currentBlock.append(before).append(after)
