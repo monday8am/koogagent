@@ -154,7 +154,7 @@ class ModelSelectorViewModelImpl(
     }
 
     private fun loadCatalog() {
-        scope.launch { modelRepository.refreshModels() }
+        modelRepository.refreshModels()
     }
 
     private fun startDownload(modelId: String) {
@@ -178,17 +178,13 @@ class ModelSelectorViewModelImpl(
     }
 
     private fun submitToken(token: String) {
-        scope.launch {
-            authRepository.saveToken(token)
-            modelRepository.refreshModels()
-        }
+        scope.launch { authRepository.saveToken(token) }
+        modelRepository.refreshModels()
     }
 
     private fun logout() {
-        scope.launch {
-            authRepository.clearToken()
-            modelRepository.refreshModels()
-        }
+        scope.launch { authRepository.clearToken() }
+        modelRepository.refreshModels()
     }
 
     private fun setGroupingMode(mode: GroupingMode) {

@@ -1,14 +1,16 @@
 package com.monday8am.koogagent.data
 
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onStart
-import kotlinx.coroutines.flow.take
+import kotlinx.coroutines.launch
 import org.jetbrains.annotations.VisibleForTesting
 
 sealed interface RepositoryState {
@@ -25,7 +27,7 @@ interface ModelRepository {
     val models: StateFlow<List<ModelConfiguration>>
     val loadingState: StateFlow<RepositoryState>
 
-    suspend fun refreshModels()
+    fun refreshModels()
 
     fun findById(modelId: String): ModelConfiguration?
 
@@ -40,24 +42,27 @@ class ModelRepositoryImpl(
     private val modelCatalogProvider: ModelCatalogProvider,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : ModelRepository {
+    private val scope = CoroutineScope(SupervisorJob() + ioDispatcher)
+
     private val _models = MutableStateFlow<List<ModelConfiguration>>(emptyList())
     override val models: StateFlow<List<ModelConfiguration>> = _models.asStateFlow()
 
     private val _loadingState = MutableStateFlow<RepositoryState>(RepositoryState.Idle)
     override val loadingState: StateFlow<RepositoryState> = _loadingState.asStateFlow()
 
-    override suspend fun refreshModels() {
-        modelCatalogProvider
-            .getModels()
-            .take(2) // Cache + network emissions, then complete
-            .onStart { _loadingState.value = RepositoryState.Loading }
-            .catch { e ->
-                _loadingState.value = RepositoryState.Error(e.message ?: "Unknown error")
-            }
-            .collect { newModels ->
-                _models.value = newModels
-                _loadingState.value = RepositoryState.Success(newModels)
-            }
+    override fun refreshModels() {
+        scope.launch {
+            modelCatalogProvider
+                .getModels()
+                .onStart { _loadingState.value = RepositoryState.Loading }
+                .catch { e ->
+                    _loadingState.value = RepositoryState.Error(e.message ?: "Unknown error")
+                }
+                .collect { newModels ->
+                    _models.value = newModels
+                    _loadingState.value = RepositoryState.Success(newModels)
+                }
+        }
     }
 
     @VisibleForTesting
