@@ -101,6 +101,7 @@ class RemoteTestRepository(
             call.enqueue(
                 object : Callback {
                     override fun onResponse(call: Call, response: Response) {
+                        if (!continuation.isActive) return
                         response.use {
                             if (!response.isSuccessful) {
                                 continuation.resumeWithException(
@@ -117,7 +118,9 @@ class RemoteTestRepository(
                     }
 
                     override fun onFailure(call: Call, e: IOException) {
-                        continuation.resumeWithException(e)
+                        if (continuation.isActive) {
+                            continuation.resumeWithException(e)
+                        }
                     }
                 }
             )
