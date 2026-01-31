@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.take
 import org.jetbrains.annotations.VisibleForTesting
 
 sealed interface RepositoryState {
@@ -48,6 +49,7 @@ class ModelRepositoryImpl(
     override suspend fun refreshModels() {
         modelCatalogProvider
             .getModels()
+            .take(2) // Cache + network emissions, then complete
             .onStart { _loadingState.value = RepositoryState.Loading }
             .catch { e ->
                 _loadingState.value = RepositoryState.Error(e.message ?: "Unknown error")
