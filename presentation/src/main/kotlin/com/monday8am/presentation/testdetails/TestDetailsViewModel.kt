@@ -4,6 +4,7 @@ import co.touchlab.kermit.Logger
 import com.monday8am.koogagent.data.testing.AssetsTestRepository
 import com.monday8am.koogagent.data.testing.TestCaseDefinition
 import com.monday8am.koogagent.data.testing.TestDomain
+import com.monday8am.koogagent.data.testing.TestRepository
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -38,7 +39,7 @@ interface TestDetailsViewModel {
     fun dispose()
 }
 
-class TestDetailsViewModelImpl(testRepository: AssetsTestRepository = AssetsTestRepository()) :
+class TestDetailsViewModelImpl(testRepository: TestRepository = AssetsTestRepository()) :
     TestDetailsViewModel {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
