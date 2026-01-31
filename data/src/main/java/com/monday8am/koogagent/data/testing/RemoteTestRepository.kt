@@ -33,8 +33,7 @@ class RemoteTestRepository(
     private val logger = Logger.withTag("RemoteTestRepository")
 
     override suspend fun getTests(): List<TestCaseDefinition> {
-        // Simple synchronous fetch (for backwards compatibility)
-        return fetchRemoteTests()
+        return localTestDataSource.getTests() ?: fetchRemoteTests()
     }
 
     override fun getTestsAsFlow(): Flow<List<TestCaseDefinition>> =
