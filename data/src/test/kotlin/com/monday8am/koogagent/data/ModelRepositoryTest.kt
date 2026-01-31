@@ -12,8 +12,8 @@ class ModelRepositoryTest {
 
     private val fakeProvider =
         object : ModelCatalogProvider {
-            override suspend fun fetchModels(): Result<List<ModelConfiguration>> =
-                Result.success(listOf(model1, model2))
+            override fun getModels(): kotlinx.coroutines.flow.Flow<List<ModelConfiguration>> =
+                kotlinx.coroutines.flow.flowOf(listOf(model1, model2))
         }
 
     private val repository = ModelRepositoryImpl(fakeProvider)

@@ -1,5 +1,6 @@
 package com.monday8am.koogagent.data
 
+@kotlinx.serialization.Serializable
 enum class HardwareBackend {
     CPU_ONLY,
     GPU_SUPPORTED,
@@ -28,6 +29,7 @@ enum class HardwareBackend {
  * @property fileSizeBytes Download file size in bytes (optional)
  * @property huggingFaceUrl Link to the HuggingFace model page (optional)
  */
+@kotlinx.serialization.Serializable
 data class ModelConfiguration(
     val displayName: String,
     val modelFamily: String,
@@ -36,7 +38,7 @@ data class ModelConfiguration(
     val contextLength: Int,
     val downloadUrl: String,
     val bundleFilename: String,
-    val hardwareAcceleration: HardwareBackend,
+    val hardwareAcceleration: HardwareBackend = HardwareBackend.GPU_SUPPORTED,
     val defaultTopK: Int = 40,
     val defaultTopP: Float = 0.85f,
     val defaultTemperature: Float = 0.2f,

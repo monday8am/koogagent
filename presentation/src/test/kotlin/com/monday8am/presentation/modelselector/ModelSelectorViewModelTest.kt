@@ -31,13 +31,14 @@ internal class FakeModelCatalogProvider(
     private val shouldFail: Boolean = false,
     private val failureMessage: String = "Test failure",
 ) : ModelCatalogProvider {
-    override suspend fun fetchModels(): Result<List<ModelConfiguration>> {
-        return if (shouldFail) {
-            Result.failure(Exception(failureMessage))
-        } else {
-            Result.success(models)
+    override fun getModels(): kotlinx.coroutines.flow.Flow<List<ModelConfiguration>> =
+        kotlinx.coroutines.flow.flow {
+            if (shouldFail) {
+                throw Exception(failureMessage)
+            } else {
+                emit(models)
+            }
         }
-    }
 }
 
 internal class FakeAuthRepository(initialToken: String? = null) : AuthRepository {
@@ -133,13 +134,14 @@ class ModelSelectorViewModelTest {
         var shouldFail = true
         val catalogProvider =
             object : ModelCatalogProvider {
-                override suspend fun fetchModels(): Result<List<ModelConfiguration>> {
-                    return if (shouldFail) {
-                        Result.failure(Exception("Network error"))
-                    } else {
-                        Result.success(testModels)
+                override fun getModels(): kotlinx.coroutines.flow.Flow<List<ModelConfiguration>> =
+                    kotlinx.coroutines.flow.flow {
+                        if (shouldFail) {
+                            throw Exception("Network error")
+                        } else {
+                            emit(testModels)
+                        }
                     }
-                }
             }
 
         val viewModel = createViewModel(catalogProvider = catalogProvider)
