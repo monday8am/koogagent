@@ -36,7 +36,7 @@ data class ModelConfiguration(
     val contextLength: Int,
     val downloadUrl: String,
     val bundleFilename: String,
-    val hardwareAcceleration: HardwareBackend,
+    val hardwareAcceleration: HardwareBackend = HardwareBackend.GPU_SUPPORTED,
     val defaultTopK: Int = 40,
     val defaultTopP: Float = 0.85f,
     val defaultTemperature: Float = 0.2f,

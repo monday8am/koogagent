@@ -2,7 +2,6 @@ package com.monday8am.koogagent.data.huggingface
 
 import co.touchlab.kermit.Logger
 import com.monday8am.koogagent.data.AuthRepository
-import com.monday8am.koogagent.data.HardwareBackend
 import com.monday8am.koogagent.data.ModelCatalogProvider
 import com.monday8am.koogagent.data.ModelConfiguration
 import java.io.IOException
@@ -47,25 +46,10 @@ class HuggingFaceModelCatalogProvider(
         private const val AUTHOR = "litert-community"
         private const val LIST_URL = "$BASE_URL?author=$AUTHOR"
         private const val DOWNLOAD_URL_TEMPLATE = "https://huggingface.co/%s/resolve/main/%s"
-        private const val README_URL_TEMPLATE = "https://huggingface.co/%s/raw/main/README.md"
 
         // Default values when metadata cannot be parsed
         private const val DEFAULT_CONTEXT_LENGTH = 4096
         private const val DEFAULT_PARAM_COUNT = 1.0f
-
-        // GPU-related keywords to search in README
-        private val GPU_KEYWORDS =
-            listOf(
-                "gpu",
-                "GPU",
-                "cuda",
-                "CUDA",
-                "opencl",
-                "OpenCL",
-                "gpu acceleration",
-                "GPU acceleration",
-                "hardware acceleration",
-            )
     }
 
     private val requestSemaphore = kotlinx.coroutines.sync.Semaphore(5)
@@ -84,8 +68,7 @@ class HuggingFaceModelCatalogProvider(
                                 try {
                                     val details = fetchModelDetails(summary.id)
                                     val fileSizes = fetchFileSizes(summary.id)
-                                    val hasGpuSupport = checkGpuSupportInReadme(summary.id)
-                                    details?.let { Triple(it, fileSizes, hasGpuSupport) }
+                                    details?.let { it to fileSizes }
                                 } catch (e: Exception) {
                                     logger.e(e) { "Failed to fetch data for ${summary.id}" }
                                     null
@@ -98,9 +81,7 @@ class HuggingFaceModelCatalogProvider(
 
                 modelDataResults
                     .filterNotNull()
-                    .flatMap { (details, fileSizes, hasGpuSupport) ->
-                        convertToConfigurations(details, fileSizes, hasGpuSupport)
-                    }
+                    .flatMap { (details, fileSizes) -> convertToConfigurations(details, fileSizes) }
                     .sortedByDescending { it.parameterCount }
                     .also { logger.d { "Successfully loaded ${it.size} model configurations" } }
             }
@@ -131,32 +112,6 @@ class HuggingFaceModelCatalogProvider(
         } catch (e: Exception) {
             logger.w { "Failed to fetch details for $modelId: ${e.message}" }
             null
-        }
-    }
-
-    /**
-     * Fetches the README.md file for a model to check for GPU compatibility mentions. Returns true
-     * if GPU keywords are found, false otherwise.
-     */
-    private suspend fun checkGpuSupportInReadme(modelId: String): Boolean {
-        val url = String.format(README_URL_TEMPLATE, modelId)
-        val request = Request.Builder().url(url).build()
-
-        return try {
-            executeRequest(request) { response ->
-                val readmeContent = response.body.string()
-                val hasGpuMention =
-                    GPU_KEYWORDS.any { keyword ->
-                        readmeContent.contains(keyword, ignoreCase = false)
-                    }
-                logger.d { "Model $modelId GPU support check: $hasGpuMention" }
-                hasGpuMention
-            }
-        } catch (e: Exception) {
-            logger.w {
-                "Failed to fetch README for $modelId: ${e.message}. Defaulting to GPU_SUPPORTED"
-            }
-            true // Default to GPU_SUPPORTED if README fetch fails
         }
     }
 
@@ -286,12 +241,10 @@ class HuggingFaceModelCatalogProvider(
      *
      * @param details Model metadata from API
      * @param fileSizes Map of filename -> size in bytes from /tree/main endpoint
-     * @param hasGpuSupport Whether GPU support was detected in README
      */
     private fun convertToConfigurations(
         details: HuggingFaceModelDetails,
         fileSizes: Map<String, Long>,
-        hasGpuSupport: Boolean,
     ): List<ModelConfiguration> {
         return details.siblings.mapNotNull { file ->
             val parsed =
@@ -311,26 +264,12 @@ class HuggingFaceModelCatalogProvider(
                 contextLength = parsed.contextLength ?: DEFAULT_CONTEXT_LENGTH,
                 downloadUrl = downloadUrl,
                 bundleFilename = file.rfilename,
-                hardwareAcceleration = determineHardwareBackend(hasGpuSupport),
                 isGated = details.gated.isGated,
                 description =
                     null, // TODO: Fetch from README.md or implement in-app markdown viewer
                 fileSizeBytes = fileSize,
                 huggingFaceUrl = huggingFaceUrl,
             )
-        }
-    }
-
-    /**
-     * Determines hardware acceleration support based on README analysis.
-     *
-     * @param hasGpuSupport Whether GPU keywords were found in the model's README
-     */
-    private fun determineHardwareBackend(hasGpuSupport: Boolean): HardwareBackend {
-        return if (hasGpuSupport) {
-            HardwareBackend.GPU_SUPPORTED
-        } else {
-            HardwareBackend.CPU_ONLY
         }
     }
 }
