@@ -13,6 +13,7 @@ import com.monday8am.koogagent.data.huggingface.HuggingFaceModelCatalogProvider
 import com.monday8am.koogagent.download.ModelDownloadManagerImpl
 import com.monday8am.koogagent.oauth.HuggingFaceOAuthManager
 import com.monday8am.presentation.modelselector.ModelDownloadManager
+import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -54,9 +55,16 @@ object Dependencies {
         _oAuthManager = null
     }
 
+    private val Context.dataStore: androidx.datastore.core.DataStore<androidx.datastore.preferences.core.Preferences> by androidx.datastore.preferences.preferencesDataStore(
+        name = "settings"
+    )
+
     val modelCatalogProvider: ModelCatalogProvider by lazy {
         FallbackModelCatalogProvider(
-            primary = HuggingFaceModelCatalogProvider(authRepository = authRepository),
+            primary = HuggingFaceModelCatalogProvider(
+                authRepository = authRepository,
+                localModelDataSource = com.monday8am.koogagent.data.DataStoreModelDataSource(appContext.dataStore)
+            ),
             fallback = ModelCatalog.ALL_MODELS,
         )
     }
