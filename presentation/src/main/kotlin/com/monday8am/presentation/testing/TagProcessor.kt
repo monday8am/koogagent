@@ -77,8 +77,9 @@ internal class TagProcessor(private val testName: String, private val parseTags:
 
         val now = System.currentTimeMillis()
 
-        // Initialize start time on first content/thinking frame
-        if (startTime == null && (state == ParserState.Content || state == ParserState.Thinking)) {
+        // Initialize start time on first CONTENT frame only (not thinking)
+        // This ensures we measure content generation speed, not thinking time
+        if (startTime == null && state == ParserState.Content) {
             startTime = now
         }
 
