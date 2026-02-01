@@ -4,6 +4,10 @@ import co.touchlab.kermit.Logger
 import com.monday8am.koogagent.data.ModelCatalog
 import com.monday8am.koogagent.data.ModelCatalogProvider
 import com.monday8am.koogagent.data.ModelConfiguration
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 
 /**
  * Wraps a primary provider with a fallback to hardcoded catalog.
@@ -18,18 +22,25 @@ class FallbackModelCatalogProvider(
 
     private val logger = Logger.withTag("FallbackModelCatalogProvider")
 
-    override suspend fun fetchModels(): Result<List<ModelConfiguration>> {
-        val primaryResult = primary.fetchModels()
-
-        return if (primaryResult.isSuccess && primaryResult.getOrNull()?.isNotEmpty() == true) {
-            primaryResult
-        } else {
-            // Log the original failure for debugging
-            primaryResult.exceptionOrNull()?.let { error ->
+    override fun getModels(): Flow<List<ModelConfiguration>> =
+        primary
+            .getModels()
+            .catch { error ->
                 logger.w { "Primary provider failed: ${error.message}" }
                 logger.w { "Using fallback catalog with ${fallback.size} models" }
+                emit(fallback)
             }
-            Result.success(fallback)
-        }
-    }
+            .onStart {
+                // Determine if we need to emit fallback immediately if primary is slow or fails
+                // fast
+                // For now, reliance on catch is sufficient for failure
+            }
+            .map { models ->
+                if (models.isNotEmpty()) {
+                    models
+                } else {
+                    logger.w { "Primary provider returned empty list. Using fallback." }
+                    fallback
+                }
+            }
 }

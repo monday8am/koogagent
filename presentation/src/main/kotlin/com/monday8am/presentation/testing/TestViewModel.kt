@@ -6,6 +6,7 @@ import com.monday8am.koogagent.data.HardwareBackend
 import com.monday8am.koogagent.data.ModelConfiguration
 import com.monday8am.koogagent.data.testing.AssetsTestRepository
 import com.monday8am.koogagent.data.testing.TestDomain
+import com.monday8am.koogagent.data.testing.TestRepository
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableMap
 import kotlinx.collections.immutable.persistentListOf
@@ -73,7 +74,7 @@ interface TestViewModel {
 @OptIn(ExperimentalCoroutinesApi::class)
 class TestViewModelImpl(
     private val initialModel: ModelConfiguration,
-    testRepository: AssetsTestRepository = AssetsTestRepository(),
+    testRepository: TestRepository = AssetsTestRepository(),
     private val modelPath: String,
     private val inferenceEngine: LocalInferenceEngine,
 ) : TestViewModel {

@@ -73,6 +73,7 @@ fun TestScreen(
             AndroidTestViewModel(
                 TestViewModelImpl(
                     initialModel = selectedModel,
+                    testRepository = Dependencies.testRepository,
                     modelPath = modelPath,
                     inferenceEngine = inferenceEngine,
                 ),

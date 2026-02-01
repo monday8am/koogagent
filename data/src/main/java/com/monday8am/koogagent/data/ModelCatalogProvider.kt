@@ -1,9 +1,11 @@
 package com.monday8am.koogagent.data
 
+import kotlinx.coroutines.flow.Flow
+
 /**
  * Interface for providing available model configurations. Implementations can fetch from API or
  * return hardcoded catalog.
  */
 interface ModelCatalogProvider {
-    suspend fun fetchModels(): Result<List<ModelConfiguration>>
+    fun getModels(): Flow<List<ModelConfiguration>>
 }
