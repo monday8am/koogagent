@@ -78,9 +78,6 @@ object Dependencies {
 
     val modelRepository: ModelRepository by lazy { ModelRepositoryImpl(modelCatalogProvider) }
 
-    private const val REMOTE_TESTS_URL =
-        "https://raw.githubusercontent.com/monday8am/koogagent/main/data/src/main/resources/com/monday8am/koogagent/data/testing/tool_tests.json"
-
     val json = kotlinx.serialization.json.Json {
         ignoreUnknownKeys = true
         isLenient = true
@@ -95,3 +92,5 @@ object Dependencies {
         )
     }
 }
+
+private const val REMOTE_TESTS_URL = "https://edgeagentlab.dev/tests/tool_tests.json"
