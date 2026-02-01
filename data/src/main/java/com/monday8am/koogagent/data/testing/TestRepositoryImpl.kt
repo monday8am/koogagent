@@ -5,9 +5,11 @@ import java.io.IOException
 import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -18,9 +20,10 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
 
-class RemoteTestRepository(
+class TestRepositoryImpl(
     private val remoteUrl: String,
     private val localTestDataSource: LocalTestDataSource,
+    private val bundledRepository: TestRepository = AssetsTestRepository(),
     private val json: Json,
     private val client: OkHttpClient =
         OkHttpClient.Builder()
@@ -30,65 +33,72 @@ class RemoteTestRepository(
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : TestRepository {
 
-    private val logger = Logger.withTag("RemoteTestRepository")
+    private val logger = Logger.withTag("TestRepositoryImpl")
 
     override suspend fun getTests(): List<TestCaseDefinition> {
-        return localTestDataSource.getTests() ?: fetchRemoteTests()
+        return localTestDataSource.getTests()
+            ?: fetchNetworkTests().getOrElse { bundledRepository.getTests() }
     }
 
     override fun getTestsAsFlow(): Flow<List<TestCaseDefinition>> =
         flow {
-                // 1. Emit local data immediately (cache-first pattern)
-                val localTests = localTestDataSource.getTests()
-                var lastEmittedTests: List<TestCaseDefinition>? = null
+                // 1. Emit cached tests immediately if available
+                val cachedTests = localTestDataSource.getTests()
+                cachedTests?.takeIf { it.isNotEmpty() }?.let { emit(it) }
 
-                if (!localTests.isNullOrEmpty()) {
-                    emit(localTests)
-                    lastEmittedTests = localTests
-                }
-
-                // 2. Fetch from network to refresh
-                try {
-                    val newTests = fetchRemoteTests()
-
-                    if (newTests.isNotEmpty()) {
-                        logger.d { "Successfully loaded ${newTests.size} tests from remote" }
-
-                        // 3. Save to local storage
-                        localTestDataSource.saveTests(newTests)
-
-                        // 4. Emit new data only if different from cached data (deduplication)
-                        if (newTests != lastEmittedTests) {
-                            emit(newTests)
-                        } else {
-                            logger.d {
-                                "Remote tests identical to cached tests, skipping duplicate emission"
-                            }
-                        }
-                    } else {
-                        logger.w { "Remote fetch returned empty test list" }
-                        // Don't emit empty if we already emitted cached data
-                        if (lastEmittedTests == null) {
-                            emit(emptyList())
-                        }
+                // 2. Fetch and emit fresh tests from network
+                fetchNetworkTests()
+                    .onSuccess { networkTests -> saveAndEmitIfChanged(networkTests, cachedTests) }
+                    .onFailure { error ->
+                        logger.e(error) { "Failed to refresh tests from remote URL" }
+                        handleFallback(cachedTests)
                     }
-                } catch (e: Exception) {
-                    logger.e(e) { "Failed to refresh tests from remote URL" }
-                    // Emit empty list only if we haven't emitted anything yet
-                    if (localTests.isNullOrEmpty()) {
-                        emit(emptyList())
-                    }
-                }
             }
             .flowOn(dispatcher)
 
+    private suspend fun FlowCollector<List<TestCaseDefinition>>.saveAndEmitIfChanged(
+        networkTests: List<TestCaseDefinition>,
+        cachedTests: List<TestCaseDefinition>?,
+    ) {
+        when {
+            networkTests.isEmpty() -> {
+                logger.w { "Network fetch returned empty test list" }
+                handleFallback(cachedTests)
+            }
+            networkTests != cachedTests -> {
+                logger.d { "Successfully loaded ${networkTests.size} tests from remote" }
+                localTestDataSource.saveTests(networkTests)
+                emit(networkTests)
+            }
+            else -> {
+                logger.d { "Remote tests identical to cached tests, skipping duplicate emission" }
+            }
+        }
+    }
+
+    private suspend fun FlowCollector<List<TestCaseDefinition>>.handleFallback(
+        cachedTests: List<TestCaseDefinition>?
+    ) {
+        if (cachedTests.isNullOrEmpty()) {
+            logger.w { "No cached tests available, using bundled fallback" }
+            emit(bundledRepository.getTests())
+        }
+    }
+
+    private suspend fun fetchNetworkTests(): Result<List<TestCaseDefinition>> =
+        try {
+            Result.success(fetchRemoteTests())
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+
     private suspend fun fetchRemoteTests(): List<TestCaseDefinition> {
         val request = Request.Builder().url(remoteUrl).build()
-
         return executeRequest(request) { response ->
             val body = response.body.string()
-            val suite = json.decodeFromString<TestSuiteDefinition>(body)
-            suite.tests
+            json.decodeFromString<TestSuiteDefinition>(body).tests
         }
     }
 

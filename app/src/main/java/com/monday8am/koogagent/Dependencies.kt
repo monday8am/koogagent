@@ -14,9 +14,8 @@ import com.monday8am.koogagent.data.ModelRepositoryImpl
 import com.monday8am.koogagent.data.huggingface.FallbackModelCatalogProvider
 import com.monday8am.koogagent.data.huggingface.HuggingFaceModelCatalogProvider
 import com.monday8am.koogagent.data.testing.AssetsTestRepository
-import com.monday8am.koogagent.data.testing.FallbackTestRepository
-import com.monday8am.koogagent.data.testing.RemoteTestRepository
 import com.monday8am.koogagent.data.testing.TestRepository
+import com.monday8am.koogagent.data.testing.TestRepositoryImpl
 import com.monday8am.koogagent.download.ModelDownloadManagerImpl
 import com.monday8am.koogagent.oauth.HuggingFaceOAuthManager
 import com.monday8am.presentation.modelselector.ModelDownloadManager
@@ -88,13 +87,11 @@ object Dependencies {
     }
 
     val testRepository: TestRepository by lazy {
-        FallbackTestRepository(
-            primary = RemoteTestRepository(
-                remoteUrl = REMOTE_TESTS_URL,
-                localTestDataSource = DataStoreTestDataSource(appContext.dataStore, json),
-                json = json
-            ),
-            fallback = AssetsTestRepository()
+        TestRepositoryImpl(
+            remoteUrl = REMOTE_TESTS_URL,
+            localTestDataSource = DataStoreTestDataSource(appContext.dataStore, json),
+            bundledRepository = AssetsTestRepository(),
+            json = json
         )
     }
 }
