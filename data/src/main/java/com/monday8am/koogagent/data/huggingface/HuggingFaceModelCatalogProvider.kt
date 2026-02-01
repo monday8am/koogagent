@@ -9,6 +9,7 @@ import java.io.IOException
 import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -90,24 +91,33 @@ class HuggingFaceModelCatalogProvider(
                 logger.w { "Network fetch returned empty configuration" }
                 if (cachedModels.isNullOrEmpty()) emit(emptyList())
             }
+
             networkModels != cachedModels -> {
                 logger.d { "Successfully loaded ${networkModels.size} model configurations" }
                 localModelDataSource.saveModels(networkModels)
                 emit(networkModels)
             }
+
             else -> {
                 logger.d { "Network data identical to cached data, skipping duplicate emission" }
             }
         }
     }
 
-    private suspend fun fetchNetworkModels(): Result<List<ModelConfiguration>> = runCatching {
-        fetchModelList()
-            .filter { it.pipelineTag == "text-generation" }
-            .let { summaries -> fetchModelDataInParallel(summaries) }
-            .flatMap { (summary, fileSizes) -> convertToConfigurations(summary, fileSizes) }
-            .sortedByDescending { it.parameterCount }
-    }
+    private suspend fun fetchNetworkModels(): Result<List<ModelConfiguration>> =
+        try {
+            Result.success(
+                fetchModelList()
+                    .filter { it.pipelineTag == "text-generation" }
+                    .let { summaries -> fetchModelDataInParallel(summaries) }
+                    .flatMap { (summary, fileSizes) -> convertToConfigurations(summary, fileSizes) }
+                    .sortedByDescending { it.parameterCount }
+            )
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
 
     private suspend fun fetchModelDataInParallel(
         summaries: List<HuggingFaceModelSummary>
@@ -123,6 +133,7 @@ class HuggingFaceModelCatalogProvider(
             val fileSizes = fetchFileSizes(summary.id)
             summary to fileSizes
         } catch (e: Exception) {
+            if (e is CancellationException) throw e
             logger.e(e) { "Failed to fetch data for ${summary.id}" }
             null
         } finally {
