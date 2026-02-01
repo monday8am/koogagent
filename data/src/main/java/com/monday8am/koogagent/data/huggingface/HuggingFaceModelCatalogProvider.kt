@@ -15,6 +15,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -62,78 +63,72 @@ class HuggingFaceModelCatalogProvider(
 
     override fun getModels(): Flow<List<ModelConfiguration>> =
         flow {
-                val localModels = localModelDataSource.getModels()
-                var lastEmittedModels: List<ModelConfiguration>? = null
+                // 1. Emit cached models immediately if available
+                val cachedModels = localModelDataSource.getModels()
+                cachedModels?.takeIf { it.isNotEmpty() }?.let { emit(it) }
 
-                if (!localModels.isNullOrEmpty()) {
-                    emit(localModels)
-                    lastEmittedModels = localModels
-                }
-
-                // 2. Fetch from network to refresh
-                try {
-                    val summaries = fetchModelList().filter { it.pipelineTag == "text-generation" }
-
-                    // Fetch file sizes in parallel with concurrency limit (details fetch removed)
-                    val modelDataResults = coroutineScope {
-                        summaries
-                            .map { summary ->
-                                async {
-                                    requestSemaphore.acquire()
-                                    try {
-                                        val fileSizes = fetchFileSizes(summary.id)
-                                        summary to fileSizes
-                                    } catch (e: Exception) {
-                                        logger.e(e) { "Failed to fetch data for ${summary.id}" }
-                                        null
-                                    } finally {
-                                        requestSemaphore.release()
-                                    }
-                                }
-                            }
-                            .awaitAll()
+                // 2. Fetch and emit fresh models from network
+                fetchNetworkModels()
+                    .onSuccess { networkModels ->
+                        saveAndEmitIfChanged(networkModels, cachedModels)
                     }
-
-                    val newConfiguration =
-                        modelDataResults
-                            .filterNotNull()
-                            .flatMap { (summary, fileSizes) ->
-                                convertToConfigurations(summary, fileSizes)
-                            }
-                            .sortedByDescending { it.parameterCount }
-
-                    if (newConfiguration.isNotEmpty()) {
-                        logger.d {
-                            "Successfully loaded ${newConfiguration.size} model configurations"
-                        }
-
-                        // 3. Save to local storage
-                        localModelDataSource.saveModels(newConfiguration)
-
-                        // 4. Emit new data only if different from cached data (deduplication)
-                        if (newConfiguration != lastEmittedModels) {
-                            emit(newConfiguration)
-                        } else {
-                            logger.d {
-                                "Network data identical to cached data, skipping duplicate emission"
-                            }
-                        }
-                    } else {
-                        logger.w { "Network fetch returned empty configuration" }
-                        // Don't emit empty if we already emitted cached data
-                        if (lastEmittedModels == null) {
+                    .onFailure { error ->
+                        logger.e(error) { "Failed to refresh models from API" }
+                        if (cachedModels.isNullOrEmpty()) {
                             emit(emptyList())
                         }
                     }
-                } catch (e: Exception) {
-                    logger.e(e) { "Failed to refresh models from API" }
-                    // Emit empty list only if we haven't emitted anything yet
-                    if (localModels.isNullOrEmpty()) {
-                        emit(emptyList())
-                    }
-                }
             }
             .flowOn(dispatcher)
+
+    private suspend fun FlowCollector<List<ModelConfiguration>>.saveAndEmitIfChanged(
+        networkModels: List<ModelConfiguration>,
+        cachedModels: List<ModelConfiguration>?,
+    ) {
+        when {
+            networkModels.isEmpty() -> {
+                logger.w { "Network fetch returned empty configuration" }
+                if (cachedModels.isNullOrEmpty()) emit(emptyList())
+            }
+            networkModels != cachedModels -> {
+                logger.d { "Successfully loaded ${networkModels.size} model configurations" }
+                localModelDataSource.saveModels(networkModels)
+                emit(networkModels)
+            }
+            else -> {
+                logger.d { "Network data identical to cached data, skipping duplicate emission" }
+            }
+        }
+    }
+
+    private suspend fun fetchNetworkModels(): Result<List<ModelConfiguration>> = runCatching {
+        fetchModelList()
+            .filter { it.pipelineTag == "text-generation" }
+            .let { summaries -> fetchModelDataInParallel(summaries) }
+            .flatMap { (summary, fileSizes) -> convertToConfigurations(summary, fileSizes) }
+            .sortedByDescending { it.parameterCount }
+    }
+
+    private suspend fun fetchModelDataInParallel(
+        summaries: List<HuggingFaceModelSummary>
+    ): List<Pair<HuggingFaceModelSummary, Map<String, Long>>> = coroutineScope {
+        summaries.map { summary -> async { fetchModelData(summary) } }.awaitAll().filterNotNull()
+    }
+
+    private suspend fun fetchModelData(
+        summary: HuggingFaceModelSummary
+    ): Pair<HuggingFaceModelSummary, Map<String, Long>>? {
+        requestSemaphore.acquire()
+        return try {
+            val fileSizes = fetchFileSizes(summary.id)
+            summary to fileSizes
+        } catch (e: Exception) {
+            logger.e(e) { "Failed to fetch data for ${summary.id}" }
+            null
+        } finally {
+            requestSemaphore.release()
+        }
+    }
 
     private suspend fun fetchModelList(): List<HuggingFaceModelSummary> {
         val request = Request.Builder().url(LIST_URL).build()
@@ -195,6 +190,7 @@ class HuggingFaceModelCatalogProvider(
             call.enqueue(
                 object : Callback {
                     override fun onResponse(call: Call, response: Response) {
+                        if (!continuation.isActive) return
                         response.use {
                             if (!response.isSuccessful) {
                                 continuation.resumeWithException(
@@ -211,7 +207,9 @@ class HuggingFaceModelCatalogProvider(
                     }
 
                     override fun onFailure(call: Call, e: IOException) {
-                        continuation.resumeWithException(e)
+                        if (continuation.isActive) {
+                            continuation.resumeWithException(e)
+                        }
                     }
                 }
             )
