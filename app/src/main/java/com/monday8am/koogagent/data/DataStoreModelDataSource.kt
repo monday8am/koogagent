@@ -6,7 +6,6 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 class DataStoreModelDataSource(
@@ -23,7 +22,7 @@ class DataStoreModelDataSource(
         return if (jsonString != null) {
             try {
                 Json.decodeFromString<List<ModelConfiguration>>(jsonString)
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 null
             }
         } else {

@@ -9,26 +9,10 @@ package com.monday8am.koogagent.data.huggingface
 data class HuggingFaceModelSummary(
     val id: String,
     val pipelineTag: String?,
-    val downloads: Int,
-    val likes: Int,
-)
-
-/**
- * Represents detailed model info from the model details endpoint. GET
- * https://huggingface.co/api/models/{model_id} Note: description is fetched separately from
- * README.md
- */
-data class HuggingFaceModelDetails(
-    val id: String,
-    val pipelineTag: String?,
     val gated: GatedStatus,
     val downloads: Int,
     val likes: Int,
-    val siblings: List<HuggingFaceFile>,
 )
-
-/** Represents a file in the model repository. */
-data class HuggingFaceFile(val rfilename: String, val size: Long? = null)
 
 /** Gated status can be boolean or string "auto". */
 sealed class GatedStatus {
@@ -54,8 +38,10 @@ sealed class GatedStatus {
             when (value) {
                 false,
                 "false" -> None
+
                 true,
                 "true" -> Manual
+
                 "auto" -> Auto
                 else -> None
             }

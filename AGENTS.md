@@ -43,8 +43,11 @@ Each test case contains:
 - Validation rules
 
 Test files:
-- Test definitions: `data/src/main/resources/com/monday8am/koogagent/data/testing/tool_tests.json`
+- Test definitions: Loaded remotely with local caching (via `RemoteTestRepository`)
+  - Bundled fallback: `data/src/main/resources/com/monday8am/koogagent/data/testing/tool_tests.json`
+  - Remote source: GitHub (configurable in `Dependencies.kt`)
 - Test engine: `presentation/src/main/kotlin/com/monday8am/presentation/testing/ToolCallingTestEngine.kt`
+- Test repository: `data/src/main/java/com/monday8am/koogagent/data/testing/TestRepository.kt`
 - Tool handlers: `agent/src/main/java/com/monday8am/agent/tools/`
 
 ### Key Components
@@ -66,9 +69,9 @@ This design eliminates global state and enables full test isolation.
 
 ## Module Structure
 - **agent**: Core inference interfaces, tool handlers, tool definitions
-- **data**: Model catalog, test definitions, repositories
+- **data**: Model catalog, test definitions, repositories with remote loading and caching
 - **presentation**: ViewModels, test engine, UI state management
-- **app**: Android app, inference implementation, dependency injection
+- **app**: Android app, inference implementation, dependency injection, DataStore implementations
 
 Module dependencies: `agent` → `presentation` → `app` (never circular)
 
@@ -85,7 +88,7 @@ Module dependencies: `agent` → `presentation` → `app` (never circular)
   - `TestDetailsScreen`: Main composable with header, filter chips, and test list
   - `TestDetailsCard`: Individual test cards showing name, description, domain, and metadata
   - Domain-specific colors (GENERIC: surfaceVariant, YAZIO: secondaryContainer)
-- **Data Flow**: `AssetsTestRepository` → ViewModel → StateFlow → UI
+- **Data Flow**: `TestRepository` (remote with caching) → ViewModel → StateFlow → UI
 
 #### Token Speed Metrics
 - **Location**: `presentation/src/main/kotlin/com/monday8am/presentation/testing/`
@@ -105,6 +108,7 @@ Module dependencies: `agent` → `presentation` → `app` (never circular)
   - `LocalModelDataSource`: Interface for local storage abstraction
   - `DataStoreModelDataSource`: Implementation using DataStore with JSON serialization
   - `HuggingFaceModelCatalogProvider`: Refactored to use cache-first pattern with Flow API
+  - `ModelRepositoryImpl`: Uses internal scope with fire-and-forget pattern for background refresh
 - **Pattern**: Stale-while-revalidate
   1. Emit cached data immediately if available
   2. Fetch fresh data from network in background
@@ -112,9 +116,33 @@ Module dependencies: `agent` → `presentation` → `app` (never circular)
   4. Save network data to cache for next launch
 - **Optimizations**:
   - Deduplication prevents unnecessary UI updates when data hasn't changed
-  - Fixed null check bug that could cause hanging flows
+  - Fire-and-forget refresh: `refreshModels()` launches background collection without blocking callers
   - Better empty result handling to avoid overwriting valid cache
   - Enhanced logging for debugging (cache hits, updates, deduplication events)
+
+#### Remote Test Loading
+- **Location**: `data/src/main/java/com/monday8am/koogagent/data/testing/`
+- **Purpose**: Load test definitions from remote URL with local caching, enabling test updates without app releases
+- **Components**:
+  - `LocalTestDataSource`: Interface for test storage abstraction
+  - `DataStoreTestDataSource`: Implementation using DataStore with JSON serialization (reuses app DataStore)
+  - `RemoteTestRepository`: Fetches tests from GitHub via OkHttp with cache-first pattern
+  - `FallbackTestRepository`: Wraps primary repository with graceful fallback to bundled tests
+- **Pattern**: Cache-first with fallback (same as model catalog)
+  1. Emit cached tests immediately if available
+  2. Fetch fresh tests from network in background
+  3. Deduplicate: only emit if network tests differ from cache
+  4. Save network tests to cache for next launch
+  5. Fallback to bundled `AssetsTestRepository` on network failure
+- **Configuration**:
+  - Remote URL: `https://raw.githubusercontent.com/monday8am/koogagent/main/data/src/main/resources/.../tool_tests.json`
+  - Configurable in `Dependencies.kt` (supports different URLs per environment)
+- **Benefits**:
+  - Tests can be updated without releasing new APK
+  - Offline support: cached tests work without network
+  - Graceful degradation: always falls back to bundled tests
+  - Consistent architecture: mirrors model catalog caching system
+- **Safety**: Continuation guards prevent crashes when requests are cancelled mid-flight
 
 ### Removed Features
 - **Notification screens**: All notification-related UI screens have been removed from the project. The app now focuses on model selection, chat, and testing functionality.

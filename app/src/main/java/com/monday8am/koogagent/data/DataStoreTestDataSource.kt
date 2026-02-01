@@ -8,7 +8,6 @@ import com.monday8am.koogagent.data.testing.LocalTestDataSource
 import com.monday8am.koogagent.data.testing.TestCaseDefinition
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 class DataStoreTestDataSource(
@@ -26,7 +25,7 @@ class DataStoreTestDataSource(
         return if (jsonString != null) {
             try {
                 json.decodeFromString<List<TestCaseDefinition>>(jsonString)
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 null
             }
         } else {
