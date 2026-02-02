@@ -2,7 +2,6 @@ package com.monday8am.koogagent.ui.screens.testing
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Arrangement.spacedBy
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,7 +12,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
@@ -30,6 +28,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,6 +56,10 @@ internal fun TestStatusList(
         testStatuses.indexOfFirst { it.state == TestStatus.State.RUNNING }
     }
 
+    val isRunning = remember(testStatuses) {
+        testStatuses.any { it.state == TestStatus.State.RUNNING }
+    }
+
     LaunchedEffect(runningIndex) {
         if (runningIndex >= 0) {
             // Get item info if already visible
@@ -74,45 +77,65 @@ internal fun TestStatusList(
 
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = spacedBy(8.dp)) {
         if (availableDomains.isNotEmpty()) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                LazyRow(
-                    horizontalArrangement = spacedBy(8.dp),
-                    modifier = Modifier.weight(1f, fill = false),
-                ) {
-                    item {
-                        FilterChip(
-                            selected = filterDomain == null,
-                            onClick = { onSetDomainFilter(null) },
-                            label = { Text("All") },
-                        )
-                    }
-                    items(availableDomains) { domain ->
-                        FilterChip(
-                            selected = filterDomain == domain,
-                            onClick = { onSetDomainFilter(domain) },
-                            label = {
-                                Text(domain.name.lowercase().replaceFirstChar { it.uppercase() })
-                            },
-                        )
-                    }
-                }
-
-                IconButton(onClick = onNavigateToTestDetails) {
-                    Icon(
-                        imageVector = Icons.Default.List,
-                        contentDescription = "View All Tests",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
+            DomainFilterRow(
+                availableDomains = availableDomains,
+                filterDomain = filterDomain,
+                onSetDomainFilter = onSetDomainFilter,
+                onNavigateToTestDetails = onNavigateToTestDetails,
+                enabled = !isRunning,
+            )
         }
 
         LazyRow(state = listState, modifier = Modifier.fillMaxWidth(), horizontalArrangement = spacedBy(8.dp)) {
             items(testStatuses) { status -> TestStatusCard(status = status) }
+        }
+    }
+}
+
+@Composable
+private fun DomainFilterRow(
+    availableDomains: ImmutableList<TestDomain>,
+    filterDomain: TestDomain?,
+    onSetDomainFilter: (TestDomain?) -> Unit,
+    onNavigateToTestDetails: () -> Unit,
+    enabled: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        LazyRow(
+            horizontalArrangement = spacedBy(8.dp),
+            modifier = Modifier.weight(1f, fill = false),
+        ) {
+            item {
+                FilterChip(
+                    selected = filterDomain == null,
+                    onClick = { onSetDomainFilter(null) },
+                    label = { Text("All") },
+                    enabled = enabled,
+                )
+            }
+            items(availableDomains) { domain ->
+                FilterChip(
+                    selected = filterDomain == domain,
+                    onClick = { onSetDomainFilter(domain) },
+                    label = {
+                        Text(domain.name.lowercase().replaceFirstChar { it.uppercase() })
+                    },
+                    enabled = enabled,
+                )
+            }
+        }
+
+        IconButton(onClick = onNavigateToTestDetails) {
+            Icon(
+                imageVector = Icons.Default.List,
+                contentDescription = "View All Tests",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
