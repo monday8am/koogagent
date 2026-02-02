@@ -130,7 +130,7 @@ private fun DomainFilterRow(
             }
         }
 
-        IconButton(onClick = onNavigateToTestDetails) {
+        IconButton(onClick = onNavigateToTestDetails, enabled = enabled) {
             Icon(
                 imageVector = Icons.Default.List,
                 contentDescription = "View All Tests",
