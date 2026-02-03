@@ -51,8 +51,8 @@ class HuggingFaceModelCatalogProvider(
 
     companion object {
         private const val BASE_URL = "https://huggingface.co/api/models"
-        private const val AUTHOR = "litert-community"
-        private const val LIST_URL = "$BASE_URL?author=$AUTHOR"
+        private const val WHOAMI_URL = "https://huggingface.co/api/whoami"
+        private const val DEFAULT_AUTHOR = "litert-community"
         private const val DOWNLOAD_URL_TEMPLATE = "https://huggingface.co/%s/resolve/main/%s"
 
         // Default values when metadata cannot be parsed
@@ -107,7 +107,7 @@ class HuggingFaceModelCatalogProvider(
     private suspend fun fetchNetworkModels(): Result<List<ModelConfiguration>> =
         try {
             Result.success(
-                fetchModelList()
+                fetchModelListFromAllSources()
                     .filter { it.pipelineTag == "text-generation" }
                     .let { summaries -> fetchModelDataInParallel(summaries) }
                     .flatMap { (summary, fileSizes) -> convertToConfigurations(summary, fileSizes) }
@@ -141,8 +141,36 @@ class HuggingFaceModelCatalogProvider(
         }
     }
 
-    private suspend fun fetchModelList(): List<HuggingFaceModelSummary> {
-        val request = Request.Builder().url(LIST_URL).build()
+    private suspend fun fetchModelListFromAllSources(): List<HuggingFaceModelSummary> {
+        val modelSummaries = mutableListOf<HuggingFaceModelSummary>()
+
+        // Always fetch from default author (litert-community)
+        try {
+            modelSummaries.addAll(fetchModelList(DEFAULT_AUTHOR))
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            logger.e(e) { "Failed to fetch models from $DEFAULT_AUTHOR" }
+        }
+
+        // If authenticated, fetch from user's repository
+        val username = fetchCurrentUsername()
+        if (username != null && username != DEFAULT_AUTHOR) {
+            try {
+                logger.d { "Fetching models from authenticated user: $username" }
+                modelSummaries.addAll(fetchModelList(username))
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                logger.e(e) { "Failed to fetch models from user: $username" }
+            }
+        }
+
+        // Deduplicate by model ID
+        return modelSummaries.distinctBy { it.id }
+    }
+
+    private suspend fun fetchModelList(author: String): List<HuggingFaceModelSummary> {
+        val listUrl = "$BASE_URL?author=$author"
+        val request = Request.Builder().url(listUrl).build()
 
         return executeRequest(request) { response ->
             val body = response.body.string()
@@ -150,6 +178,30 @@ class HuggingFaceModelCatalogProvider(
             (0 until jsonArray.length()).mapNotNull { i ->
                 parseModelSummary(jsonArray.getJSONObject(i))
             }
+        }
+    }
+
+    private suspend fun fetchCurrentUsername(): String? {
+        // Only attempt if we have an auth token
+        val token = authRepository?.authToken?.value
+        if (token.isNullOrBlank()) {
+            logger.d { "No auth token available, skipping user models fetch" }
+            return null
+        }
+
+        return try {
+            val request = Request.Builder().url(WHOAMI_URL).build()
+            executeRequest(request) { response ->
+                val body = response.body.string()
+                val json = JSONObject(body)
+                json.optString("name", null)?.also {
+                    logger.d { "Fetched username from whoami: $it" }
+                }
+            }
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            logger.w(e) { "Failed to fetch current username from whoami endpoint" }
+            null
         }
     }
 
