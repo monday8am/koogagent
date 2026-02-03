@@ -51,7 +51,7 @@ class HuggingFaceModelCatalogProvider(
 
     companion object {
         private const val BASE_URL = "https://huggingface.co/api/models"
-        private const val WHOAMI_URL = "https://huggingface.co/api/whoami"
+        private const val WHOAMI_URL = "https://huggingface.co/api/whoami-v2"
         private const val DEFAULT_AUTHOR = "litert-community"
         private const val DOWNLOAD_URL_TEMPLATE = "https://huggingface.co/%s/resolve/main/%s"
 
