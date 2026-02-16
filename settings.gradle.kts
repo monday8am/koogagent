@@ -22,7 +22,11 @@ dependencyResolutionManagement {
 
 rootProject.name = "KoogAgent"
 
-include(":app")
+include(":app:edgelab")
+
+include(":app:copilot")
+
+include(":core")
 
 include(":agent")
 

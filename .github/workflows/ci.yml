@@ -30,7 +30,7 @@ jobs:
       - name: Decode google-services.json
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
-        run: printf '%s' "$GOOGLE_SERVICES_JSON" | base64 -d > app/google-services.json
+        run: printf '%s' "$GOOGLE_SERVICES_JSON" | base64 -d > app/edgelab/google-services.json
 
       - name: Set up HuggingFace OAuth
         run: echo "HF_CLIENT_ID=${{ secrets.HF_CLIENT_ID }}" >> $GITHUB_ENV
@@ -39,14 +39,14 @@ jobs:
         run: ./gradlew ktfmtCheck
 
       - name: Run Compose lint check
-        run: ./gradlew :app:lintDebug
+        run: ./gradlew :app:edgelab:lintDebug
 
       - name: Upload lint results
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: lint-results
-          path: app/build/reports/lint-results-debug.html
+          path: app/edgelab/build/reports/lint-results-debug.html
           retention-days: 7
 
       - name: Run tests
@@ -60,8 +60,8 @@ jobs:
           path: "**/build/test-results/**/*.xml"
           reporter: java-junit
 
-      - name: Build debug APK
-        run: ./gradlew :app:assembleDebug
+      - name: Build debug APKs
+        run: ./gradlew :app:edgelab:assembleDebug :app:copilot:assembleDebug
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
