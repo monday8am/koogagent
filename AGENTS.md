@@ -9,17 +9,21 @@ KoogAgent is an Android prototype for on-device agentic notifications using Lite
 
 ### Build
 - Build all: `./gradlew build`
-- Build app: `./gradlew :app:build`
+- Build core: `./gradlew :core:build`
+- Build edgelab app: `./gradlew :app:edgelab:build`
+- Build copilot app: `./gradlew :app:copilot:build`
 - Clean: `./gradlew clean`
 
 ### Test
 - Run all tests: `./gradlew test`
 - Agent tests: `./gradlew :agent:test`
 - Presentation tests: `./gradlew :presentation:test`
-- App unit tests: `./gradlew :app:testDebugUnitTest`
+- Core tests: `./gradlew :core:testDebugUnitTest`
 
 ### Development
-- Assemble debug APK: `./gradlew :app:assembleDebug`
+- Assemble debug APKs: `./gradlew :app:edgelab:assembleDebug :app:copilot:assembleDebug`
+- Install edgelab: `./gradlew :app:edgelab:installDebug`
+- Install copilot: `./gradlew :app:copilot:installDebug`
 
 ## Coding Standards
 - Kotlin-first, using Jetpack Compose for UI.
@@ -68,19 +72,21 @@ Each test creates its own tool handlers and resets the conversation:
 This design eliminates global state and enables full test isolation.
 
 ## Module Structure
-- **agent**: Core inference interfaces, tool handlers, tool definitions
-- **data**: Model catalog, test definitions, repositories with remote loading and caching
-- **presentation**: ViewModels, test engine, UI state management
-- **app**: Android app, inference implementation, dependency injection, DataStore implementations
+- **data**: Pure Kotlin - Model catalog, test definitions, repositories with remote loading and caching
+- **agent**: Pure Kotlin - Core inference interfaces, tool handlers, tool definitions
+- **presentation**: Pure Kotlin - ViewModels, test engine, UI state management
+- **core**: Android library - Shared infrastructure (inference, download, OAuth, storage implementations)
+- **app:edgelab**: Android app - Edge Agent Lab for model testing and validation
+- **app:copilot**: Android app - Cycling Copilot (minimal, ready for cycling features)
 
-Module dependencies: `agent` → `presentation` → `app` (never circular)
+Module dependencies: `data` ← `agent` ← `presentation` ← `core` ← `app:edgelab`, `app:copilot`
 
 ## Recent Changes
 
 ### Added Features
 
 #### TestDetails Screen
-- **Location**: `app/src/main/java/com/monday8am/koogagent/ui/screens/testdetails/`
+- **Location**: `app/edgelab/src/main/java/com/monday8am/koogagent/edgelab/ui/screens/testdetails/`
 - **Purpose**: Display all available tests in a list format with domain filtering
 - **Architecture**: Platform-agnostic ViewModel (`TestDetailsViewModelImpl`) + Android wrapper (`AndroidTestDetailsViewModel`)
 - **Navigation**: Type-safe route `Route.TestDetails` accessible from TestScreen via icon button in filter row
