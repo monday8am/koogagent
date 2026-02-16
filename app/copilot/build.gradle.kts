@@ -30,6 +30,10 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // AppAuth redirect scheme placeholder (required by AppAuth library manifest)
+        // Copilot doesn't use OAuth, but placeholder is needed for manifest merger
+        manifestPlaceholders["appAuthRedirectScheme"] = "copilot"
     }
 
     signingConfigs {
