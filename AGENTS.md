@@ -85,6 +85,99 @@ Module dependencies: `data` ← `agent` ← `presentation` ← `core` ← `app:e
 
 ### Added Features
 
+#### Multi-Module Architecture Refactoring
+- **Overview**: Split monolithic `:app` module into shared `:core` infrastructure and multiple independent app modules
+- **PR**: #65 - Refactor to multi-module architecture with shared core
+- **Architecture Pattern**: Shared infrastructure layer with multiple app frontends
+
+##### :core Module (New Android Library)
+- **Location**: `core/src/main/java/com/monday8am/koogagent/core/`
+- **Purpose**: Shared Android-specific infrastructure for all apps
+- **Package**: `com.monday8am.koogagent.core`
+- **Components**:
+  - `core/inference/LiteRTLmInferenceEngineImpl.kt` - LiteRT-LM inference engine implementation
+  - `core/download/ModelDownloadManagerImpl.kt` - Model download manager with WorkManager
+  - `core/download/DownloadUnzipWorker.kt` - Background download worker
+  - `core/oauth/HuggingFaceOAuthManager.kt` - Multi-app OAuth manager (configurable redirect schemes)
+  - `core/oauth/HuggingFaceOAuthConfig.kt` - OAuth configuration
+  - `core/storage/AuthRepositoryImpl.kt` - Auth repository with DataStore + Tink encryption
+  - `core/storage/DataStoreModelDataSource.kt` - Model catalog local storage
+  - `core/storage/DataStoreTestDataSource.kt` - Test definitions local storage
+  - `core/di/CoreDependencies.kt` - Factory object for dependency injection
+- **Key Dependencies**: LiteRT-LM Android, WorkManager, AppAuth, DataStore, Security Crypto, Tink
+- **Exposure Pattern**: Uses `api` dependencies to expose `:data`, `:agent`, and `:presentation` transitively
+
+##### :app:edgelab Module (New Android App)
+- **Location**: `app/edgelab/src/main/java/com/monday8am/koogagent/edgelab/`
+- **Purpose**: Edge Agent Lab - model testing and validation platform
+- **Package**: `com.monday8am.koogagent.edgelab`
+- **Application ID**: `com.monday8am.koogagent.edgelab`
+- **OAuth Redirect**: `edgelab://oauth/callback`
+- **Features**:
+  - Model selection and download
+  - Test suite execution and validation
+  - Token speed metrics
+  - Test result visualization
+  - HuggingFace OAuth integration
+- **UI Structure**:
+  - `ui/screens/modelselector/` - Model selection and management
+  - `ui/screens/testing/` - Test execution UI
+  - `ui/screens/testdetails/` - Test catalog and details
+  - `ui/navigation/` - Navigation graph
+  - `ui/theme/` - Material3 theme (original app theme)
+- **DI**: `Dependencies.kt` - Uses `CoreDependencies` factories for infrastructure
+
+##### :app:copilot Module (New Android App)
+- **Location**: `app/copilot/src/main/java/com/monday8am/koogagent/copilot/`
+- **Purpose**: Cycling Copilot - minimal app ready for cycling-specific features
+- **Package**: `com.monday8am.koogagent.copilot`
+- **Application ID**: `com.monday8am.koogagent.copilot`
+- **OAuth Redirect**: `copilot://oauth/callback` (placeholder, not actively used)
+- **Current State**: Single empty screen with placeholder content
+- **UI Structure**:
+  - `ui/CyclingScreen.kt` - Main screen (ready for cycling content)
+  - `MainActivity.kt` - Entry point
+- **Note**: Minimal implementation demonstrates how to create new apps using `:core`
+
+##### OAuth Refactoring for Multi-App Support
+- **Problem**: Original OAuth implementation hardcoded redirect URI and activity class
+- **Solution**: Made OAuth manager configurable per-app
+- **Changes**:
+  - `HuggingFaceOAuthConfig.getRedirectUri(appScheme)` - Generates redirect URI based on scheme
+  - `HuggingFaceOAuthManager` constructor accepts `redirectScheme` and `activityClass` parameters
+  - Each app provides its own scheme ("edgelab", "copilot") and MainActivity reference
+- **Example Usage**:
+  ```kotlin
+  CoreDependencies.createOAuthManager(
+      context = appContext,
+      clientId = BuildConfig.HF_CLIENT_ID,
+      redirectScheme = "edgelab",  // or "copilot"
+      activityClass = MainActivity::class.java
+  )
+  ```
+- **Benefit**: Apps can have independent OAuth flows without conflicts
+
+##### Benefits of New Architecture
+- **Zero Code Duplication**: All Android infrastructure shared via `:core`
+- **Easy App Creation**: New apps just implement UI and provide DI configuration
+- **Independent Evolution**: Apps evolve independently with different features and themes
+- **Clean Separation**: Platform-agnostic logic (`:data`, `:agent`, `:presentation`) vs Android code (`:core`) vs UI (`:app:*`)
+- **Simultaneous Installation**: Different package names allow installing multiple apps
+- **Simplified Dependencies**: Apps only need `implementation(project(":core"))`
+
+##### Migration Details
+- Moved inference, download, OAuth, and storage implementations from `:app` to `:core`
+- Updated all package declarations from `com.monday8am.koogagent.*` to appropriate module packages
+- Created `CoreDependencies` factory pattern replacing direct instantiation
+- Updated CI/CD pipeline to build and test new modules
+- Updated pre-push hooks to target `:app:edgelab:lintDebug`
+- Removed old `:app` module after verification
+
+##### Documentation
+- Full refactoring details in `REFACTORING_SUMMARY.md`
+- Updated build commands in this file
+- Updated module structure diagram
+
 #### TestDetails Screen
 - **Location**: `app/edgelab/src/main/java/com/monday8am/koogagent/edgelab/ui/screens/testdetails/`
 - **Purpose**: Display all available tests in a list format with domain filtering
