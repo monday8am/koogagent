@@ -77,9 +77,24 @@ This design eliminates global state and enables full test isolation.
 - **presentation**: Pure Kotlin - ViewModels, test engine, UI state management
 - **core**: Android library - Shared infrastructure (inference, download, OAuth, storage implementations)
 - **app:edgelab**: Android app - Edge Agent Lab for model testing and validation
-- **app:copilot**: Android app - Cycling Copilot (minimal, ready for cycling features)
+- **app:copilot**: Android app - Cycling Copilot (demo app for on-device AI cycling assistance)
 
 Module dependencies: `data` ← `agent` ← `presentation` ← `core` ← `app:edgelab`, `app:copilot`
+
+### Cycling Copilot Architecture
+The Cycling Copilot app is a demo application showcasing on-device AI for cycling assistance. Complete UI architecture and implementation details are documented in `COPILOT_UI_ARCHITECTURE.md`.
+
+**Key Features**:
+- Three-screen flow: Onboard & Download → Ride Setup → Live Ride
+- MapLibre integration for real-time route visualization
+- Voice-first interaction with AI copilot
+- GPX simulation with variable playback speed
+- Offline-capable AI inference (FunctionGemma 2B + Gemma 2 550M)
+- Graceful degradation when remote APIs unavailable
+
+**Reference Documents**:
+- UI Architecture: `COPILOT_UI_ARCHITECTURE.md` - Complete screen layouts, state management, and component specs
+- AI Architecture: See `:agent` module tool definitions and inference interfaces
 
 ## Recent Changes
 
