@@ -1,0 +1,324 @@
+package com.monday8am.koogagent.copilot.ui.screens.onboard
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.monday8am.koogagent.copilot.Dependencies
+import com.monday8am.koogagent.copilot.ui.theme.CyclingCopilotTheme
+import com.monday8am.presentation.modelselector.DownloadStatus
+import com.monday8am.presentation.modelselector.ModelInfo
+import com.monday8am.presentation.modelselector.ModelSelectorViewModelImpl
+import com.monday8am.presentation.modelselector.UiAction
+import com.monday8am.presentation.modelselector.UiState
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+
+/** Onboard Screen - Model download and welcome */
+@Composable
+fun OnboardScreen(
+    onNavigateToSetup: () -> Unit,
+    viewModel: AndroidOnboardViewModel =
+        viewModel {
+            AndroidOnboardViewModel(
+                ModelSelectorViewModelImpl(
+                    modelDownloadManager = Dependencies.modelDownloadManager,
+                    modelRepository = Dependencies.modelRepository,
+                    authRepository = Dependencies.authRepository,
+                )
+            )
+        },
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    OnboardScreenContent(
+        uiState = uiState,
+        onAction = viewModel::onUiAction,
+        onNavigateToSetup = onNavigateToSetup,
+    )
+}
+
+@Composable
+private fun OnboardScreenContent(
+    uiState: UiState,
+    onAction: (UiAction) -> Unit = {},
+    onNavigateToSetup: () -> Unit = {},
+) {
+    Column(
+        modifier =
+            Modifier.fillMaxSize().padding(24.dp).verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        // Header
+        Text(
+            text = "🚴 Cycling Copilot",
+            style = MaterialTheme.typography.headlineLarge,
+            color = MaterialTheme.colorScheme.primary,
+        )
+
+        Text(
+            text = "Your AI Riding Companion",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Feature highlights
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors =
+                CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                ),
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "On-device AI for smarter rides",
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.padding(bottom = 8.dp),
+                )
+                FeatureItem("Route suggestions")
+                FeatureItem("Weather-aware planning")
+                FeatureItem("Performance insights")
+                FeatureItem("Works offline")
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Download section
+        Text(
+            text = "DOWNLOAD REQUIRED MODELS",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        if (uiState.isLoadingCatalog) {
+            CircularProgressIndicator(modifier = Modifier.padding(32.dp))
+        } else {
+            // Show download cards for each model
+            uiState.models.forEach { modelInfo ->
+                ModelDownloadCard(
+                    modelInfo = modelInfo,
+                    onAction = onAction,
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Download summary
+        val totalSize = uiState.models.sumOf { it.config.fileSizeBytes ?: 0L }
+        val downloadedSize =
+            uiState.models.filter { it.isDownloaded }.sumOf { it.config.fileSizeBytes ?: 0L }
+
+        Text(
+            text = "Downloaded: ${formatSize(downloadedSize)} / ${formatSize(totalSize)}",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        // Continue button
+        val allModelsReady = uiState.models.all { it.isDownloaded }
+
+        Button(
+            onClick = onNavigateToSetup,
+            enabled = allModelsReady,
+            modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+        ) {
+            Text("Continue to Setup")
+        }
+
+        if (!allModelsReady) {
+            Text(
+                text = "Download all models to continue",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+        }
+    }
+}
+
+@Composable
+private fun FeatureItem(text: String) {
+    Row(
+        modifier = Modifier.padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text("•", style = MaterialTheme.typography.bodyMedium)
+        Text(text, style = MaterialTheme.typography.bodyMedium)
+    }
+}
+
+@Composable
+private fun ModelDownloadCard(
+    modelInfo: ModelInfo,
+    onAction: (UiAction) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Card(modifier = modifier) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = modelInfo.config.displayName,
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Text(
+                        text = formatSize(modelInfo.config.fileSizeBytes ?: 0L),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+
+                when (val status = modelInfo.downloadStatus) {
+                    is DownloadStatus.Completed -> {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = "Downloaded",
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                    is DownloadStatus.Downloading -> {
+                        TextButton(onClick = {
+                            onAction(UiAction.DeleteModel(modelInfo.config.displayName))
+                        }) {
+                            Text("Cancel")
+                        }
+                    }
+                    is DownloadStatus.Failed -> {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Failed",
+                            tint = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                    else -> {
+                        Button(onClick = {
+                            onAction(UiAction.DownloadModel(modelInfo.config.modelId))
+                        }) {
+                            Text("Download")
+                        }
+                    }
+                }
+            }
+
+            when (val status = modelInfo.downloadStatus) {
+                is DownloadStatus.Downloading -> {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    LinearProgressIndicator(
+                        progress = { status.progress / 100f },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Text(
+                        text = "${status.progress.toInt()}%",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                }
+                is DownloadStatus.Failed -> {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = status.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+                else -> {}
+            }
+        }
+    }
+}
+
+private fun formatSize(bytes: Long): String {
+    val mb = bytes / (1024 * 1024)
+    return if (mb > 1024) {
+        "%.1f GB".format(mb / 1024.0)
+    } else {
+        "$mb MB"
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun OnboardScreenPreview() {
+    CyclingCopilotTheme {
+        OnboardScreenContent(
+            uiState =
+                UiState(
+                    models =
+                        persistentListOf(
+                            ModelInfo(
+                                config =
+                                    com.monday8am.koogagent.data.ModelConfiguration(
+                                        displayName = "FunctionGemma 2B",
+                                        modelFamily = "gemma",
+                                        parameterCount = 2.0f,
+                                        quantization = "int8",
+                                        contextLength = 4096,
+                                        downloadUrl = "",
+                                        bundleFilename = "",
+                                        fileSizeBytes = 2_200_000_000L,
+                                    ),
+                                isDownloaded = false,
+                                downloadStatus = DownloadStatus.Downloading(45f),
+                            ),
+                            ModelInfo(
+                                config =
+                                    com.monday8am.koogagent.data.ModelConfiguration(
+                                        displayName = "Gemma 2 550M",
+                                        modelFamily = "gemma",
+                                        parameterCount = 0.55f,
+                                        quantization = "int8",
+                                        contextLength = 4096,
+                                        downloadUrl = "",
+                                        bundleFilename = "",
+                                        fileSizeBytes = 520_000_000L,
+                                    ),
+                                isDownloaded = true,
+                                downloadStatus = DownloadStatus.Completed,
+                            ),
+                        ),
+                ),
+        )
+    }
+}
