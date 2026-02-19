@@ -31,8 +31,13 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // AppAuth redirect scheme placeholder (required by AppAuth library manifest)
-        // Copilot doesn't use OAuth, but placeholder is needed for manifest merger
+        // HuggingFace OAuth client ID (from gradle.properties or environment)
+        val hfClientId =
+            project.findProperty("HF_CLIENT_ID")?.toString() ?: System.getenv("HF_CLIENT_ID")
+                ?: ""
+        buildConfigField("String", "HF_CLIENT_ID", "\"$hfClientId\"")
+
+        // AppAuth redirect scheme (required by AppAuth library manifest)
         manifestPlaceholders["appAuthRedirectScheme"] = "copilot"
     }
 
@@ -71,6 +76,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     lint {

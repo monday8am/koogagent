@@ -1,5 +1,6 @@
 package com.monday8am.koogagent.copilot
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -19,6 +20,11 @@ class MainActivity : ComponentActivity() {
         // Initialize service locator with application context
         Dependencies.appContext = applicationContext
 
+        // Handle OAuth redirect intent on fresh start
+        if (savedInstanceState == null) {
+            Dependencies.oAuthManager.onHandleIntent(intent)
+        }
+
         setContent {
             CyclingCopilotTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
@@ -26,5 +32,10 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        Dependencies.oAuthManager.onHandleIntent(intent)
     }
 }
