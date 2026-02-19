@@ -33,11 +33,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.monday8am.koogagent.copilot.Dependencies
 import com.monday8am.koogagent.copilot.ui.theme.CyclingCopilotTheme
-import com.monday8am.presentation.modelselector.DownloadStatus
-import com.monday8am.presentation.modelselector.ModelInfo
-import com.monday8am.presentation.modelselector.ModelSelectorViewModelImpl
-import com.monday8am.presentation.modelselector.UiAction
-import com.monday8am.presentation.modelselector.UiState
+import com.monday8am.presentation.onboard.DownloadStatus
+import com.monday8am.presentation.onboard.ModelInfo
+import com.monday8am.presentation.onboard.OnboardViewModelImpl
+import com.monday8am.presentation.onboard.UiAction
+import com.monday8am.presentation.onboard.UiState
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 
@@ -48,9 +48,8 @@ fun OnboardScreen(
     viewModel: AndroidOnboardViewModel =
         viewModel {
             AndroidOnboardViewModel(
-                ModelSelectorViewModelImpl(
+                OnboardViewModelImpl(
                     modelDownloadManager = Dependencies.modelDownloadManager,
-                    modelRepository = Dependencies.modelRepository,
                     authRepository = Dependencies.authRepository,
                 )
             )
