@@ -2,19 +2,19 @@ package com.monday8am.koogagent.copilot.ui.screens.onboard
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.monday8am.presentation.modelselector.ModelSelectorViewModel
-import com.monday8am.presentation.modelselector.UiState
+import com.monday8am.presentation.onboard.OnboardViewModel
+import com.monday8am.presentation.onboard.UiState
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 
 /**
  * Android wrapper ViewModel for Onboard screen.
- * Delegates to platform-agnostic ModelSelectorViewModel from :presentation module.
+ * Delegates to platform-agnostic OnboardViewModel from :presentation module.
  * Follows edgelab pattern with stateIn for lifecycle-aware state collection.
  */
-class AndroidOnboardViewModel(private val impl: ModelSelectorViewModel) :
-    ViewModel(), ModelSelectorViewModel by impl {
+class AndroidOnboardViewModel(private val impl: OnboardViewModel) :
+    ViewModel(), OnboardViewModel by impl {
 
     override val uiState: StateFlow<UiState> =
         impl.uiState.stateIn(

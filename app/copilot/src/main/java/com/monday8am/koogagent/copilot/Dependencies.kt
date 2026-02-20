@@ -3,6 +3,7 @@ package com.monday8am.koogagent.copilot
 import android.content.Context
 import com.monday8am.agent.core.LocalInferenceEngine
 import com.monday8am.koogagent.core.di.CoreDependencies
+import com.monday8am.koogagent.core.oauth.HuggingFaceOAuthManager
 import com.monday8am.koogagent.data.AuthRepository
 import com.monday8am.koogagent.data.ModelRepository
 import com.monday8am.koogagent.data.ModelRepositoryImpl
@@ -19,6 +20,16 @@ object Dependencies {
     lateinit var appContext: Context
 
     val applicationScope by lazy { CoroutineScope(SupervisorJob() + Dispatchers.Main) }
+
+    // OAuth manager for HuggingFace authentication
+    val oAuthManager: HuggingFaceOAuthManager by lazy {
+        CoreDependencies.createOAuthManager(
+            context = appContext,
+            clientId = BuildConfig.HF_CLIENT_ID,
+            redirectScheme = "copilot",
+            activityClass = MainActivity::class.java,
+        )
+    }
 
     // Reuse core infrastructure
     val modelDownloadManager: ModelDownloadManager by lazy {

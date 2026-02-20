@@ -8,24 +8,30 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -33,35 +39,36 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.monday8am.koogagent.copilot.Dependencies
 import com.monday8am.koogagent.copilot.ui.theme.CyclingCopilotTheme
-import com.monday8am.presentation.modelselector.DownloadStatus
-import com.monday8am.presentation.modelselector.ModelInfo
-import com.monday8am.presentation.modelselector.ModelSelectorViewModelImpl
-import com.monday8am.presentation.modelselector.UiAction
-import com.monday8am.presentation.modelselector.UiState
+import com.monday8am.presentation.onboard.DownloadStatus
+import com.monday8am.presentation.onboard.ModelInfo
+import com.monday8am.presentation.onboard.OnboardViewModelImpl
+import com.monday8am.presentation.onboard.UiAction
+import com.monday8am.presentation.onboard.UiState
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 
-/** Onboard Screen - Model download and welcome */
+/** Onboard Screen - 3-step wizard for authentication and model download */
 @Composable
 fun OnboardScreen(
     onNavigateToSetup: () -> Unit,
     viewModel: AndroidOnboardViewModel =
         viewModel {
             AndroidOnboardViewModel(
-                ModelSelectorViewModelImpl(
+                OnboardViewModelImpl(
                     modelDownloadManager = Dependencies.modelDownloadManager,
-                    modelRepository = Dependencies.modelRepository,
                     authRepository = Dependencies.authRepository,
                 )
             )
         },
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
 
     OnboardScreenContent(
         uiState = uiState,
         onAction = viewModel::onUiAction,
         onNavigateToSetup = onNavigateToSetup,
+        onStartOAuth = { Dependencies.oAuthManager.startAuthorization() },
     )
 }
 
@@ -70,6 +77,7 @@ private fun OnboardScreenContent(
     uiState: UiState,
     onAction: (UiAction) -> Unit = {},
     onNavigateToSetup: () -> Unit = {},
+    onStartOAuth: () -> Unit = {},
 ) {
     Column(
         modifier =
@@ -112,64 +120,206 @@ private fun OnboardScreenContent(
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(32.dp))
 
-        // Download section
-        Text(
-            text = "DOWNLOAD REQUIRED MODELS",
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.fillMaxWidth(),
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        if (uiState.isLoadingCatalog) {
-            CircularProgressIndicator(modifier = Modifier.padding(32.dp))
-        } else {
-            // Show download cards for each model
-            uiState.models.forEach { modelInfo ->
-                ModelDownloadCard(
-                    modelInfo = modelInfo,
-                    onAction = onAction,
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                )
+        // Step 1: Authentication
+        WizardStep(
+            stepNumber = 1,
+            title = "Sign in to HuggingFace",
+            description = "Required to download Google LLM models",
+            isCompleted = uiState.isLoggedIn,
+            isEnabled = true,
+        ) {
+            if (uiState.isLoggedIn) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = "Signed in",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp),
+                    )
+                    Text(
+                        text = "Signed in",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            } else {
+                Button(
+                    onClick = onStartOAuth,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Spacer(modifier = Modifier.size(8.dp))
+                    Text("Sign in with HuggingFace")
+                }
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Download summary
-        val totalSize = uiState.models.sumOf { it.config.fileSizeBytes ?: 0L }
-        val downloadedSize =
-            uiState.models.filter { it.isDownloaded }.sumOf { it.config.fileSizeBytes ?: 0L }
-
-        Text(
-            text = "Downloaded: ${formatSize(downloadedSize)} / ${formatSize(totalSize)}",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-
-        Spacer(modifier = Modifier.weight(1f))
-
-        // Continue button
-        val allModelsReady = uiState.models.all { it.isDownloaded }
-
-        Button(
-            onClick = onNavigateToSetup,
-            enabled = allModelsReady,
-            modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+        // Step 2: Download Models
+        WizardStep(
+            stepNumber = 2,
+            title = "Download AI Models",
+            description = "2 models required for offline functionality",
+            isCompleted = uiState.models.all { it.isDownloaded },
+            isEnabled = uiState.isLoggedIn,
         ) {
-            Text("Continue to Setup")
+            if (uiState.isLoadingCatalog) {
+                CircularProgressIndicator(modifier = Modifier.padding(16.dp))
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    uiState.models.forEach { modelInfo ->
+                        ModelDownloadCard(
+                            modelInfo = modelInfo,
+                            onAction = onAction,
+                            isEnabled = uiState.isLoggedIn,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+
+                    // Download summary
+                    val totalSize = uiState.models.sumOf { it.config.fileSizeBytes ?: 0L }
+                    val downloadedSize =
+                        uiState.models
+                            .filter { it.isDownloaded }
+                            .sumOf { it.config.fileSizeBytes ?: 0L }
+
+                    Text(
+                        text =
+                            "Downloaded: ${formatSize(downloadedSize)} / ${formatSize(totalSize)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                }
+            }
         }
 
-        if (!allModelsReady) {
-            Text(
-                text = "Download all models to continue",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-            )
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Step 3: Continue to Setup
+        val allModelsReady = uiState.models.all { it.isDownloaded }
+        WizardStep(
+            stepNumber = 3,
+            title = "Start Using Copilot",
+            description = "All set! Ready to configure your first ride",
+            isCompleted = false,
+            isEnabled = allModelsReady && uiState.isLoggedIn,
+        ) {
+            Button(
+                onClick = onNavigateToSetup,
+                enabled = allModelsReady && uiState.isLoggedIn,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Continue to Setup")
+            }
+
+            if (!allModelsReady || !uiState.isLoggedIn) {
+                Text(
+                    text =
+                        when {
+                            !uiState.isLoggedIn -> "Complete Step 1 to continue"
+                            !allModelsReady -> "Complete Step 2 to continue"
+                            else -> ""
+                        },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
+    }
+}
+
+@Composable
+private fun WizardStep(
+    stepNumber: Int,
+    title: String,
+    description: String,
+    isCompleted: Boolean,
+    isEnabled: Boolean,
+    content: @Composable () -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors =
+            CardDefaults.cardColors(
+                containerColor =
+                    if (isEnabled) {
+                        MaterialTheme.colorScheme.surface
+                    } else {
+                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    }
+            ),
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            // Step header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "STEP #$stepNumber",
+                        style = MaterialTheme.typography.labelSmall,
+                        color =
+                            if (isCompleted) {
+                                MaterialTheme.colorScheme.primary
+                            } else if (isEnabled) {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                            },
+                    )
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleMedium,
+                        color =
+                            if (isEnabled) {
+                                MaterialTheme.colorScheme.onSurface
+                            } else {
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                            },
+                    )
+                    Text(
+                        text = description,
+                        style = MaterialTheme.typography.bodySmall,
+                        color =
+                            if (isEnabled) {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                            },
+                    )
+                }
+
+                if (isCompleted) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = "Completed",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(32.dp),
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Step content
+            content()
         }
     }
 }
@@ -189,9 +339,16 @@ private fun FeatureItem(text: String) {
 private fun ModelDownloadCard(
     modelInfo: ModelInfo,
     onAction: (UiAction) -> Unit,
+    isEnabled: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    Card(modifier = modifier) {
+    Card(
+        modifier = modifier,
+        colors =
+            CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            ),
+    ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -201,7 +358,7 @@ private fun ModelDownloadCard(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = modelInfo.config.displayName,
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.titleSmall,
                     )
                     Text(
                         text = formatSize(modelInfo.config.fileSizeBytes ?: 0L),
@@ -224,16 +381,22 @@ private fun ModelDownloadCard(
                         }
                     }
                     is DownloadStatus.Failed -> {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Failed",
-                            tint = MaterialTheme.colorScheme.error,
-                        )
+                        OutlinedButton(
+                            onClick = {
+                                onAction(UiAction.DownloadModel(modelInfo.config.modelId))
+                            },
+                            enabled = isEnabled,
+                        ) {
+                            Text("Retry")
+                        }
                     }
                     else -> {
-                        Button(onClick = {
-                            onAction(UiAction.DownloadModel(modelInfo.config.modelId))
-                        }) {
+                        FilledTonalButton(
+                            onClick = {
+                                onAction(UiAction.DownloadModel(modelInfo.config.modelId))
+                            },
+                            enabled = isEnabled,
+                        ) {
                             Text("Download")
                         }
                     }
@@ -255,11 +418,22 @@ private fun ModelDownloadCard(
                 }
                 is DownloadStatus.Failed -> {
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = status.error,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
-                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Failed",
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(16.dp),
+                        )
+                        Text(
+                            text = status.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
                 }
                 else -> {}
             }
@@ -288,13 +462,59 @@ private fun OnboardScreenPreview() {
                             ModelInfo(
                                 config =
                                     com.monday8am.koogagent.data.ModelConfiguration(
-                                        displayName = "FunctionGemma 2B",
+                                        displayName = "User HF Model",
                                         modelFamily = "gemma",
                                         parameterCount = 2.0f,
                                         quantization = "int8",
                                         contextLength = 4096,
                                         downloadUrl = "",
-                                        bundleFilename = "",
+                                        bundleFilename = "user-model.bin",
+                                        fileSizeBytes = 2_200_000_000L,
+                                    ),
+                                isDownloaded = false,
+                                downloadStatus = DownloadStatus.NotStarted,
+                            ),
+                            ModelInfo(
+                                config =
+                                    com.monday8am.koogagent.data.ModelConfiguration(
+                                        displayName = "Gemma 3 1B",
+                                        modelFamily = "gemma",
+                                        parameterCount = 1.0f,
+                                        quantization = "int8",
+                                        contextLength = 4096,
+                                        downloadUrl = "",
+                                        bundleFilename = "gemma3-1b.bin",
+                                        fileSizeBytes = 1_000_000_000L,
+                                    ),
+                                isDownloaded = false,
+                                downloadStatus = DownloadStatus.NotStarted,
+                            ),
+                        ),
+                    isLoggedIn = false,
+                ),
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Step 1 Complete")
+@Composable
+private fun OnboardScreenPreviewStep1Complete() {
+    CyclingCopilotTheme {
+        OnboardScreenContent(
+            uiState =
+                UiState(
+                    models =
+                        persistentListOf(
+                            ModelInfo(
+                                config =
+                                    com.monday8am.koogagent.data.ModelConfiguration(
+                                        displayName = "User HF Model",
+                                        modelFamily = "gemma",
+                                        parameterCount = 2.0f,
+                                        quantization = "int8",
+                                        contextLength = 4096,
+                                        downloadUrl = "",
+                                        bundleFilename = "user-model.bin",
                                         fileSizeBytes = 2_200_000_000L,
                                     ),
                                 isDownloaded = false,
@@ -303,19 +523,20 @@ private fun OnboardScreenPreview() {
                             ModelInfo(
                                 config =
                                     com.monday8am.koogagent.data.ModelConfiguration(
-                                        displayName = "Gemma 2 550M",
+                                        displayName = "Gemma 3 1B",
                                         modelFamily = "gemma",
-                                        parameterCount = 0.55f,
+                                        parameterCount = 1.0f,
                                         quantization = "int8",
                                         contextLength = 4096,
                                         downloadUrl = "",
-                                        bundleFilename = "",
-                                        fileSizeBytes = 520_000_000L,
+                                        bundleFilename = "gemma3-1b.bin",
+                                        fileSizeBytes = 1_000_000_000L,
                                     ),
                                 isDownloaded = true,
                                 downloadStatus = DownloadStatus.Completed,
                             ),
                         ),
+                    isLoggedIn = true,
                 ),
         )
     }
