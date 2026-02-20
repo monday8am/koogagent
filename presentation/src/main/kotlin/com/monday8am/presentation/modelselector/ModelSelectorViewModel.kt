@@ -51,8 +51,10 @@ data class ModelInfo(
     val config: ModelConfiguration,
     val isDownloaded: Boolean = false,
     val downloadStatus: DownloadStatus = DownloadStatus.NotStarted,
-    val isGated: Boolean = false,
-)
+) {
+    val isGated: Boolean
+        get() = config.isGated
+}
 
 data class DownloadInfo(val modelId: String, val progress: Float)
 
@@ -265,7 +267,6 @@ class ModelSelectorViewModelImpl(
                                 config = config,
                                 isDownloaded = isDownloaded,
                                 downloadStatus = downloadStatus,
-                                isGated = config.isGated,
                             )
                         }
                         .toImmutableList()

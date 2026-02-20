@@ -306,10 +306,9 @@ private fun ModelCardPreview_Gated() {
         ModelCard(
             modelInfo =
                 ModelInfo(
-                    config = ModelCatalog.GEMMA3_1B,
+                    config = ModelCatalog.GEMMA3_1B.copy(isGated = true),
                     isDownloaded = false,
                     downloadStatus = DownloadStatus.NotStarted,
-                    isGated = true,
                 ),
             isSelected = false,
             onDownloadClick = {},
