@@ -1,4 +1,4 @@
-package com.monday8am.koogagent.data
+package com.monday8am.koogagent.data.model
 
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope

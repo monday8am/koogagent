@@ -2,7 +2,7 @@ package com.monday8am.koogagent.edgelab.ui.screens.testing
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.monday8am.koogagent.data.ModelConfiguration
+import com.monday8am.koogagent.data.model.ModelConfiguration
 import com.monday8am.presentation.testing.TestUiState
 import com.monday8am.presentation.testing.TestViewModel
 import kotlinx.coroutines.flow.SharingStarted

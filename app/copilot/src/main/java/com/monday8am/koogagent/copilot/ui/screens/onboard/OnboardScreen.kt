@@ -461,7 +461,7 @@ private fun OnboardScreenPreview() {
                         persistentListOf(
                             ModelInfo(
                                 config =
-                                    com.monday8am.koogagent.data.ModelConfiguration(
+                                    com.monday8am.koogagent.data.model.ModelConfiguration(
                                         displayName = "User HF Model",
                                         modelFamily = "gemma",
                                         parameterCount = 2.0f,
@@ -476,7 +476,7 @@ private fun OnboardScreenPreview() {
                             ),
                             ModelInfo(
                                 config =
-                                    com.monday8am.koogagent.data.ModelConfiguration(
+                                    com.monday8am.koogagent.data.model.ModelConfiguration(
                                         displayName = "Gemma 3 1B",
                                         modelFamily = "gemma",
                                         parameterCount = 1.0f,
@@ -507,7 +507,7 @@ private fun OnboardScreenPreviewStep1Complete() {
                         persistentListOf(
                             ModelInfo(
                                 config =
-                                    com.monday8am.koogagent.data.ModelConfiguration(
+                                    com.monday8am.koogagent.data.model.ModelConfiguration(
                                         displayName = "User HF Model",
                                         modelFamily = "gemma",
                                         parameterCount = 2.0f,
@@ -522,7 +522,7 @@ private fun OnboardScreenPreviewStep1Complete() {
                             ),
                             ModelInfo(
                                 config =
-                                    com.monday8am.koogagent.data.ModelConfiguration(
+                                    com.monday8am.koogagent.data.model.ModelConfiguration(
                                         displayName = "Gemma 3 1B",
                                         modelFamily = "gemma",
                                         parameterCount = 1.0f,

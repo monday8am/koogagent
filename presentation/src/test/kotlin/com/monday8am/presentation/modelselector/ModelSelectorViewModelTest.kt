@@ -1,10 +1,10 @@
 package com.monday8am.presentation.modelselector
 
-import com.monday8am.koogagent.data.AuthRepository
-import com.monday8am.koogagent.data.ModelCatalog
-import com.monday8am.koogagent.data.ModelCatalogProvider
-import com.monday8am.koogagent.data.ModelConfiguration
-import com.monday8am.koogagent.data.ModelRepositoryImpl
+import com.monday8am.koogagent.data.auth.AuthRepository
+import com.monday8am.koogagent.data.model.ModelCatalog
+import com.monday8am.koogagent.data.model.ModelCatalogProvider
+import com.monday8am.koogagent.data.model.ModelConfiguration
+import com.monday8am.koogagent.data.model.ModelRepositoryImpl
 import com.monday8am.presentation.FakeModelDownloadManager
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest

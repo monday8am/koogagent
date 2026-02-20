@@ -7,7 +7,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.workDataOf
-import com.monday8am.koogagent.data.AuthRepository
+import com.monday8am.koogagent.data.auth.AuthRepository
 import com.monday8am.presentation.modelselector.ModelDownloadManager
 import java.io.File
 import kotlinx.coroutines.CoroutineDispatcher

@@ -1,4 +1,4 @@
-package com.monday8am.koogagent.data
+package com.monday8am.koogagent.data.model
 
 @kotlinx.serialization.Serializable
 enum class HardwareBackend {

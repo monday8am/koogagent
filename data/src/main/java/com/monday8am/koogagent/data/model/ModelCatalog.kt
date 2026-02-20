@@ -1,4 +1,4 @@
-package com.monday8am.koogagent.data
+package com.monday8am.koogagent.data.model
 
 /**
  * Catalog of predefined model configurations. This serves as the "source of truth" for available

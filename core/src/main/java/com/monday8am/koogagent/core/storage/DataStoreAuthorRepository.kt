@@ -4,8 +4,8 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
-import com.monday8am.koogagent.data.AuthorInfo
-import com.monday8am.koogagent.data.AuthorRepository
+import com.monday8am.koogagent.data.auth.AuthorInfo
+import com.monday8am.koogagent.data.auth.AuthorRepository
 import com.monday8am.koogagent.data.huggingface.HuggingFaceApiClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow

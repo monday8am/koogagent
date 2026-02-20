@@ -37,7 +37,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.monday8am.koogagent.data.AuthorInfo
+import com.monday8am.koogagent.data.auth.AuthorInfo
 import com.monday8am.koogagent.edgelab.Dependencies
 import com.monday8am.koogagent.edgelab.ui.theme.KoogAgentTheme
 import com.monday8am.presentation.authormanager.AuthorManagerViewModelImpl

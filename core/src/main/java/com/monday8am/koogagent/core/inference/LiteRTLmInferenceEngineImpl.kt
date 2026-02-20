@@ -12,8 +12,8 @@ import com.google.ai.edge.litertlm.Message
 import com.google.ai.edge.litertlm.MessageCallback
 import com.google.ai.edge.litertlm.SamplerConfig
 import com.monday8am.agent.core.LocalInferenceEngine
-import com.monday8am.koogagent.data.HardwareBackend
-import com.monday8am.koogagent.data.ModelConfiguration
+import com.monday8am.koogagent.data.model.HardwareBackend
+import com.monday8am.koogagent.data.model.ModelConfiguration
 import java.io.File
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException

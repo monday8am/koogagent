@@ -1,4 +1,4 @@
-package com.monday8am.koogagent.data
+package com.monday8am.koogagent.data.auth
 
 import kotlinx.serialization.Serializable
 

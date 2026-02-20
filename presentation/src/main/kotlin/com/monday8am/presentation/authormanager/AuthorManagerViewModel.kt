@@ -1,7 +1,7 @@
 package com.monday8am.presentation.authormanager
 
-import com.monday8am.koogagent.data.AuthorInfo
-import com.monday8am.koogagent.data.AuthorRepository
+import com.monday8am.koogagent.data.auth.AuthorInfo
+import com.monday8am.koogagent.data.auth.AuthorRepository
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList

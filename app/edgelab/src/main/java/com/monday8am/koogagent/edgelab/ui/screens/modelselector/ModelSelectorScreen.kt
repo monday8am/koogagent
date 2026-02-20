@@ -20,7 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.monday8am.koogagent.edgelab.Dependencies
-import com.monday8am.koogagent.data.ModelCatalog
+import com.monday8am.koogagent.data.model.ModelCatalog
 import com.monday8am.koogagent.edgelab.ui.screens.testing.InitializationIndicator
 import com.monday8am.koogagent.edgelab.ui.theme.KoogAgentTheme
 import com.monday8am.presentation.modelselector.DownloadInfo

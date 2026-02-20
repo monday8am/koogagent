@@ -1,5 +1,9 @@
 package com.monday8am.koogagent.data
 
+import com.monday8am.koogagent.data.model.ModelCatalog
+import com.monday8am.koogagent.data.model.ModelCatalogProvider
+import com.monday8am.koogagent.data.model.ModelConfiguration
+import com.monday8am.koogagent.data.model.ModelRepositoryImpl
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull

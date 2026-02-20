@@ -1,9 +1,9 @@
 package com.monday8am.koogagent.data.huggingface
 
 import co.touchlab.kermit.Logger
-import com.monday8am.koogagent.data.ModelCatalog
-import com.monday8am.koogagent.data.ModelCatalogProvider
-import com.monday8am.koogagent.data.ModelConfiguration
+import com.monday8am.koogagent.data.model.ModelCatalog
+import com.monday8am.koogagent.data.model.ModelCatalogProvider
+import com.monday8am.koogagent.data.model.ModelConfiguration
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
