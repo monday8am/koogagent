@@ -1,7 +1,6 @@
 package com.monday8am.presentation.modelselector
 
 import com.monday8am.koogagent.data.AuthRepository
-import com.monday8am.koogagent.data.HardwareBackend
 import com.monday8am.koogagent.data.ModelConfiguration
 import com.monday8am.koogagent.data.ModelRepository
 import com.monday8am.koogagent.data.RepositoryState
@@ -38,7 +37,6 @@ data class UiState(
 enum class GroupingMode {
     None,
     Family,
-    Hardware,
     Access,
 }
 
@@ -345,26 +343,6 @@ class ModelSelectorViewModelImpl(
                                 },
                             models = groupModels.toImmutableList(),
                             isExpanded = !collapsedGroupIds.contains("family_$family"),
-                        )
-                    }
-                    .sortedBy { it.title }
-            }
-
-            GroupingMode.Hardware -> {
-                models
-                    .groupBy { it.config.hardwareAcceleration }
-                    .map { (hardware, groupModels) ->
-                        val hardwareName =
-                            when (hardware) {
-                                HardwareBackend.CPU_ONLY -> "CPU Only"
-                                HardwareBackend.GPU_SUPPORTED -> "GPU Accelerated"
-                                HardwareBackend.NPU_SUPPORTED -> "NPU Accelerated"
-                            }
-                        ModelGroup(
-                            id = "hw_${hardware.name}",
-                            title = hardwareName,
-                            models = groupModels.toImmutableList(),
-                            isExpanded = !collapsedGroupIds.contains("hw_${hardware.name}"),
                         )
                     }
                     .sortedBy { it.title }
