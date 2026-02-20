@@ -36,9 +36,7 @@ class FallbackModelCatalogProvider(
                 // For now, reliance on catch is sufficient for failure
             }
             .map { models ->
-                if (models.isNotEmpty()) {
-                    models
-                } else {
+                models.ifEmpty {
                     logger.w { "Primary provider returned empty list. Using fallback." }
                     fallback
                 }

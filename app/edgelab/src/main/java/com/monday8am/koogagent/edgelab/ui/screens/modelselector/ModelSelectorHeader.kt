@@ -42,76 +42,80 @@ internal fun ModelSelectorHeader(
     onIntent: (UiAction) -> Unit,
     onLoginClick: () -> Unit,
     onLogoutClick: () -> Unit,
-    onManageAuthorsClick: () -> Unit = {},
     modifier: Modifier = Modifier,
+    onManageAuthorsClick: () -> Unit = {}
 ) {
     Column(modifier = modifier) {
+        // Action buttons row at the top
         Row(
-            modifier = Modifier.fillMaxWidth().padding(top = 32.dp, bottom = 16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+            horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(text = "Select a Model", style = MaterialTheme.typography.headlineMedium)
+            // Manage model sources button
+            IconButton(onClick = onManageAuthorsClick) {
+                Icon(
+                    imageVector = Icons.Outlined.ManageAccounts,
+                    contentDescription = "Manage model sources",
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                // Manage model sources button
-                IconButton(onClick = onManageAuthorsClick) {
+            // User login/logout button
+            IconButton(onClick = { if (isLoggedIn) onLogoutClick() else onLoginClick() }) {
+                Icon(
+                    imageVector =
+                        if (isLoggedIn) Icons.Default.Person else Icons.Default.PersonOff,
+                    contentDescription =
+                        if (isLoggedIn) "Logout from HuggingFace" else "Login to HuggingFace",
+                    tint =
+                        if (isLoggedIn) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
+            if (groupingMode != GroupingMode.None) {
+                IconButton(onClick = { onIntent(UiAction.ToggleAllGroups) }) {
                     Icon(
-                        imageVector = Icons.Outlined.ManageAccounts,
-                        contentDescription = "Manage model sources",
+                        imageVector =
+                            if (isAllExpanded) Icons.Default.UnfoldLess
+                            else Icons.Default.UnfoldMore,
+                        contentDescription =
+                            if (isAllExpanded) "Collapse All" else "Expand All",
                         tint = MaterialTheme.colorScheme.primary,
                     )
                 }
+            }
 
-                // User login/logout button
-                IconButton(onClick = { if (isLoggedIn) onLogoutClick() else onLoginClick() }) {
+            Box {
+                var expanded by remember { mutableStateOf(false) }
+                IconButton(onClick = { expanded = true }) {
                     Icon(
-                        imageVector =
-                            if (isLoggedIn) Icons.Default.Person else Icons.Default.PersonOff,
-                        contentDescription =
-                            if (isLoggedIn) "Logout from HuggingFace" else "Login to HuggingFace",
-                        tint =
-                            if (isLoggedIn) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                        Icons.Default.FilterList,
+                        contentDescription = "Group models",
+                        tint = MaterialTheme.colorScheme.primary,
                     )
                 }
-
-                if (groupingMode != GroupingMode.None) {
-                    IconButton(onClick = { onIntent(UiAction.ToggleAllGroups) }) {
-                        Icon(
-                            imageVector =
-                                if (isAllExpanded) Icons.Default.UnfoldLess
-                                else Icons.Default.UnfoldMore,
-                            contentDescription =
-                                if (isAllExpanded) "Collapse All" else "Expand All",
-                            tint = MaterialTheme.colorScheme.primary,
+                DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                    GroupingMode.entries.forEach { mode ->
+                        DropdownMenuItem(
+                            text = { Text(mode.name) },
+                            onClick = {
+                                onIntent(UiAction.SetGroupingMode(mode))
+                                expanded = false
+                            },
                         )
-                    }
-                }
-
-                Box {
-                    var expanded by remember { mutableStateOf(false) }
-                    IconButton(onClick = { expanded = true }) {
-                        Icon(
-                            Icons.Default.FilterList,
-                            contentDescription = "Group models",
-                            tint = MaterialTheme.colorScheme.primary,
-                        )
-                    }
-                    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                        GroupingMode.entries.forEach { mode ->
-                            DropdownMenuItem(
-                                text = { Text(mode.name) },
-                                onClick = {
-                                    onIntent(UiAction.SetGroupingMode(mode))
-                                    expanded = false
-                                },
-                            )
-                        }
                     }
                 }
             }
         }
+
+        // Title with full width, no competition with buttons
+        Text(
+            text = "Select a Model",
+            style = MaterialTheme.typography.headlineMedium,
+            modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
+        )
 
         Text(
             text = statusMessage,
