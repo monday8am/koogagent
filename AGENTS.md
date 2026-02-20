@@ -258,6 +258,34 @@ The Cycling Copilot app is a demo application showcasing on-device AI for cyclin
   - Consistent architecture: mirrors model catalog caching system
 - **Safety**: Continuation guards prevent crashes when requests are cancelled mid-flight
 
+#### Cycling Copilot Onboarding
+- **PR**: #67 - Add simplified OnboardViewModel for Copilot app
+- **Location**: `presentation/src/main/kotlin/com/monday8am/presentation/onboard/`
+- **Purpose**: Simplified model download flow for Copilot app with two specific gated models
+- **Components**:
+  - `OnboardViewModel`: Platform-agnostic ViewModel for two-model download workflow
+  - `OnboardViewModelImpl`: Implementation with hardcoded model configurations
+  - `OnboardViewModelTest`: Comprehensive test suite (20+ test cases)
+- **Architecture**:
+  - Simplified from `ModelSelectorViewModel` (no grouping, catalog loading, or multi-model management)
+  - Two hardcoded models: User HF Model + Gemma 3 1B (placeholder URLs)
+  - Reactive state management with Flow combination (`modelsStatus` + `authToken`)
+  - Support for parallel background downloads via `ModelDownloadManager`
+  - HuggingFace authentication integration via `AuthRepository`
+- **UI**: 3-step wizard in OnboardScreen
+  - **Step 1**: Sign in to HuggingFace (prominent button with lock icon, required)
+  - **Step 2**: Download AI models (enabled after sign-in, FilledTonalButton style)
+  - **Step 3**: Continue to setup (enabled after all downloads complete)
+  - Visual states: Step labels (STEP #1, #2, #3), disabled appearance, check icons when complete
+  - Smart status messages guide users through required steps
+- **OAuth Integration**:
+  - Added `HuggingFaceOAuthManager` to Copilot `Dependencies.kt`
+  - Updated `MainActivity.kt` to handle OAuth redirect intents (`onNewIntent`)
+  - Configured `BuildConfig.HF_CLIENT_ID` in `app/copilot/build.gradle.kts`
+  - OAuth redirect scheme: `copilot://oauth/callback`
+- **Testing**: Full test coverage for initialization, authentication, downloads, parallel downloads, state derivation
+- **Pattern**: Follows edgelab patterns (delegation, stateIn, lifecycle awareness)
+
 ### Removed Features
 - **Notification screens**: All notification-related UI screens have been removed from the project. The app now focuses on model selection, chat, and testing functionality.
 - **GPU detection from README**: Removed README parsing for GPU support detection. Hardware acceleration is now determined at runtime.
