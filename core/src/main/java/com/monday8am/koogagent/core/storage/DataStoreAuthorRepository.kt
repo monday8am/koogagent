@@ -76,7 +76,7 @@ class DataStoreAuthorRepository(
     }
 
     private suspend fun persistToDataStore(authors: List<AuthorInfo>) {
-        val jsonString = Json.encodeToString(authors)
+        val jsonString = Json.encodeToString<List<AuthorInfo>>(authors)
         dataStore.edit { preferences ->
             preferences[authorsKey] = jsonString
         }
