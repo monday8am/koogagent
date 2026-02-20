@@ -146,6 +146,7 @@ class HuggingFaceModelRepository(
                 contextLength = parsed.contextLength ?: DEFAULT_CONTEXT_LENGTH,
                 downloadUrl = downloadUrl,
                 bundleFilename = filename,
+                author = summary.id.substringBefore("/"),
                 isGated = summary.gated.isGated,
                 description = null,
                 fileSizeBytes = fileSize,

@@ -43,6 +43,7 @@ data class ModelConfiguration(
     val defaultTopP: Float = 0.85f,
     val defaultTemperature: Float = 0.2f,
     val defaultMaxOutputTokens: Int = (contextLength * 0.25).toInt(),
+    val author: String? = null,
     val isGated: Boolean = false,
     val description: String? = null,
     val fileSizeBytes: Long? = null,
