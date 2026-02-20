@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonOff
 import androidx.compose.material.icons.filled.UnfoldLess
 import androidx.compose.material.icons.filled.UnfoldMore
+import androidx.compose.material.icons.outlined.ManageAccounts
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -41,6 +42,7 @@ internal fun ModelSelectorHeader(
     onIntent: (UiAction) -> Unit,
     onLoginClick: () -> Unit,
     onLogoutClick: () -> Unit,
+    onManageAuthorsClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier) {
@@ -52,6 +54,15 @@ internal fun ModelSelectorHeader(
             Text(text = "Select a Model", style = MaterialTheme.typography.headlineMedium)
 
             Row(verticalAlignment = Alignment.CenterVertically) {
+                // Manage model sources button
+                IconButton(onClick = onManageAuthorsClick) {
+                    Icon(
+                        imageVector = Icons.Outlined.ManageAccounts,
+                        contentDescription = "Manage model sources",
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                }
+
                 // User login/logout button
                 IconButton(onClick = { if (isLoggedIn) onLogoutClick() else onLoginClick() }) {
                     Icon(

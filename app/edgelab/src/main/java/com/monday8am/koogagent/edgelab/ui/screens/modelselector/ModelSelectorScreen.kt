@@ -35,6 +35,7 @@ import kotlinx.collections.immutable.toImmutableList
 @Composable
 fun ModelSelectorScreen(
     onNavigateToTesting: (String) -> Unit,
+    onNavigateToAuthorManager: () -> Unit = {},
     viewModel: AndroidModelSelectorViewModel = viewModel {
         AndroidModelSelectorViewModel(
             ModelSelectorViewModelImpl(
@@ -110,6 +111,7 @@ fun ModelSelectorScreen(
         onLoginClick = launchOAuth,
         onLogoutClick = { showLogoutDialog = true },
         onNavigateToTesting = onNavigateToTesting,
+        onNavigateToAuthorManager = onNavigateToAuthorManager,
     )
 
     if (showLogoutDialog) {
@@ -131,6 +133,7 @@ private fun ModelSelectorScreenContent(
     onLoginClick: () -> Unit = {},
     onLogoutClick: () -> Unit = {},
     onNavigateToTesting: (String) -> Unit = {},
+    onNavigateToAuthorManager: () -> Unit = {},
 ) {
     Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
         ModelSelectorHeader(
@@ -141,6 +144,7 @@ private fun ModelSelectorScreenContent(
             onIntent = onIntent,
             onLoginClick = onLoginClick,
             onLogoutClick = onLogoutClick,
+            onManageAuthorsClick = onNavigateToAuthorManager,
             modifier = Modifier.fillMaxWidth(),
         )
 
