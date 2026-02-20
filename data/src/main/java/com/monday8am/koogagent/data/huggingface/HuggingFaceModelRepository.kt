@@ -1,0 +1,156 @@
+package com.monday8am.koogagent.data.huggingface
+
+import co.touchlab.kermit.Logger
+import com.monday8am.koogagent.data.AuthorRepository
+import com.monday8am.koogagent.data.LocalModelDataSource
+import com.monday8am.koogagent.data.ModelCatalogProvider
+import com.monday8am.koogagent.data.ModelConfiguration
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.FlowCollector
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.sync.Semaphore
+
+class HuggingFaceModelRepository(
+    private val apiClient: HuggingFaceApiClient,
+    private val authorRepository: AuthorRepository,
+    private val localModelDataSource: LocalModelDataSource,
+    private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
+) : ModelCatalogProvider {
+
+    private val logger = Logger.withTag("HuggingFaceModelRepository")
+
+    companion object {
+        private const val DOWNLOAD_URL_TEMPLATE = "https://huggingface.co/%s/resolve/main/%s"
+        private const val DEFAULT_CONTEXT_LENGTH = 4096
+        private const val DEFAULT_PARAM_COUNT = 1.0f
+    }
+
+    private val requestSemaphore = Semaphore(5)
+
+    override fun getModels(): Flow<List<ModelConfiguration>> =
+        flow {
+                val cachedModels = localModelDataSource.getModels()
+                cachedModels?.takeIf { it.isNotEmpty() }?.let { emit(it) }
+
+                fetchNetworkModels()
+                    .onSuccess { networkModels ->
+                        saveAndEmitIfChanged(networkModels, cachedModels)
+                    }
+                    .onFailure { error ->
+                        logger.e(error) { "Failed to refresh models from API" }
+                        if (cachedModels.isNullOrEmpty()) {
+                            emit(emptyList())
+                        }
+                    }
+            }
+            .flowOn(dispatcher)
+
+    private suspend fun FlowCollector<List<ModelConfiguration>>.saveAndEmitIfChanged(
+        networkModels: List<ModelConfiguration>,
+        cachedModels: List<ModelConfiguration>?,
+    ) {
+        when {
+            networkModels.isEmpty() -> {
+                logger.w { "Network fetch returned empty configuration" }
+                if (cachedModels.isNullOrEmpty()) emit(emptyList())
+            }
+
+            networkModels != cachedModels -> {
+                logger.d { "Successfully loaded ${networkModels.size} model configurations" }
+                localModelDataSource.saveModels(networkModels)
+                emit(networkModels)
+            }
+
+            else -> {
+                logger.d { "Network data identical to cached data, skipping duplicate emission" }
+            }
+        }
+    }
+
+    private suspend fun fetchNetworkModels(): Result<List<ModelConfiguration>> =
+        try {
+            Result.success(
+                fetchModelListFromAllSources()
+                    .filter { it.pipelineTag == "text-generation" }
+                    .let { summaries -> fetchModelDataInParallel(summaries) }
+                    .flatMap { (summary, fileSizes) -> convertToConfigurations(summary, fileSizes) }
+                    .sortedByDescending { it.parameterCount }
+            )
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+
+    private suspend fun fetchModelDataInParallel(
+        summaries: List<HuggingFaceModelSummary>
+    ): List<Pair<HuggingFaceModelSummary, Map<String, Long>>> = coroutineScope {
+        summaries.map { summary -> async { fetchModelData(summary) } }.awaitAll().filterNotNull()
+    }
+
+    private suspend fun fetchModelData(
+        summary: HuggingFaceModelSummary
+    ): Pair<HuggingFaceModelSummary, Map<String, Long>>? {
+        requestSemaphore.acquire()
+        return try {
+            val fileSizes = apiClient.fetchFileSizes(summary.id)
+            summary to fileSizes
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            logger.e(e) { "Failed to fetch data for ${summary.id}" }
+            null
+        } finally {
+            requestSemaphore.release()
+        }
+    }
+
+    private suspend fun fetchModelListFromAllSources(): List<HuggingFaceModelSummary> {
+        val authors = authorRepository.authors.value
+        val modelSummaries = mutableListOf<HuggingFaceModelSummary>()
+
+        for (author in authors) {
+            try {
+                modelSummaries.addAll(apiClient.fetchModelList(author.name))
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                logger.e(e) { "Failed to fetch models from ${author.name}" }
+            }
+        }
+
+        return modelSummaries.distinctBy { it.id }
+    }
+
+    private fun convertToConfigurations(
+        summary: HuggingFaceModelSummary,
+        fileSizes: Map<String, Long>,
+    ): List<ModelConfiguration> {
+        return fileSizes.keys.mapNotNull { filename ->
+            val parsed = ModelFilenameParser.parse(filename, summary.id) ?: return@mapNotNull null
+
+            val downloadUrl = String.format(DOWNLOAD_URL_TEMPLATE, summary.id, filename)
+            val huggingFaceUrl = "https://huggingface.co/${summary.id}"
+            val fileSize = fileSizes[filename]
+
+            ModelConfiguration(
+                displayName = parsed.displayName,
+                modelFamily = parsed.modelFamily,
+                parameterCount = parsed.parameterCount ?: DEFAULT_PARAM_COUNT,
+                quantization = parsed.quantization,
+                contextLength = parsed.contextLength ?: DEFAULT_CONTEXT_LENGTH,
+                downloadUrl = downloadUrl,
+                bundleFilename = filename,
+                isGated = summary.gated.isGated,
+                description = null,
+                fileSizeBytes = fileSize,
+                huggingFaceUrl = huggingFaceUrl,
+            )
+        }
+    }
+}

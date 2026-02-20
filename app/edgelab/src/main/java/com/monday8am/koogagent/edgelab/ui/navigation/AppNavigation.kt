@@ -7,6 +7,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import com.monday8am.koogagent.edgelab.ui.screens.authormanager.AuthorManagerScreen
 import com.monday8am.koogagent.edgelab.ui.screens.modelselector.ModelSelectorScreen
 import com.monday8am.koogagent.edgelab.ui.screens.testdetails.TestDetailsScreen
 import com.monday8am.koogagent.edgelab.ui.screens.testing.TestScreen
@@ -23,7 +24,8 @@ fun AppNavigation(
     ) {
         composable<Route.ModelSelector> {
             ModelSelectorScreen(
-                onNavigateToTesting = { modelId -> navController.navigate(Route.Testing(modelId)) }
+                onNavigateToTesting = { modelId -> navController.navigate(Route.Testing(modelId)) },
+                onNavigateToAuthorManager = { navController.navigate(Route.AuthorManager) },
             )
         }
 
@@ -37,6 +39,12 @@ fun AppNavigation(
 
         composable<Route.TestDetails> {
             TestDetailsScreen(
+                onNavigateBack = { navController.popBackStack() },
+            )
+        }
+
+        composable<Route.AuthorManager> {
+            AuthorManagerScreen(
                 onNavigateBack = { navController.popBackStack() },
             )
         }

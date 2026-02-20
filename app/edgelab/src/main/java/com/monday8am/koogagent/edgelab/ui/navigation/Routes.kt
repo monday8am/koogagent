@@ -8,4 +8,6 @@ sealed interface Route {
     @Serializable data class Testing(val modelId: String) : Route
 
     @Serializable data object TestDetails : Route
+
+    @Serializable data object AuthorManager : Route
 }

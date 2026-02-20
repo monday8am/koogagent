@@ -2,12 +2,17 @@ package com.monday8am.koogagent.core.di
 
 import android.app.Activity
 import android.content.Context
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
 import com.monday8am.agent.core.LocalInferenceEngine
-import com.monday8am.koogagent.core.inference.LiteRTLmInferenceEngineImpl
 import com.monday8am.koogagent.core.download.ModelDownloadManagerImpl
+import com.monday8am.koogagent.core.inference.LiteRTLmInferenceEngineImpl
 import com.monday8am.koogagent.core.oauth.HuggingFaceOAuthManager
 import com.monday8am.koogagent.core.storage.AuthRepositoryImpl
+import com.monday8am.koogagent.core.storage.DataStoreAuthorRepository
 import com.monday8am.koogagent.data.AuthRepository
+import com.monday8am.koogagent.data.AuthorRepository
+import com.monday8am.koogagent.data.huggingface.HuggingFaceApiClient
 import com.monday8am.presentation.modelselector.ModelDownloadManager
 import kotlinx.coroutines.CoroutineScope
 
@@ -59,5 +64,16 @@ object CoreDependencies {
         applicationScope: CoroutineScope
     ): AuthRepository {
         return AuthRepositoryImpl(context, applicationScope)
+    }
+
+    /**
+     * Creates an author repository instance.
+     */
+    fun createAuthorRepository(
+        dataStore: DataStore<Preferences>,
+        apiClient: HuggingFaceApiClient,
+        scope: CoroutineScope,
+    ): AuthorRepository {
+        return DataStoreAuthorRepository(dataStore, apiClient, scope)
     }
 }

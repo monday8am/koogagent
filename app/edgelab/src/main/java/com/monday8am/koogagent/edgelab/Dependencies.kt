@@ -6,16 +6,18 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
 import com.monday8am.koogagent.core.di.CoreDependencies
+import com.monday8am.koogagent.core.oauth.HuggingFaceOAuthManager
 import com.monday8am.koogagent.core.storage.DataStoreModelDataSource
 import com.monday8am.koogagent.core.storage.DataStoreTestDataSource
-import com.monday8am.koogagent.core.oauth.HuggingFaceOAuthManager
 import com.monday8am.koogagent.data.AuthRepository
+import com.monday8am.koogagent.data.AuthorRepository
 import com.monday8am.koogagent.data.ModelCatalog
 import com.monday8am.koogagent.data.ModelCatalogProvider
 import com.monday8am.koogagent.data.ModelRepository
 import com.monday8am.koogagent.data.ModelRepositoryImpl
 import com.monday8am.koogagent.data.huggingface.FallbackModelCatalogProvider
-import com.monday8am.koogagent.data.huggingface.HuggingFaceModelCatalogProvider
+import com.monday8am.koogagent.data.huggingface.HuggingFaceApiClient
+import com.monday8am.koogagent.data.huggingface.HuggingFaceModelRepository
 import com.monday8am.koogagent.data.testing.AssetsTestRepository
 import com.monday8am.koogagent.data.testing.TestRepository
 import com.monday8am.koogagent.data.testing.TestRepositoryImpl
@@ -68,11 +70,24 @@ object Dependencies {
         name = "settings"
     )
 
+    val huggingFaceApiClient: HuggingFaceApiClient by lazy {
+        HuggingFaceApiClient(authRepository = authRepository)
+    }
+
+    val authorRepository: AuthorRepository by lazy {
+        CoreDependencies.createAuthorRepository(
+            dataStore = appContext.dataStore,
+            apiClient = huggingFaceApiClient,
+            scope = applicationScope,
+        )
+    }
+
     val modelCatalogProvider: ModelCatalogProvider by lazy {
         FallbackModelCatalogProvider(
-            primary = HuggingFaceModelCatalogProvider(
-                authRepository = authRepository,
-                localModelDataSource = DataStoreModelDataSource(appContext.dataStore)
+            primary = HuggingFaceModelRepository(
+                apiClient = huggingFaceApiClient,
+                authorRepository = authorRepository,
+                localModelDataSource = DataStoreModelDataSource(appContext.dataStore),
             ),
             fallback = ModelCatalog.ALL_MODELS,
         )
