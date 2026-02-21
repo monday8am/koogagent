@@ -1,4 +1,4 @@
-package com.monday8am.koogagent.data
+package com.monday8am.koogagent.data.model
 
 /** Interface that abstracts the local storage of model configurations. */
 interface LocalModelDataSource {

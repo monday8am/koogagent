@@ -20,8 +20,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.monday8am.koogagent.data.HardwareBackend
-import com.monday8am.koogagent.data.ModelConfiguration
+import com.monday8am.koogagent.data.model.HardwareBackend
+import com.monday8am.koogagent.data.model.ModelConfiguration
 import com.monday8am.koogagent.edgelab.ui.theme.KoogAgentTheme
 import com.monday8am.presentation.modelselector.DownloadStatus
 import com.monday8am.presentation.modelselector.ModelGroup

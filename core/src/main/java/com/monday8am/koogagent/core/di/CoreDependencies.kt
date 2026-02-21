@@ -10,8 +10,8 @@ import com.monday8am.koogagent.core.inference.LiteRTLmInferenceEngineImpl
 import com.monday8am.koogagent.core.oauth.HuggingFaceOAuthManager
 import com.monday8am.koogagent.core.storage.AuthRepositoryImpl
 import com.monday8am.koogagent.core.storage.DataStoreAuthorRepository
-import com.monday8am.koogagent.data.AuthRepository
-import com.monday8am.koogagent.data.AuthorRepository
+import com.monday8am.koogagent.data.auth.AuthRepository
+import com.monday8am.koogagent.data.auth.AuthorRepository
 import com.monday8am.koogagent.data.huggingface.HuggingFaceApiClient
 import com.monday8am.presentation.modelselector.ModelDownloadManager
 import kotlinx.coroutines.CoroutineScope

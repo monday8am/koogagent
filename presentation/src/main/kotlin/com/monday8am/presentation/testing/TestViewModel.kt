@@ -2,8 +2,8 @@ package com.monday8am.presentation.testing
 
 import co.touchlab.kermit.Logger
 import com.monday8am.agent.core.LocalInferenceEngine
-import com.monday8am.koogagent.data.HardwareBackend
-import com.monday8am.koogagent.data.ModelConfiguration
+import com.monday8am.koogagent.data.model.HardwareBackend
+import com.monday8am.koogagent.data.model.ModelConfiguration
 import com.monday8am.koogagent.data.testing.AssetsTestRepository
 import com.monday8am.koogagent.data.testing.TestDomain
 import com.monday8am.koogagent.data.testing.TestRepository

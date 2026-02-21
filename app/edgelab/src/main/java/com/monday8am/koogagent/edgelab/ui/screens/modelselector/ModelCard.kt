@@ -36,7 +36,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
-import com.monday8am.koogagent.data.ModelCatalog
+import com.monday8am.koogagent.data.model.ModelCatalog
 import com.monday8am.koogagent.edgelab.ui.theme.KoogAgentTheme
 import com.monday8am.presentation.modelselector.DownloadStatus
 import com.monday8am.presentation.modelselector.ModelInfo
@@ -306,10 +306,9 @@ private fun ModelCardPreview_Gated() {
         ModelCard(
             modelInfo =
                 ModelInfo(
-                    config = ModelCatalog.GEMMA3_1B,
+                    config = ModelCatalog.GEMMA3_1B.copy(isGated = true),
                     isDownloaded = false,
                     downloadStatus = DownloadStatus.NotStarted,
-                    isGated = true,
                 ),
             isSelected = false,
             onDownloadClick = {},

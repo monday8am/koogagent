@@ -1,6 +1,6 @@
 package com.monday8am.presentation.onboard
 
-import com.monday8am.koogagent.data.AuthRepository
+import com.monday8am.koogagent.data.auth.AuthRepository
 import com.monday8am.presentation.FakeModelDownloadManager
 import com.monday8am.presentation.modelselector.ModelDownloadManager
 import kotlin.test.AfterTest

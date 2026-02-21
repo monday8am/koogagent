@@ -1,7 +1,7 @@
 package com.monday8am.koogagent.core.storage
 
 import android.content.Context
-import com.monday8am.koogagent.data.AuthRepository
+import com.monday8am.koogagent.data.auth.AuthRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow

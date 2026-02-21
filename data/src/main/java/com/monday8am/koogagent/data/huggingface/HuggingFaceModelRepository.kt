@@ -1,10 +1,10 @@
 package com.monday8am.koogagent.data.huggingface
 
 import co.touchlab.kermit.Logger
-import com.monday8am.koogagent.data.AuthorRepository
-import com.monday8am.koogagent.data.LocalModelDataSource
-import com.monday8am.koogagent.data.ModelCatalogProvider
-import com.monday8am.koogagent.data.ModelConfiguration
+import com.monday8am.koogagent.data.auth.AuthorRepository
+import com.monday8am.koogagent.data.model.LocalModelDataSource
+import com.monday8am.koogagent.data.model.ModelCatalogProvider
+import com.monday8am.koogagent.data.model.ModelConfiguration
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -146,6 +146,7 @@ class HuggingFaceModelRepository(
                 contextLength = parsed.contextLength ?: DEFAULT_CONTEXT_LENGTH,
                 downloadUrl = downloadUrl,
                 bundleFilename = filename,
+                author = summary.id.substringBefore("/"),
                 isGated = summary.gated.isGated,
                 description = null,
                 fileSizeBytes = fileSize,

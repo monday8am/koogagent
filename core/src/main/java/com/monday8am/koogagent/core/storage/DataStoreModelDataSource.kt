@@ -4,8 +4,8 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
-import com.monday8am.koogagent.data.LocalModelDataSource
-import com.monday8am.koogagent.data.ModelConfiguration
+import com.monday8am.koogagent.data.model.LocalModelDataSource
+import com.monday8am.koogagent.data.model.ModelConfiguration
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json

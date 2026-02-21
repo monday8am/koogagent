@@ -4,9 +4,9 @@ import android.content.Context
 import com.monday8am.agent.core.LocalInferenceEngine
 import com.monday8am.koogagent.core.di.CoreDependencies
 import com.monday8am.koogagent.core.oauth.HuggingFaceOAuthManager
-import com.monday8am.koogagent.data.AuthRepository
-import com.monday8am.koogagent.data.ModelRepository
-import com.monday8am.koogagent.data.ModelRepositoryImpl
+import com.monday8am.koogagent.data.auth.AuthRepository
+import com.monday8am.koogagent.data.model.ModelRepository
+import com.monday8am.koogagent.data.model.ModelRepositoryImpl
 import com.monday8am.presentation.modelselector.ModelDownloadManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -50,9 +50,9 @@ object Dependencies {
         // For now, use all models from the catalog
         // TODO: Create CopilotModelCatalogProvider with only FunctionGemma 2B + Gemma 2 550M
         ModelRepositoryImpl(
-            object : com.monday8am.koogagent.data.ModelCatalogProvider {
+            object : com.monday8am.koogagent.data.model.ModelCatalogProvider {
                 override fun getModels() = kotlinx.coroutines.flow.flowOf(
-                    com.monday8am.koogagent.data.ModelCatalog.ALL_MODELS
+                    com.monday8am.koogagent.data.model.ModelCatalog.ALL_MODELS
                 )
             }
         )

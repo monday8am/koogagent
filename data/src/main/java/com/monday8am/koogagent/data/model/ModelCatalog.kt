@@ -1,4 +1,4 @@
-package com.monday8am.koogagent.data
+package com.monday8am.koogagent.data.model
 
 /**
  * Catalog of predefined model configurations. This serves as the "source of truth" for available
@@ -19,6 +19,7 @@ object ModelCatalog {
             defaultTopK = 40,
             defaultTopP = 0.85f,
             defaultTemperature = 0.2f,
+            author = "litert-community",
             description = "Efficient bilingual model optimized for on-device inference",
             fileSizeBytes = 642_000_000L, // ~642 MB
             huggingFaceUrl = "https://huggingface.co/litert-community/Qwen3-0.6B",
@@ -39,6 +40,7 @@ object ModelCatalog {
             defaultTopK = 40,
             defaultTopP = 0.85f,
             defaultTemperature = 0.2f,
+            author = "litert-community",
             description = "Improved Qwen model with enhanced multilingual capabilities",
             fileSizeBytes = 1_600_000_000L, // ~1.6 GB
             huggingFaceUrl = "https://huggingface.co/litert-community/Qwen2.5-1.5B-Instruct",
@@ -59,6 +61,7 @@ object ModelCatalog {
             defaultTopP = 0.85f,
             // Gemma benefits from higher temp
             defaultTemperature = 0.7f,
+            author = "litert-community",
             description = "Google's Gemma 3 model optimized for mobile devices",
             fileSizeBytes = 535_000_000L, // ~535 MB
             huggingFaceUrl = "https://huggingface.co/google/gemma-3-1b-it",

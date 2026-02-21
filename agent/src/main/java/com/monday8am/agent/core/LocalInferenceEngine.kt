@@ -1,6 +1,6 @@
 package com.monday8am.agent.core
 
-import com.monday8am.koogagent.data.ModelConfiguration
+import com.monday8am.koogagent.data.model.ModelConfiguration
 import kotlinx.coroutines.flow.Flow
 
 interface LocalInferenceEngine {
