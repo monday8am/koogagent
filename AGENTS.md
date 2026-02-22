@@ -127,7 +127,7 @@ The Cycling Copilot app is a demo application showcasing on-device AI for cyclin
 - **Purpose**: Edge Agent Lab - model testing and validation platform
 - **Package**: `com.monday8am.koogagent.edgelab`
 - **Application ID**: `com.monday8am.koogagent.edgelab`
-- **OAuth Redirect**: `edgelab://oauth/callback`
+- **OAuth Redirect**: `koogagent://oauth/callback`
 - **Features**:
   - Model selection and download
   - Test suite execution and validation
