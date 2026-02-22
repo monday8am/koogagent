@@ -38,6 +38,7 @@ enum class GroupingMode {
     None,
     Family,
     Access,
+    Author,
 }
 
 data class ModelGroup(
@@ -363,6 +364,20 @@ class ModelSelectorViewModelImpl(
                                 },
                             models = groupModels.toImmutableList(),
                             isExpanded = !collapsedGroupIds.contains("acc_$isGated"),
+                        )
+                    }
+                    .sortedBy { it.title }
+            }
+
+            GroupingMode.Author -> {
+                models
+                    .groupBy { it.config.author ?: "Unknown" }
+                    .map { (author, groupModels) ->
+                        ModelGroup(
+                            id = "author_$author",
+                            title = author,
+                            models = groupModels.toImmutableList(),
+                            isExpanded = !collapsedGroupIds.contains("author_$author"),
                         )
                     }
                     .sortedBy { it.title }
