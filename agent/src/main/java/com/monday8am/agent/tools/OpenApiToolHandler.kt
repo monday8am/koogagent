@@ -21,7 +21,7 @@ import kotlinx.serialization.json.JsonPrimitive
 class OpenApiToolHandler(
     private val toolSpec: ToolSpecification,
     private val mockResponse: String,
-) : OpenApiTool(), ToolHandler {
+) : OpenApiTool, ToolHandler {
 
     private val logger = Logger.withTag("OpenApiToolHandler")
     private val _calls = Collections.synchronizedList(mutableListOf<ToolCall>())
