@@ -23,7 +23,7 @@ class DataStoreAuthorRepository(
 
     private val authorsKey = stringPreferencesKey("hf_author_list")
 
-    private val _authors = MutableStateFlow<List<AuthorInfo>>(listOf(DEFAULT_AUTHOR))
+    private val _authors = MutableStateFlow(listOf(DEFAULT_AUTHOR))
     override val authors: StateFlow<List<AuthorInfo>> = _authors
 
     init {

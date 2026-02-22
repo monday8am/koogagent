@@ -37,7 +37,7 @@ class HuggingFaceApiClient(
     }
 
     suspend fun fetchModelList(author: String): List<HuggingFaceModelSummary> {
-        val listUrl = "$BASE_URL?author=$author"
+        val listUrl = "$BASE_URL?author=$author&full=true"
         val request = Request.Builder().url(listUrl).build()
 
         return executeRequest(request) { response ->

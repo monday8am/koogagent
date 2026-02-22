@@ -80,12 +80,17 @@ If not on a feature branch (e.g., on `main` or `master`):
 
 ### Step 2 — Create Pull Request
 
-1. **Check if PR already exists**:
+1. **Check if PR already exists and is open**:
    ```bash
-   gh pr view --json number,url,title 2>/dev/null
+   gh pr view --json number,url,title,state 2>/dev/null
    ```
 
-2. **If no PR exists**, create one:
+   - If the command fails (no PR) → proceed to create one
+   - If `state` is `"OPEN"` → use the existing PR, skip creation
+   - If `state` is `"CLOSED"` or `"MERGED"` → treat as no PR and create a new one
+     > "Found PR #N but it is closed/merged. Creating a new PR."
+
+2. **If no open PR exists**, create one:
    - Extract info from commits: `git log origin/main..HEAD --oneline`
    - Generate PR title (short, imperative, <70 chars)
    - Generate PR body with:
@@ -263,6 +268,7 @@ After processing all (or a batch of) suggestions:
 | No changes to commit | Exit early with message |
 | Push rejected by hooks | Fix issues, retry once, then ask user |
 | PR creation fails | Show error, ask user to resolve |
+| Existing PR is closed/merged | Ignore it, create a new PR |
 | Greptile not available | Inform user to enable Greptile plugin |
 | Review timeout (7 attempts) | Report timeout, provide PR URL |
 | Merge conflicts on push | Do not force-push, ask user to resolve |

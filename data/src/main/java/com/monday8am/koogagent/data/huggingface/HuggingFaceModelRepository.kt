@@ -5,14 +5,17 @@ import com.monday8am.koogagent.data.auth.AuthorRepository
 import com.monday8am.koogagent.data.model.LocalModelDataSource
 import com.monday8am.koogagent.data.model.ModelCatalogProvider
 import com.monday8am.koogagent.data.model.ModelConfiguration
+import kotlin.collections.flatten
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.FlowCollector
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.sync.Semaphore
@@ -34,21 +37,25 @@ class HuggingFaceModelRepository(
 
     private val requestSemaphore = Semaphore(5)
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     override fun getModels(): Flow<List<ModelConfiguration>> =
-        flow {
-                val cachedModels = localModelDataSource.getModels()
-                cachedModels?.takeIf { it.isNotEmpty() }?.let { emit(it) }
+        authorRepository.authors
+            .flatMapLatest { authors ->
+                flow {
+                    val cachedModels = localModelDataSource.getModels()
+                    cachedModels?.takeIf { it.isNotEmpty() }?.let { emit(it) }
 
-                fetchNetworkModels()
-                    .onSuccess { networkModels ->
-                        saveAndEmitIfChanged(networkModels, cachedModels)
-                    }
-                    .onFailure { error ->
-                        logger.e(error) { "Failed to refresh models from API" }
-                        if (cachedModels.isNullOrEmpty()) {
-                            emit(emptyList())
+                    fetchNetworkModels(authors.map { it.name })
+                        .onSuccess { networkModels ->
+                            saveAndEmitIfChanged(networkModels, cachedModels)
                         }
-                    }
+                        .onFailure { error ->
+                            logger.e(error) { "Failed to refresh models from API" }
+                            if (cachedModels.isNullOrEmpty()) {
+                                emit(emptyList())
+                            }
+                        }
+                }
             }
             .flowOn(dispatcher)
 
@@ -74,10 +81,12 @@ class HuggingFaceModelRepository(
         }
     }
 
-    private suspend fun fetchNetworkModels(): Result<List<ModelConfiguration>> =
+    private suspend fun fetchNetworkModels(
+        authorNames: List<String>
+    ): Result<List<ModelConfiguration>> =
         try {
             Result.success(
-                fetchModelListFromAllSources()
+                fetchModelListFromAllSources(authorNames)
                     .filter { it.pipelineTag == "text-generation" }
                     .let { summaries -> fetchModelDataInParallel(summaries) }
                     .flatMap { (summary, fileSizes) -> convertToConfigurations(summary, fileSizes) }
@@ -111,20 +120,24 @@ class HuggingFaceModelRepository(
         }
     }
 
-    private suspend fun fetchModelListFromAllSources(): List<HuggingFaceModelSummary> {
-        val authors = authorRepository.authors.value
-        val modelSummaries = mutableListOf<HuggingFaceModelSummary>()
-
-        for (author in authors) {
-            try {
-                modelSummaries.addAll(apiClient.fetchModelList(author.name))
-            } catch (e: Exception) {
-                if (e is CancellationException) throw e
-                logger.e(e) { "Failed to fetch models from ${author.name}" }
+    private suspend fun fetchModelListFromAllSources(
+        authorNames: List<String>
+    ): List<HuggingFaceModelSummary> = coroutineScope {
+        authorNames
+            .map { name ->
+                async {
+                    try {
+                        apiClient.fetchModelList(name)
+                    } catch (e: Exception) {
+                        if (e is CancellationException) throw e
+                        logger.e(e) { "Failed to fetch models from $name" }
+                        emptyList()
+                    }
+                }
             }
-        }
-
-        return modelSummaries.distinctBy { it.id }
+            .awaitAll()
+            .flatten()
+            .distinctBy { it.id }
     }
 
     private fun convertToConfigurations(
