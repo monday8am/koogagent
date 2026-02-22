@@ -5,6 +5,7 @@ import com.monday8am.koogagent.data.auth.AuthorRepository
 import com.monday8am.koogagent.data.model.LocalModelDataSource
 import com.monday8am.koogagent.data.model.ModelCatalogProvider
 import com.monday8am.koogagent.data.model.ModelConfiguration
+import kotlin.collections.flatten
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
