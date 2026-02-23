@@ -53,7 +53,7 @@ object Dependencies {
                     CoreDependencies.createOAuthManager(
                         context = appContext,
                         clientId = BuildConfig.HF_CLIENT_ID,
-                        redirectScheme = "edgelab",
+                        redirectScheme = "koogagent",
                         activityClass = MainActivity::class.java
                     )
             }

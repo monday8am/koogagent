@@ -123,7 +123,14 @@ class HuggingFaceModelRepository(
     private suspend fun fetchModelListFromAllSources(
         authorNames: List<String>
     ): List<HuggingFaceModelSummary> = coroutineScope {
-        authorNames
+        val allNames = authorNames.toMutableList()
+        val currentUser = apiClient.fetchCurrentUsername()
+        if (currentUser != null && allNames.none { it.equals(currentUser, ignoreCase = true) }) {
+            logger.d { "Adding authenticated user '$currentUser' to model sources" }
+            allNames.add(currentUser)
+        }
+
+        allNames
             .map { name ->
                 async {
                     try {

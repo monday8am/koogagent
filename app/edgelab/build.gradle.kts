@@ -40,7 +40,7 @@ android {
         buildConfigField("String", "HF_CLIENT_ID", "\"$hfClientId\"")
 
         // AppAuth redirect scheme placeholder
-        manifestPlaceholders["appAuthRedirectScheme"] = "edgelab"
+        manifestPlaceholders["appAuthRedirectScheme"] = "koogagent"
     }
 
     signingConfigs {
