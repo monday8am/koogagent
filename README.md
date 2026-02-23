@@ -1,99 +1,78 @@
-# From Flat Notifications to Edge AI
+# Edge Agent Lab
 
-A prototype that explores how **agentic frameworks** and **on-device small language models (SLMs)** can turn generic push notifications into **context-aware, personalized prompts** — running offline on Android.
+A repository for exploring **on-device agentic AI** on Android — running offline using small language models (SLMs), tool calling, and agentic frameworks.
 
-Inspired by the Yazio app, this project combines:
+This repo contains two apps built on a shared multi-module core:
 
-- [LiteRT-LM](https://github.com/google-ai-edge/LiteRT-LM) – on-device LLM inference with GPU/CPU support
-- [MediaPipe GenAI](https://ai.google.dev/edge/mediapipe/solutions/genai/llm_inference) – alternative inference backend for specific models
-- [JetBrains Koog](https://github.com/JetBrains/koog) – agentic framework structure for tool management
-- Real weather data via [Open-Meteo API](https://open-meteo.com/)
+- **EdgeLab** — a test and validation platform for on-device LLM tool calling
+- **CyclingCopilot** — an AI cycling assistant demo (in progress)
 
-
-### Read the Articles
-
-**Part #1:** [From Flat Notifications to Edge AI](https://monday8am.com/blog/2025/10/01/flat-notifications-edge-ai.html) – the initial concept and motivation. ([Medium](https://medium.com/@angel.anton/from-flat-notifications-to-edge-ai-42a594ce3b0c))
-
-**Part #2:** [Function Calling with Edge AI](https://monday8am.com/blog/2025/12/10/function-calling-edge-ai.html) – deep dive into tool calling challenges and the current state of on-device agentic AI. ([Medium](https://medium.com/@angel.anton/researching-tool-calling-in-on-device-ai-1c6143854ff3))
+Built with [LiteRT-LM](https://github.com/google-ai-edge/LiteRT-LM), [JetBrains Koog](https://github.com/JetBrains/koog), and [HuggingFace](https://huggingface.co/).
 
 ---
 
-_Disclaimer: This is a prototype app created for **fast iteration**, **experimentation**, and **learning**. While exploring the limits of edge AI tool calling, it serves as an alternative to Google's AI Edge Gallery app, focused specifically on text generation and agentic workflows._
+### Learn More
 
-### What It Does
+| Resource | Description |
+|----------|-------------|
+| 🌐 [edgeagentlab.dev](https://edgeagentlab.dev) | Microsite with test visualizations and project overview |
+| ✍️ [Part #1 — From Flat Notifications to Edge AI](https://monday8am.com/blog/2025/10/01/flat-notifications-edge-ai.html) | Initial concept and motivation |
+| ✍️ [Part #2 — Function Calling with Edge AI](https://monday8am.com/blog/2025/12/10/function-calling-edge-ai.html) | Deep dive into on-device tool calling challenges |
+| ✍️ [Part #3 — Let's talk about FunctionGemma](https://monday8am.com/blog/2026/02/08/lets-talk-about-functiongemma.html) | Exploring FunctionGemma and where it fits in mobile development |
 
-This prototype generates smarter notifications using local context and on-device inference:
-
-- Time-aware prompts (e.g., before lunch or late evening)
-- Weather- and location-aware suggestions (real weather data from Open-Meteo)
-- Dietary and streak-based personalization
-- **Tool calling validation** – test framework for evaluating function calling capabilities
-- **Model management** – download and switch between different SLMs
-- Fully offline — no cloud LLM fallback
-
+---
 
 ### Architecture
 
-The project uses a **four-module KMP-ready architecture**:
+The project uses a **multi-module KMP-ready architecture** with a shared Android core:
 
-| Module | Description |
-|--------|-------------|
-| `:data` | Pure Kotlin data models and provider interfaces (zero dependencies) |
-| `:agent` | Platform-agnostic notification agent with multiple tool calling formats |
-| `:presentation` | MVI state management and ViewModels (KMP-ready) |
-| `:app` | Android implementations (LiteRT-LM, MediaPipe, Compose UI) |
+| Module | Type | Description |
+|--------|------|-------------|
+| `:data` | Pure Kotlin | Data models, provider interfaces |
+| `:agent` | Pure Kotlin | Agent logic, tool handlers, inference interfaces |
+| `:presentation` | Pure Kotlin | MVI ViewModels, test engine (KMP-ready) |
+| `:core` | Android library | Shared infrastructure: inference, download, OAuth, storage |
+| `:app:edgelab` | Android app | EdgeLab — model testing and tool calling validation |
+| `:app:copilot` | Android app | CyclingCopilot — on-device AI cycling assistant |
 
+Module dependencies: `:data` ← `:agent` ← `:presentation` ← `:core` ← `:app:edgelab`, `:app:copilot`
 
-### Supported Models
+For full technical details see [`docs/architecture.md`](docs/architecture.md).
 
-| Model | Parameters | Inference | Context |
-|-------|------------|-----------|---------|
-| Qwen3 0.6B | 0.6B (int8) | LiteRT-LM | 4K tokens |
-| Gemma 3 1B | 1B (int4) | LiteRT-LM | 4K tokens |
-| Hammer 2.1 0.5B | 0.5B (int8) | MediaPipe | 2K tokens |
-| Hammer 2.1 1.5B | 1.5B (int8) | MediaPipe | 2K tokens |
+---
 
+### Documentation
 
-### Key Components
+| Document | Description |
+|----------|-------------|
+| [`docs/architecture.md`](docs/architecture.md) | Full technical architecture and implementation details |
+| [`docs/edgelab/roadmap.md`](docs/edgelab/roadmap.md) | EdgeLab roadmap |
+| [`docs/cyclingcopilot/roadmap.md`](docs/cyclingcopilot/roadmap.md) | CyclingCopilot roadmap |
+| [`docs/cyclingcopilot/ui-architecture.md`](docs/cyclingcopilot/ui-architecture.md) | CyclingCopilot UI design and screen specs |
 
-| Component | Description |
-|-----------|-------------|
-| NotificationAgent | Unified agent supporting multiple LLM backends and tool formats |
-| LiteRT-LM Engine | Primary inference runtime with GPU acceleration |
-| MediaPipe GenAI | Alternative runtime for Hammer2.1 models |
-| Tool Registry | Multiple formats: SIMPLE, OPENAPI, SLIM, REACT, HERMES, NATIVE |
-| Model Selector | UI for downloading and switching between models |
-| Test Framework | Validates tool calling accuracy across models |
-
-
-### Tech Stack
-
-- Kotlin (Multiplatform-ready modules)
-- Jetpack Compose
-- LiteRT-LM 0.8.0
-- MediaPipe GenAI 0.10.29
-- Local SLM models (Qwen3, Gemma, Hammer2.1)
-- Ollama (for JVM-side testing)
-
-
-### Roadmap
-
-- [ ] Llama.cpp runtime integration
-- [ ] RAG-based alternatives for context injection
-- [ ] LiteRT-LM native tool calling improvements
-- [ ] Play Store publication
-- [ ] iOS support via Kotlin Multiplatform
-
+---
 
 ### Screenshots
 
 <img src="screenshots/screenshots.jpg" width="700" />
 
+---
 
+### Tech Stack
+
+- Kotlin (Multiplatform-ready modules)
+- Jetpack Compose
+- LiteRT-LM
+- JetBrains Koog
+- HuggingFace Hub integration
+- Firebase Crashlytics
+
+---
+
+_This is a prototype built for **fast iteration**, **experimentation**, and **learning** — exploring the limits of edge AI and agentic workflows on Android._
 
 ---
 
 ### License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
+MIT License — see the [LICENSE](LICENSE) file for details.
