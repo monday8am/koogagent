@@ -110,27 +110,27 @@ jobs:
 
       - name: Rename artifacts
         run: |
-          mv app/build/outputs/bundle/release/app-release.aab app/build/outputs/bundle/release/koogagent-v${{ inputs.version_name }}.aab
-          mv app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/koogagent-v${{ inputs.version_name }}.apk
+          mv app/build/outputs/bundle/release/app-release.aab app/build/outputs/bundle/release/edgelab-v${{ inputs.version_name }}.aab
+          mv app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/edgelab-v${{ inputs.version_name }}.apk
 
       - name: Size reporting
         run: |
           echo "=== Artifact Sizes ==="
-          ls -lh app/build/outputs/bundle/release/koogagent-v${{ inputs.version_name }}.aab
-          ls -lh app/build/outputs/apk/release/koogagent-v${{ inputs.version_name }}.apk
+          ls -lh app/build/outputs/bundle/release/edgelab-v${{ inputs.version_name }}.aab
+          ls -lh app/build/outputs/apk/release/edgelab-v${{ inputs.version_name }}.apk
 
       - name: Upload AAB artifact
         uses: actions/upload-artifact@v4
         with:
           name: release-aab
-          path: app/build/outputs/bundle/release/koogagent-v${{ inputs.version_name }}.aab
+          path: app/build/outputs/bundle/release/edgelab-v${{ inputs.version_name }}.aab
           retention-days: 30
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: release-apk
-          path: app/build/outputs/apk/release/koogagent-v${{ inputs.version_name }}.apk
+          path: app/build/outputs/apk/release/edgelab-v${{ inputs.version_name }}.apk
           retention-days: 30
 
       - name: Create GitHub Release
@@ -142,7 +142,7 @@ jobs:
           draft: true
           generate_release_notes: true
           files: |
-            app/build/outputs/bundle/release/koogagent-v${{ inputs.version_name }}.aab
-            app/build/outputs/apk/release/koogagent-v${{ inputs.version_name }}.apk
+            app/build/outputs/bundle/release/edgelab-v${{ inputs.version_name }}.aab
+            app/build/outputs/apk/release/edgelab-v${{ inputs.version_name }}.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

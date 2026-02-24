@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "com.monday8am.koogagent.core"
+    namespace = "com.monday8am.edgelab.core"
     compileSdk = 36
 
     defaultConfig {

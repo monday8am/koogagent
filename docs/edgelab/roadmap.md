@@ -33,8 +33,8 @@
 
 ## Next Up
 
-- [ ] Upload app to Play Store
-- [ ] Add FunctionGemma model support
+- [x] Upload app to Play Store
+- [x] Add FunctionGemma model support
 - [ ] Add trained / not trained model filtering
 - [ ] Show agentic tests only for supported models
 - [ ] Match model names against compatible tests (agentic vs generic)

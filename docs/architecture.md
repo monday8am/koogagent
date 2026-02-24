@@ -1,6 +1,6 @@
 # Architecture
 
-Technical documentation for the KoogAgent project. Covers module structure, key components, integration patterns, and implementation details for developers and AI agents working on this codebase.
+Technical documentation for the EdgeLab project. Covers module structure, key components, integration patterns, and implementation details for developers and AI agents working on this codebase.
 
 **Important:** This is a prototype built for fast iteration, experimentation, and learning.
 
@@ -17,12 +17,12 @@ Six modules with a strict unidirectional dependency graph:
 
 | Module | Type | Package |
 |--------|------|---------|
-| `:data` | Pure Kotlin | `com.monday8am.koogagent.data` |
-| `:agent` | Pure Kotlin/JVM | `com.monday8am.agent` |
-| `:presentation` | Pure Kotlin (KMP-ready) | `com.monday8am.presentation` |
-| `:core` | Android library | `com.monday8am.koogagent.core` |
-| `:app:edgelab` | Android app | `com.monday8am.koogagent.edgelab` |
-| `:app:copilot` | Android app | `com.monday8am.koogagent.copilot` |
+| `:data` | Pure Kotlin | `com.monday8am.edgelab.data` |
+| `:agent` | Pure Kotlin/JVM | `com.monday8am.edgelab.agent` |
+| `:presentation` | Pure Kotlin (KMP-ready) | `com.monday8am.edgelab.presentation` |
+| `:core` | Android library | `com.monday8am.edgelab.core` |
+| `:app:edgelab` | Android app | `com.monday8am.edgelab.explorer` |
+| `:app:copilot` | Android app | `com.monday8am.edgelab.copilot` |
 
 ---
 
@@ -141,9 +141,9 @@ Android library. Exposes `:data`, `:agent`, and `:presentation` transitively via
 
 ## `:app:edgelab` — EdgeLab App
 
-**Package**: `com.monday8am.koogagent.edgelab`
-**Application ID**: `com.monday8am.koogagent.edgelab`
-**OAuth redirect**: `koogagent://oauth/callback`
+**Package**: `com.monday8am.edgelab.explorer`
+**Application ID**: `com.monday8am.edgelab.explorer`
+**OAuth redirect**: `edgelab://oauth/callback`
 
 Model testing and tool-calling validation platform.
 
@@ -167,8 +167,8 @@ Model testing and tool-calling validation platform.
 
 ## `:app:copilot` — CyclingCopilot App
 
-**Package**: `com.monday8am.koogagent.copilot`
-**Application ID**: `com.monday8am.koogagent.copilot`
+**Package**: `com.monday8am.edgelab.copilot`
+**Application ID**: `com.monday8am.edgelab.copilot`
 **OAuth redirect**: `copilot://oauth/callback`
 
 On-device AI cycling assistant. See [`docs/cyclingcopilot/ui-architecture.md`](cyclingcopilot/ui-architecture.md) for full screen specs.
