@@ -31,11 +31,11 @@
     kotlinx.serialization.KSerializer serializer(...);
 }
 
--keep,includedescriptorclasses class com.monday8am.koogagent.**$$serializer { *; }
--keepclassmembers class com.monday8am.koogagent.** {
+-keep,includedescriptorclasses class com.monday8am.edgelab.**$$serializer { *; }
+-keepclassmembers class com.monday8am.edgelab.** {
     *** Companion;
 }
--keepclasseswithmembers class com.monday8am.koogagent.** {
+-keepclasseswithmembers class com.monday8am.edgelab.** {
     kotlinx.serialization.KSerializer serializer(...);
 }
 
