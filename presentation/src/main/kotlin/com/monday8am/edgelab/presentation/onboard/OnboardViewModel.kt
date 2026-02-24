@@ -1,6 +1,7 @@
 package com.monday8am.edgelab.presentation.onboard
 
 import com.monday8am.edgelab.data.auth.AuthRepository
+import com.monday8am.edgelab.data.model.HardwareBackend
 import com.monday8am.edgelab.data.model.ModelConfiguration
 import com.monday8am.edgelab.presentation.modelselector.ModelDownloadManager
 import kotlinx.collections.immutable.ImmutableList
@@ -18,7 +19,6 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-/** UI State for onboard screen with simplified two-model download */
 data class UiState(
     val models: ImmutableList<ModelInfo> = persistentListOf(),
     val isLoadingCatalog: Boolean = false,
@@ -73,28 +73,45 @@ class OnboardViewModelImpl(
         private val COPILOT_MODELS =
             listOf(
                 ModelConfiguration(
-                    displayName = "User HF Model",
-                    modelFamily = "gemma",
+                    displayName = "Gemma3-1B",
+                    modelFamily = "gemma3",
                     parameterCount = 1.0f,
-                    quantization = "int8",
+                    quantization = "q4",
                     contextLength = 4096,
                     downloadUrl =
-                        "https://huggingface.co/USER/MODEL/resolve/main/model.bin", // Placeholder
-                    bundleFilename = "user-hf-model.bin",
-                    fileSizeBytes = 1_000_000_000L, // 1GB placeholder
+                        "https://huggingface.co/litert-community/Gemma3-1B-IT/resolve/main/Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096.litertlm",
+                    bundleFilename = "Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096.litertlm",
+                    hardwareAcceleration = HardwareBackend.GPU_SUPPORTED,
+                    defaultTopK = 40,
+                    defaultTopP = 0.85f,
+                    defaultTemperature = 0.2f,
+                    defaultMaxOutputTokens = 1024,
+                    author = "litert-community",
                     isGated = true,
+                    description = null,
+                    fileSizeBytes = 584417280,
+                    huggingFaceUrl = "https://huggingface.co/litert-community/Gemma3-1B-IT)",
                 ),
                 ModelConfiguration(
-                    displayName = "Gemma 3 1B",
-                    modelFamily = "gemma",
+                    displayName = "Cycling",
+                    modelFamily = "gemma3",
                     parameterCount = 1.0f,
-                    quantization = "int8",
-                    contextLength = 4096,
+                    quantization = "q8",
+                    contextLength = 1024,
                     downloadUrl =
-                        "https://huggingface.co/google/gemma-3-1b/resolve/main/model.bin", // Placeholder
-                    bundleFilename = "gemma3-1b.bin",
-                    fileSizeBytes = 1_000_000_000L, // 1GB placeholder
-                    isGated = true,
+                        "https://huggingface.co/monday8am/cycling-copilot-functiongemma/resolve/main/cycling-copilot_q8_ekv1024.litertlm",
+                    bundleFilename = "cycling-copilot_q8_ekv1024.litertlm",
+                    hardwareAcceleration = HardwareBackend.GPU_SUPPORTED,
+                    defaultTopK = 40,
+                    defaultTopP = 0.85f,
+                    defaultTemperature = 0.2f,
+                    defaultMaxOutputTokens = 256,
+                    author = "monday8am",
+                    isGated = false,
+                    description = null,
+                    fileSizeBytes = 284426240,
+                    huggingFaceUrl =
+                        "https://huggingface.co/monday8am/cycling-copilot-functiongemma",
                 ),
             )
     }
@@ -189,6 +206,7 @@ class OnboardViewModelImpl(
                     val progress = status.progress ?: 0f
                     DownloadStatus.Downloading(progress)
                 }
+
                 is ModelDownloadManager.Status.Completed -> DownloadStatus.Completed
                 is ModelDownloadManager.Status.Failed -> DownloadStatus.Failed(status.message)
                 is ModelDownloadManager.Status.Cancelled,
