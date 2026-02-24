@@ -7,6 +7,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import com.monday8am.edgelab.copilot.ui.screens.liveride.LiveRideScreen
 import com.monday8am.edgelab.copilot.ui.screens.onboard.OnboardScreen
 
 @Composable
@@ -20,7 +21,12 @@ fun AppNavigation(
         modifier = modifier,
     ) {
         composable<Route.Onboard> {
-            OnboardScreen(onNavigateToSetup = { navController.navigate(Route.RideSetup) })
+            // Temporarily routes straight to LiveRide — wire to RideSetup when Screen 2 is added
+            OnboardScreen(
+                onNavigateToSetup = {
+                    navController.navigate(Route.LiveRide("guadarrama-loop", 1.0f))
+                }
+            )
         }
 
         composable<Route.RideSetup> {
@@ -29,7 +35,11 @@ fun AppNavigation(
 
         composable<Route.LiveRide> { backStackEntry ->
             val args = backStackEntry.toRoute<Route.LiveRide>()
-            // TODO: Implement LiveRideScreen
+            LiveRideScreen(
+                routeId = args.routeId,
+                playbackSpeed = args.playbackSpeed,
+                onNavigateBack = { navController.popBackStack() },
+            )
         }
     }
 }
