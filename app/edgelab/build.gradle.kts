@@ -22,11 +22,11 @@ fun getKeystoreProperty(key: String, envVar: String): String? =
     keystoreProperties.getProperty(key) ?: System.getenv(envVar)
 
 android {
-    namespace = "com.monday8am.koogagent.edgelab"
+    namespace = "com.monday8am.edgelab.explorer"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.monday8am.koogagent.edgelab"
+        applicationId = "com.monday8am.edgelab.explorer"
         minSdk = 31
         targetSdk = 36
         versionCode = 1
@@ -40,7 +40,7 @@ android {
         buildConfigField("String", "HF_CLIENT_ID", "\"$hfClientId\"")
 
         // AppAuth redirect scheme placeholder
-        manifestPlaceholders["appAuthRedirectScheme"] = "koogagent"
+        manifestPlaceholders["appAuthRedirectScheme"] = "edgelab"
     }
 
     signingConfigs {

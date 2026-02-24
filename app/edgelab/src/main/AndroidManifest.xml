@@ -13,12 +13,12 @@
 		android:supportsRtl="true"
 		android:usesCleartextTraffic="true"
 		android:networkSecurityConfig="@xml/network_security_config"
-		android:theme="@style/Theme.KoogAgent">
+		android:theme="@style/Theme.EdgeLab">
 		<activity
 			android:name=".MainActivity"
 			android:exported="true"
 			android:launchMode="singleTop"
-			android:theme="@style/Theme.KoogAgent">
+			android:theme="@style/Theme.EdgeLab">
 			<intent-filter>
 				<action android:name="android.intent.action.MAIN" />
 

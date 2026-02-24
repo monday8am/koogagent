@@ -19,11 +19,11 @@ fun getKeystoreProperty(key: String, envVar: String): String? =
     keystoreProperties.getProperty(key) ?: System.getenv(envVar)
 
 android {
-    namespace = "com.monday8am.koogagent.copilot"
+    namespace = "com.monday8am.edgelab.copilot"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.monday8am.koogagent.copilot"
+        applicationId = "com.monday8am.edgelab.copilot"
         minSdk = 31
         targetSdk = 36
         versionCode = 1

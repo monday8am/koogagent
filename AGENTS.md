@@ -1,10 +1,10 @@
 # AGENTS.md
 
-Context and instructions for AI agents working on the KoogAgent project.
+Context and instructions for AI agents working on the EdgeLab project.
 
 ## Project Overview
 
-KoogAgent is an Android repository containing two apps:
+EdgeLab is an Android repository containing two apps:
 - **EdgeLab** — on-device AI lab for model testing and tool-calling validation
 - **CyclingCopilot** — on-device AI cycling assistant
 

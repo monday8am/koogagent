@@ -828,7 +828,7 @@ See `ARCHITECTURE.md` for detailed tool schemas.
 ## File Structure
 
 ```
-app/copilot/src/main/java/com/monday8am/koogagent/copilot/
+app/copilot/src/main/java/com/monday8am/edgelab/copilot/
 ├── Dependencies.kt
 ├── MainActivity.kt
 ├── ui/

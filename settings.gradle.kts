@@ -20,7 +20,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "KoogAgent"
+rootProject.name = "EdgeLab"
 
 include(":app:edgelab")
 
