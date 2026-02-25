@@ -203,9 +203,15 @@ private fun OnboardScreenContent(
                     // Download summary
                     val totalSize = uiState.models.sumOf { it.config.fileSizeBytes ?: 0L }
                     val downloadedSize =
-                        uiState.models
-                            .filter { it.isDownloaded }
-                            .sumOf { it.config.fileSizeBytes ?: 0L }
+                        uiState.models.sumOf { modelInfo ->
+                            val fileSize = modelInfo.config.fileSizeBytes ?: 0L
+                            when (val status = modelInfo.downloadStatus) {
+                                is DownloadStatus.Completed -> fileSize
+                                is DownloadStatus.Downloading ->
+                                    (fileSize * status.progress / 100f).toLong()
+                                else -> 0L
+                            }
+                        }
 
                     Text(
                         text =
