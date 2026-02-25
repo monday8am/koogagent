@@ -88,8 +88,8 @@ class OnboardViewModelTest {
 
         val state = viewModel.uiState.value
         val modelIds = state.models.map { it.config.modelId }
-        assertTrue(modelIds.contains("user-hf-model"))
-        assertTrue(modelIds.contains("gemma3-1b"))
+        assertTrue(modelIds.contains("Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096"))
+        assertTrue(modelIds.contains("cycling-copilot_q8_ekv1024"))
 
         viewModel.dispose()
     }
@@ -124,7 +124,7 @@ class OnboardViewModelTest {
     // region Download Flow Tests
 
     @Test
-    fun `DownloadModel should start download for user-hf-model`() = runTest {
+    fun `DownloadModel should start download for gemma3-1b model`() = runTest {
         fakeAuthRepository.saveToken("test-token")
         val downloadManager =
             FakeModelDownloadManager(
@@ -134,11 +134,12 @@ class OnboardViewModelTest {
         val viewModel = createViewModel(downloadManager = downloadManager)
         advanceUntilIdle()
 
-        viewModel.onUiAction(UiAction.DownloadModel("user-hf-model"))
+        viewModel.onUiAction(UiAction.DownloadModel("Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096"))
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
-        val model = state.models.find { it.config.modelId == "user-hf-model" }
+        val model =
+            state.models.find { it.config.modelId == "Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096" }
         assertNotNull(model)
         assertTrue(model.isDownloaded)
         assertEquals(DownloadStatus.Completed, model.downloadStatus)
@@ -147,7 +148,7 @@ class OnboardViewModelTest {
     }
 
     @Test
-    fun `DownloadModel should start download for gemma3-1b`() = runTest {
+    fun `DownloadModel should start download for cycling-copilot model`() = runTest {
         fakeAuthRepository.saveToken("test-token")
         val downloadManager =
             FakeModelDownloadManager(
@@ -157,11 +158,11 @@ class OnboardViewModelTest {
         val viewModel = createViewModel(downloadManager = downloadManager)
         advanceUntilIdle()
 
-        viewModel.onUiAction(UiAction.DownloadModel("gemma3-1b"))
+        viewModel.onUiAction(UiAction.DownloadModel("cycling-copilot_q8_ekv1024"))
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
-        val model = state.models.find { it.config.modelId == "gemma3-1b" }
+        val model = state.models.find { it.config.modelId == "cycling-copilot_q8_ekv1024" }
         assertNotNull(model)
         assertTrue(model.isDownloaded)
 
@@ -176,11 +177,15 @@ class OnboardViewModelTest {
 
         // Simulate download in progress
         modelsStatusFlow.value =
-            mapOf("user-hf-model.bin" to ModelDownloadManager.Status.InProgress(progress = 42f))
+            mapOf(
+                "Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096.litertlm" to
+                    ModelDownloadManager.Status.InProgress(progress = 42f)
+            )
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
-        val model = state.models.find { it.config.modelId == "user-hf-model" }
+        val model =
+            state.models.find { it.config.modelId == "Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096" }
         assertNotNull(model)
         assertTrue(model.downloadStatus is DownloadStatus.Downloading)
         assertEquals(42f, (model.downloadStatus as DownloadStatus.Downloading).progress)
@@ -197,14 +202,17 @@ class OnboardViewModelTest {
         // Simulate both models downloading simultaneously
         modelsStatusFlow.value =
             mapOf(
-                "user-hf-model.bin" to ModelDownloadManager.Status.InProgress(progress = 30f),
-                "gemma3-1b.bin" to ModelDownloadManager.Status.InProgress(progress = 50f),
+                "Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096.litertlm" to
+                    ModelDownloadManager.Status.InProgress(progress = 30f),
+                "cycling-copilot_q8_ekv1024.litertlm" to
+                    ModelDownloadManager.Status.InProgress(progress = 50f),
             )
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
-        val userModel = state.models.find { it.config.modelId == "user-hf-model" }
-        val gemmaModel = state.models.find { it.config.modelId == "gemma3-1b" }
+        val userModel =
+            state.models.find { it.config.modelId == "Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096" }
+        val gemmaModel = state.models.find { it.config.modelId == "cycling-copilot_q8_ekv1024" }
 
         assertNotNull(userModel)
         assertNotNull(gemmaModel)
@@ -221,7 +229,10 @@ class OnboardViewModelTest {
 
         // Simulate download in progress
         modelsStatusFlow.value =
-            mapOf("user-hf-model.bin" to ModelDownloadManager.Status.InProgress(progress = 30f))
+            mapOf(
+                "Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096.litertlm" to
+                    ModelDownloadManager.Status.InProgress(progress = 30f)
+            )
         advanceUntilIdle()
 
         viewModel.onUiAction(UiAction.CancelCurrentDownload)
@@ -239,7 +250,10 @@ class OnboardViewModelTest {
 
         // Simulate download in progress
         modelsStatusFlow.value =
-            mapOf("user-hf-model.bin" to ModelDownloadManager.Status.InProgress(progress = 30f))
+            mapOf(
+                "Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096.litertlm" to
+                    ModelDownloadManager.Status.InProgress(progress = 30f)
+            )
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
@@ -255,7 +269,12 @@ class OnboardViewModelTest {
         advanceUntilIdle()
 
         // Simulate both models completed
-        fakeDownloadManager.setDownloadedFilenames(setOf("user-hf-model.bin", "gemma3-1b.bin"))
+        fakeDownloadManager.setDownloadedFilenames(
+            setOf(
+                "Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096.litertlm",
+                "cycling-copilot_q8_ekv1024.litertlm",
+            )
+        )
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
@@ -272,11 +291,15 @@ class OnboardViewModelTest {
 
         // Simulate download failure
         modelsStatusFlow.value =
-            mapOf("user-hf-model.bin" to ModelDownloadManager.Status.Failed("Network error"))
+            mapOf(
+                "Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096.litertlm" to
+                    ModelDownloadManager.Status.Failed("Network error")
+            )
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
-        val model = state.models.find { it.config.modelId == "user-hf-model" }
+        val model =
+            state.models.find { it.config.modelId == "Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096" }
         assertNotNull(model)
         assertTrue(model.downloadStatus is DownloadStatus.Failed)
         assertEquals("Network error", (model.downloadStatus as DownloadStatus.Failed).error)
@@ -356,26 +379,34 @@ class OnboardViewModelTest {
 
         // Initially not started
         var state = viewModel.uiState.value
-        var model = state.models.find { it.config.modelId == "user-hf-model" }
+        var model =
+            state.models.find { it.config.modelId == "Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096" }
         assertNotNull(model)
         assertTrue(model.downloadStatus is DownloadStatus.NotStarted)
 
         // Update to downloading
         modelsStatusFlow.value =
-            mapOf("user-hf-model.bin" to ModelDownloadManager.Status.InProgress(progress = 50f))
+            mapOf(
+                "Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096.litertlm" to
+                    ModelDownloadManager.Status.InProgress(progress = 50f)
+            )
         advanceUntilIdle()
 
         state = viewModel.uiState.value
-        model = state.models.find { it.config.modelId == "user-hf-model" }
+        model =
+            state.models.find { it.config.modelId == "Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096" }
         assertNotNull(model)
         assertTrue(model.downloadStatus is DownloadStatus.Downloading)
 
         // Update to completed
-        fakeDownloadManager.setDownloadedFilenames(setOf("user-hf-model.bin"))
+        fakeDownloadManager.setDownloadedFilenames(
+            setOf("Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096.litertlm")
+        )
         advanceUntilIdle()
 
         state = viewModel.uiState.value
-        model = state.models.find { it.config.modelId == "user-hf-model" }
+        model =
+            state.models.find { it.config.modelId == "Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096" }
         assertNotNull(model)
         assertTrue(model.isDownloaded)
         assertEquals(DownloadStatus.Completed, model.downloadStatus)
@@ -389,11 +420,16 @@ class OnboardViewModelTest {
         advanceUntilIdle()
 
         // Simulate cancelled download
-        modelsStatusFlow.value = mapOf("user-hf-model.bin" to ModelDownloadManager.Status.Cancelled)
+        modelsStatusFlow.value =
+            mapOf(
+                "Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096.litertlm" to
+                    ModelDownloadManager.Status.Cancelled
+            )
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
-        val model = state.models.find { it.config.modelId == "user-hf-model" }
+        val model =
+            state.models.find { it.config.modelId == "Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096" }
         assertNotNull(model)
         assertEquals(DownloadStatus.NotStarted, model.downloadStatus)
         assertFalse(model.isDownloaded)
