@@ -4,7 +4,7 @@ package com.monday8am.edgelab.core.oauth
 object HuggingFaceOAuthConfig {
     const val AUTHORIZATION_ENDPOINT = "https://huggingface.co/oauth/authorize"
     const val TOKEN_ENDPOINT = "https://huggingface.co/oauth/token"
-    const val SCOPE = "openid profile"
+    const val SCOPE = "openid profile read-repos"
     const val EXTRA_OAUTH_REDIRECT = "oauth_redirect"
 
     /** Creates a redirect URI for the given app scheme (e.g., "edgelab", "copilot") */

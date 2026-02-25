@@ -121,7 +121,8 @@ class ModelDownloadManagerImpl(
             val existingWork = findRunningWork(workName)
 
             if (existingWork == null) {
-                val workRequest = createDownloadWorkRequest(modelId, downloadUrl, destinationFile)
+                val token = authRepository.authToken.value
+                val workRequest = createDownloadWorkRequest(modelId, downloadUrl, destinationFile, token)
                 workManager.enqueueUniqueWork(workName, ExistingWorkPolicy.KEEP, workRequest)
             }
             // Status updates come through modelsStatus flow
@@ -132,6 +133,7 @@ class ModelDownloadManagerImpl(
         modelId: String,
         downloadUrl: String,
         destinationFile: File,
+        token: String?,
     ): OneTimeWorkRequest {
         val requiresUnzip = downloadUrl.endsWith(".zip", ignoreCase = true)
 
@@ -141,7 +143,7 @@ class ModelDownloadManagerImpl(
                     DownloadUnzipWorker.KEY_URL to downloadUrl,
                     DownloadUnzipWorker.KEY_DESTINATION_PATH to destinationFile.absolutePath,
                     DownloadUnzipWorker.KEY_REQUIRES_UNZIP to requiresUnzip,
-                    DownloadUnzipWorker.KEY_AUTH_TOKEN to authRepository.authToken.value,
+                    DownloadUnzipWorker.KEY_AUTH_TOKEN to token,
                 )
             )
             .addTag(WORK_TAG)

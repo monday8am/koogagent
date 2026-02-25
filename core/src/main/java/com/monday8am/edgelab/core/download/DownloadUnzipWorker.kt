@@ -100,7 +100,7 @@ class DownloadUnzipWorker(appContext: Context, workerParams: WorkerParameters) :
                 // For safety, let's assume it might be corrupted or complete.
                 // If it's the exact same size as the content-length from a fresh request, it's
                 // complete.
-                // But for now, let's just log and return if it's already there and we can't get
+                // But for now, let's just log and return if it's already there, and we can't get
                 // more.
                 return
             }
