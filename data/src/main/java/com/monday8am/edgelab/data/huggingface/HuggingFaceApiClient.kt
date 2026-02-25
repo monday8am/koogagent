@@ -8,8 +8,6 @@ import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import okhttp3.Call
 import okhttp3.Callback
@@ -26,7 +24,6 @@ class HuggingFaceApiClient(
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .build(),
-    private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
     private val logger = Logger.withTag("HuggingFaceApiClient")
 

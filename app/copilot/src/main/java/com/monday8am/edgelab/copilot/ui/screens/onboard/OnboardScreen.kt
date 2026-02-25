@@ -49,7 +49,6 @@ import com.monday8am.edgelab.presentation.onboard.UiAction
 import com.monday8am.edgelab.presentation.onboard.UiState
 import kotlinx.collections.immutable.persistentListOf
 
-/** Onboard Screen - 3-step wizard for authentication and model download */
 @Composable
 fun OnboardScreen(
     onNavigateToSetup: () -> Unit,
