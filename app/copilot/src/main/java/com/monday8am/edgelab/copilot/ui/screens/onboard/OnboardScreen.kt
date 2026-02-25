@@ -1,5 +1,6 @@
 package com.monday8am.edgelab.copilot.ui.screens.onboard
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -28,6 +29,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,13 +40,13 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.monday8am.edgelab.copilot.Dependencies
+import com.monday8am.edgelab.copilot.Dependencies.oAuthManager
 import com.monday8am.edgelab.copilot.ui.theme.CyclingCopilotTheme
 import com.monday8am.edgelab.presentation.onboard.DownloadStatus
 import com.monday8am.edgelab.presentation.onboard.ModelInfo
 import com.monday8am.edgelab.presentation.onboard.OnboardViewModelImpl
 import com.monday8am.edgelab.presentation.onboard.UiAction
 import com.monday8am.edgelab.presentation.onboard.UiState
-import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 
 /** Onboard Screen - 3-step wizard for authentication and model download */
@@ -64,11 +66,24 @@ fun OnboardScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
+    LaunchedEffect(Unit) {
+        oAuthManager.oAuthResultFlow.collect { intent ->
+            try {
+                val token = oAuthManager.handleAuthorizationResponse(intent)
+                viewModel.onUiAction(UiAction.SubmitToken(token))
+                Toast.makeText(context, "Logged in to HuggingFace", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                Toast.makeText(context, "Login failed: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+
     OnboardScreenContent(
         uiState = uiState,
         onAction = viewModel::onUiAction,
         onNavigateToSetup = onNavigateToSetup,
-        onStartOAuth = { Dependencies.oAuthManager.startAuthorization() },
+        onStartOAuth = { oAuthManager.startAuthorization() },
     )
 }
 
@@ -228,8 +243,7 @@ private fun OnboardScreenContent(
                     text =
                         when {
                             !uiState.isLoggedIn -> "Complete Step 1 to continue"
-                            !allModelsReady -> "Complete Step 2 to continue"
-                            else -> ""
+                            else -> "Complete Step 2 to continue"
                         },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -367,7 +381,7 @@ private fun ModelDownloadCard(
                     )
                 }
 
-                when (val status = modelInfo.downloadStatus) {
+                when (modelInfo.downloadStatus) {
                     is DownloadStatus.Completed -> {
                         Icon(
                             imageVector = Icons.Default.Check,

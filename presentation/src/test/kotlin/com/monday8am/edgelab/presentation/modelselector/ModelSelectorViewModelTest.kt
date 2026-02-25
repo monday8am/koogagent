@@ -16,29 +16,29 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 
-/** Fake implementation of ModelCatalogProvider for testing. */
 internal class FakeModelCatalogProvider(
     private val models: List<ModelConfiguration> = emptyList(),
     private val shouldFail: Boolean = false,
     private val failureMessage: String = "Test failure",
 ) : ModelCatalogProvider {
-    override fun getModels(): kotlinx.coroutines.flow.Flow<List<ModelConfiguration>> =
-        kotlinx.coroutines.flow.flow {
-            if (shouldFail) {
-                throw Exception(failureMessage)
-            } else {
-                emit(models)
-            }
+    override fun getModels(): Flow<List<ModelConfiguration>> = flow {
+        if (shouldFail) {
+            throw Exception(failureMessage)
+        } else {
+            emit(models)
         }
+    }
 }
 
 internal class FakeAuthRepository(initialToken: String? = null) : AuthRepository {
@@ -73,7 +73,6 @@ class ModelSelectorViewModelTest {
         modelsStatusFlow = MutableStateFlow(emptyMap())
         fakeDownloadManager = FakeModelDownloadManager(modelsStatusFlow = modelsStatusFlow)
         fakeAuthRepository = FakeAuthRepository()
-        // Default repository for simple cases
         fakeRepository = ModelRepositoryImpl(FakeModelCatalogProvider(testModels), testDispatcher)
     }
 
@@ -134,14 +133,13 @@ class ModelSelectorViewModelTest {
         var shouldFail = true
         val catalogProvider =
             object : ModelCatalogProvider {
-                override fun getModels(): kotlinx.coroutines.flow.Flow<List<ModelConfiguration>> =
-                    kotlinx.coroutines.flow.flow {
-                        if (shouldFail) {
-                            throw Exception("Network error")
-                        } else {
-                            emit(testModels)
-                        }
+                override fun getModels(): Flow<List<ModelConfiguration>> = flow {
+                    if (shouldFail) {
+                        throw Exception("Network error")
+                    } else {
+                        emit(testModels)
                     }
+                }
             }
 
         val viewModel = createViewModel(catalogProvider = catalogProvider)

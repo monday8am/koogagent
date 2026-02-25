@@ -9,6 +9,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 
 class ModelRepositoryTest {
     private val model1 = ModelCatalog.QWEN3_0_6B
@@ -16,8 +18,8 @@ class ModelRepositoryTest {
 
     private val fakeProvider =
         object : ModelCatalogProvider {
-            override fun getModels(): kotlinx.coroutines.flow.Flow<List<ModelConfiguration>> =
-                kotlinx.coroutines.flow.flowOf(listOf(model1, model2))
+            override fun getModels(): Flow<List<ModelConfiguration>> =
+                flowOf(listOf(model1, model2))
         }
 
     private val repository = ModelRepositoryImpl(fakeProvider)
