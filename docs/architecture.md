@@ -28,83 +28,25 @@ Six modules with a strict unidirectional dependency graph:
 
 ## `:data` — Data Models & Interfaces
 
-Pure Kotlin, no Android dependencies.
+Pure Kotlin, no Android dependencies. Defines repository interfaces, data models, and HuggingFace API integration.
 
-### Authentication
-- `AuthRepository` *(interface)* — auth token state and persistence
-- `AuthorRepository` *(interface)* — HuggingFace author list management
-- `AuthorInfo` — serializable author data (name, avatarUrl, modelCount)
-
-### Model Management
-- `ModelRepository` *(interface + impl)* — model catalog with StateFlow-based state, filtering and search
-- `ModelConfiguration` — full model metadata: displayName, parameters, quantization, context length, download URL, hardware backend
-- `ModelCatalog` — hardcoded fallback catalog (Qwen3-0.6B, Qwen2.5-1.5B, Gemma3-1B)
-- `ModelCatalogProvider` *(interface)* — abstraction for model catalog sources
-- `LocalModelDataSource` *(interface)* — local storage abstraction for model catalog
-
-### HuggingFace Integration
-- `HuggingFaceApiClient` — HTTP client for HF API (model list, file sizes, whoami, author info)
-- `HuggingFaceModelRepository` — implements `ModelCatalogProvider`, fetches models from HF API with parallel requests; auto-adds authenticated user to model sources for gated model access
-- `HuggingFaceModels` — DTOs: `HuggingFaceModelSummary`, `GatedStatus`
-- `ModelFilenameParser` — regex-based parser extracting model metadata from filenames
-- `FallbackModelCatalogProvider` — wraps primary provider with fallback to hardcoded catalog
-
-### Testing
-- `TestRepository` *(interface)* — loads test definitions
-- `AssetsTestRepository` — loads from bundled resources
-- `TestRepositoryImpl` — network-aware repository with local caching and fallback
-- `TestDefinitions` — test schema: `TestCaseDefinition`, `ValidationRule` (10 rule types)
-- `LocalTestDataSource` *(interface)* — local storage for test definitions
+Key interfaces: `AuthRepository`, `ModelRepository`, `ModelCatalogProvider`, `TestRepository`. Browse `data/src/` for full contents.
 
 ---
 
 ## `:agent` — Agent Logic & Tool Calling
 
-Pure Kotlin/JVM. Depends on `:data` and LiteRT-LM JVM.
+Pure Kotlin/JVM. Depends on `:data` and LiteRT-LM JVM. Contains the inference engine interface, tool handling, and Koog framework integration.
 
-### Core
-- `LocalInferenceEngine` *(interface)* — abstract inference engine: `initialize`, `prompt`, streaming, tools, `closeSession`
-- `NotificationAgent` — unified agent supporting two backends:
-  - **LOCAL**: local inference engines (LiteRT-LM) via `LocalInferenceLLMClient`
-  - **KOOG**: Koog framework agents via `simpleOllamaAIExecutor()`
-- `LocalInferenceLLMClient` — bridges Koog's `LLMClient` interface to the local inference engine
-- `Utils` — event handler configuration for agent tracing and logging
-
-### Tools
-- `ToolHandler` *(interface)* — tool handling contract with call tracking
-- `OpenApiToolHandler` — extends LiteRT-LM's `OpenApiTool`; returns mock responses and tracks calls
-- `ToolHandlerFactory` — creates `OpenApiToolHandler` instances without exposing LiteRT-LM dependency
-- `ToolCall` — records tool name, timestamp, and arguments
+Key interface: `LocalInferenceEngine` — abstract engine with `initialize`, `prompt`, `promptStreaming`, `setToolsAndResetConversation`, `closeSession`. Browse `agent/src/` for full contents.
 
 ---
 
 ## `:presentation` — ViewModels & State Management
 
-Pure Kotlin, KMP-ready (no Android dependencies). Depends on `:data` and `:agent`.
+Pure Kotlin, KMP-ready (no Android dependencies). Depends on `:data` and `:agent`. All ViewModels follow the 3-layer pattern described in [`docs/patterns.md`](patterns.md).
 
-All ViewModels follow the same pattern: a platform-agnostic interface + implementation, wrapped by an Android-specific class in `:app:*`.
-
-### Model Selector
-- `ModelSelectorViewModel` / `ModelSelectorViewModelImpl` — model catalog UI: grouping (Family / Access / Author), download management, HuggingFace auth integration
-
-### Test Runner
-- `TestViewModel` / `TestViewModelImpl` — orchestrates test execution with reactive state machine
-- `ToolCallingTestEngine` — framework-agnostic test runner with tool call tracking
-- `TestRuleValidator` — converts data-layer test definitions to presentation layer; validates against 10 rule types
-- `TagProcessor` — parses thinking tags (`<think>`, `<thinking>`), tracks streaming state, measures token speed
-- `TestModels` — UI state: `TestUiState`, `TestStatus`, `TestResultFrame`
-
-### Test Details
-- `TestDetailsViewModel` / `TestDetailsViewModelImpl` — test catalog display with domain filtering
-
-### Onboard (CyclingCopilot)
-- `OnboardViewModel` / `OnboardViewModelImpl` — simplified two-model download flow for the Copilot app
-
-### Author Manager
-- `AuthorManagerViewModel` / `AuthorManagerViewModelImpl` — add/remove HuggingFace authors
-
-### Key Interfaces (implemented in `:core`)
-- `ModelDownloadManager` — abstract download manager with `Status` sealed interface
+Key interface: `ModelDownloadManager` — abstract download manager (implemented in `:core`). Browse `presentation/src/` for full contents.
 
 ---
 
@@ -112,30 +54,7 @@ All ViewModels follow the same pattern: a platform-agnostic interface + implemen
 
 Android library. Exposes `:data`, `:agent`, and `:presentation` transitively via `api` dependencies. Apps only need `implementation(project(":core"))`.
 
-### Dependency Injection
-- `CoreDependencies` *(object)* — factory methods for all shared infrastructure:
-  - `createInferenceEngine()`
-  - `createDownloadManager(context, authRepository)`
-  - `createOAuthManager(context, clientId, redirectScheme, activityClass)`
-  - `createAuthRepository(context, scope)`
-
-### Inference
-- `LiteRTLmInferenceEngineImpl` — implements `LocalInferenceEngine`; manages LiteRT-LM `Engine` / `Conversation` lifecycle with GPU/CPU backend selection
-
-### Download
-- `ModelDownloadManagerImpl` — implements `ModelDownloadManager` using WorkManager for background downloads
-- `DownloadUnzipWorker` — `CoroutineWorker` that downloads and unzips model files with progress tracking
-
-### OAuth
-- `HuggingFaceOAuthManager` — AppAuth integration for HuggingFace OAuth flow; configurable per app via `redirectScheme` and `activityClass`
-- `HuggingFaceOAuthConfig` — OAuth endpoints, scopes, and redirect URI generation
-
-### Storage
-- `AuthRepositoryImpl` — implements `AuthRepository` using DataStore with Tink AEAD encryption
-- `DataStoreAuthorRepository` — implements `AuthorRepository`, persists HF author list
-- `DataStoreModelDataSource` — implements `LocalModelDataSource`, caches model catalog
-- `DataStoreTestDataSource` — implements `LocalTestDataSource`, caches test definitions
-- `AuthTokenSerializer` — Tink-based serializer for encrypted token storage
+Implements interfaces from upstream modules with Android-specific infrastructure: LiteRT-LM inference, WorkManager downloads, AppAuth OAuth, DataStore + Tink storage. Entry point is `CoreDependencies` — factory object for all shared services. Browse `core/src/` for full contents.
 
 ---
 
@@ -188,40 +107,7 @@ On-device AI cycling assistant. See [`docs/cyclingcopilot/ui-architecture.md`](c
 
 ## Key Patterns
 
-### MVI State Management
-All ViewModels follow a unidirectional data flow:
-
-```
-userActions: MutableSharedFlow<Action>
-  → flatMapConcat (execute action)
-  → map (wrap in ActionState.Success / Error / Loading)
-  → scan (reduce into UiState)
-  → distinctUntilChanged
-  → onEach (side effects)
-  → stateIn (expose as StateFlow)
-```
-
-### Android ViewModel Wrapper Pattern
-Each feature has three layers:
-1. **Interface** (`:presentation`) — defines state and actions
-2. **Impl** (`:presentation`) — pure Kotlin business logic, owns coroutine scope
-3. **Android wrapper** (`:app:*`) — extends `ViewModel`, delegates to impl, converts Flow to StateFlow via `stateIn(viewModelScope)`
-
-### Caching Pattern (Stale-While-Revalidate)
-Used by both model catalog and test definitions:
-1. Emit cached data immediately if available
-2. Fetch fresh data from network in background (fire-and-forget)
-3. Deduplicate: only emit if network data differs from cache
-4. Persist network data to cache for next launch
-5. Fallback to bundled assets on network failure
-
-### Per-Test Tool Isolation
-Each test run creates fresh tool handlers and resets the conversation:
-1. `ToolHandlerFactory` creates handlers from the test's OpenAPI definitions
-2. `setToolsAndResetConversation()` called with test-specific tools
-3. Query executed, tool calls tracked
-4. Results validated against `TestRuleValidator` rules
-5. Next test repeats with a clean state
+See [`docs/patterns.md`](patterns.md) for code patterns with concrete examples and anti-patterns.
 
 ---
 
@@ -248,19 +134,13 @@ Each test run creates fresh tool handlers and resets the conversation:
 
 | Setting | Value |
 |---------|-------|
-| `minSdk` | 26 (Android 8.0) |
+| `minSdk` | 31 (Android 12) |
 | `targetSdk` / `compileSdk` | 36 |
-| Kotlin toolchain | Java 11 (`:data`, `:agent`, `:presentation`) / Java 17 (`:core`, `:app:*`) |
+| Kotlin toolchain | Java 17 (all modules) |
 | Recommended JDK | 17 or 21 |
 
-### Version Catalog (`gradle/libs.versions.toml`)
-| Library | Version |
-|---------|---------|
-| Koog agents | 0.4.2 |
-| LiteRT-LM | 0.0.0-alpha05 |
-| Compose BOM | 2025.09.01 |
-| Kotlin | 2.2.20 |
-| AGP | 8.13.0-rc02 |
+### Version Catalog
+See `gradle/libs.versions.toml` for current dependency versions. See [`docs/dependencies.md`](dependencies.md) for dependency constraints and gotchas.
 
 ---
 

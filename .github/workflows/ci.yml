@@ -35,6 +35,10 @@ jobs:
       - name: Set up HuggingFace OAuth
         run: echo "HF_CLIENT_ID=${{ secrets.HF_CLIENT_ID }}" >> $GITHUB_ENV
 
+      - name: Validate docs
+        if: github.event_name == 'pull_request'
+        run: bash scripts/check-docs.sh
+
       - name: Run ktfmt check
         run: ./gradlew ktfmtCheck
 
