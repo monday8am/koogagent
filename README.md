@@ -16,9 +16,9 @@ Built with [LiteRT-LM](https://github.com/google-ai-edge/LiteRT-LM), [JetBrains 
 | Resource | Description |
 |----------|-------------|
 | 🌐 [edgeagentlab.dev](https://edgeagentlab.dev) | Microsite with test visualizations and project overview |
-| ✍️ [Part #1 — From Flat Notifications to Edge AI](https://monday8am.com/blog/2025/10/01/flat-notifications-edge-ai.html) | Initial concept and motivation |
-| ✍️ [Part #2 — Function Calling with Edge AI](https://monday8am.com/blog/2025/12/10/function-calling-edge-ai.html) | Deep dive into on-device tool calling challenges |
-| ✍️ [Part #3 — Let's talk about FunctionGemma](https://monday8am.com/blog/2026/02/08/lets-talk-about-functiongemma.html) | Exploring FunctionGemma and where it fits in mobile development |
+| [Part #1 — From Flat Notifications to Edge AI](https://monday8am.com/blog/2025/10/01/flat-notifications-edge-ai.html) | Initial concept and motivation |
+| [Part #2 — Function Calling with Edge AI](https://monday8am.com/blog/2025/12/10/function-calling-edge-ai.html) | Deep dive into on-device tool calling challenges |
+| [Part #3 — Let's talk about FunctionGemma](https://monday8am.com/blog/2026/02/08/lets-talk-about-functiongemma.html) | Exploring FunctionGemma and where it fits in mobile development |
 
 ---
 
