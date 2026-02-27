@@ -12,7 +12,7 @@ activityCompose = "1.12.4"
 composeBom = "2026.02.00"
 koog = "0.6.2"
 kotlinxCoroutines = "1.10.2"
-litertlm = "0.9.0-alpha04"
+litertlm = "0.9.0-alpha05"
 okhttp = "5.3.2"
 workRuntime = "2.11.1"
 turbine = "1.2.1"
@@ -23,13 +23,13 @@ security-crypto = "1.1.0"
 datastore = "1.2.0"
 tink = "1.20.0"
 compose-lint = "1.4.2"
-firebase-bom = "34.9.0"
+firebase-bom = "34.10.0"
 google-services = "4.4.4"
 firebase-crashlytics-plugin = "3.0.6"
 appauth = "0.11.1"
 browser = "1.9.0"
-uiTextGoogleFonts = "1.10.3"
-maplibre = "11.0.0"
+uiTextGoogleFonts = "1.10.4"
+maplibre-compose = "0.12.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -69,7 +69,7 @@ firebase-crashlytics = { group = "com.google.firebase", name = "firebase-crashly
 appauth = { group = "net.openid", name = "appauth", version.ref = "appauth" }
 androidx-browser = { group = "androidx.browser", name = "browser", version.ref = "browser" }
 androidx-compose-ui-text-google-fonts = { group = "androidx.compose.ui", name = "ui-text-google-fonts", version.ref = "uiTextGoogleFonts" }
-maplibre-android = { group = "org.maplibre.gl", name = "android-sdk", version.ref = "maplibre" }
+maplibre-compose = { module = "org.maplibre.compose:maplibre-compose", version.ref = "maplibre-compose" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
