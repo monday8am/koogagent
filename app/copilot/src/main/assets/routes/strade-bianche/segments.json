@@ -1,0 +1,222 @@
+{
+  "route_id": "strade-bianche-granfondo",
+  "named_sectors": [
+    {
+      "id": "vridritta_gravel_section",
+      "name": "Vridritta gravel section",
+      "category": "cycle_way",
+      "from_index": 468,
+      "to_index": 486,
+      "start_lat": 43.226175,
+      "start_lng": 11.235198,
+      "distance_m": 1970,
+      "elevation_up_m": 0,
+      "surface": "unpaved",
+      "km_from_start": 21.1
+    },
+    {
+      "id": "bagnaia_gravel_sector_strade_bianche",
+      "name": "Bagnaia Gravel Sector (Strade Bianche)",
+      "category": "trail",
+      "from_index": 581,
+      "to_index": 684,
+      "start_lat": 43.219999,
+      "start_lng": 11.289891,
+      "distance_m": 3333,
+      "elevation_up_m": 159,
+      "surface": "unpaved",
+      "km_from_start": 30.9
+    },
+    {
+      "id": "strade_bianche_radi",
+      "name": "Strade Bianche Radi",
+      "category": "trail",
+      "from_index": 810,
+      "to_index": 854,
+      "start_lat": 43.21364,
+      "start_lng": 11.371319,
+      "distance_m": 3046,
+      "elevation_up_m": 57,
+      "surface": "compacted",
+      "km_from_start": 40.4
+    },
+    {
+      "id": "strade_bianche__monte_santa_margherita_segment",
+      "name": "Strade Bianche \u2013 Monte Santa Margherita segment",
+      "category": "cycle_way",
+      "from_index": 1806,
+      "to_index": 2118,
+      "start_lat": 43.240333,
+      "start_lng": 11.553061,
+      "distance_m": 11489,
+      "elevation_up_m": 309,
+      "surface": "unpaved",
+      "km_from_start": 88.4
+    },
+    {
+      "id": "abandoned_farmhouse_and_vineyard_path",
+      "name": "Abandoned Farmhouse and Vineyard Path",
+      "category": "other_man_made",
+      "from_index": 2199,
+      "to_index": 2554,
+      "start_lat": 43.318388,
+      "start_lng": 11.514997,
+      "distance_m": 16573,
+      "elevation_up_m": 214,
+      "surface": "asphalt",
+      "km_from_start": 102.1
+    }
+  ],
+  "gravel_sectors": [
+    {
+      "from_index": 468,
+      "to_index": 486,
+      "start_lat": 43.226175,
+      "start_lng": 11.235198,
+      "distance_m": 1970,
+      "elevation_up_m": 0,
+      "surface": "unpaved",
+      "km_from_start": 21.1
+    },
+    {
+      "from_index": 551,
+      "to_index": 579,
+      "start_lat": 43.240678,
+      "start_lng": 11.290212,
+      "distance_m": 2594,
+      "elevation_up_m": 15,
+      "surface": "unpaved",
+      "km_from_start": 28.3
+    },
+    {
+      "from_index": 581,
+      "to_index": 684,
+      "start_lat": 43.219999,
+      "start_lng": 11.289891,
+      "distance_m": 3333,
+      "elevation_up_m": 159,
+      "surface": "unpaved",
+      "km_from_start": 30.9
+    },
+    {
+      "from_index": 810,
+      "to_index": 854,
+      "start_lat": 43.21364,
+      "start_lng": 11.371319,
+      "distance_m": 3046,
+      "elevation_up_m": 57,
+      "surface": "compacted",
+      "km_from_start": 40.4
+    },
+    {
+      "from_index": 855,
+      "to_index": 879,
+      "start_lat": 43.191922,
+      "start_lng": 11.383911,
+      "distance_m": 1176,
+      "elevation_up_m": 44,
+      "surface": "compacted",
+      "km_from_start": 43.5
+    },
+    {
+      "from_index": 1044,
+      "to_index": 1084,
+      "start_lat": 43.145592,
+      "start_lng": 11.425195,
+      "distance_m": 1645,
+      "elevation_up_m": 0,
+      "surface": "compacted",
+      "km_from_start": 51.4
+    },
+    {
+      "from_index": 1085,
+      "to_index": 1122,
+      "start_lat": 43.152019,
+      "start_lng": 11.438282,
+      "distance_m": 1340,
+      "elevation_up_m": 10,
+      "surface": "compacted",
+      "km_from_start": 53.0
+    },
+    {
+      "from_index": 1138,
+      "to_index": 1165,
+      "start_lat": 43.144821,
+      "start_lng": 11.453345,
+      "distance_m": 2513,
+      "elevation_up_m": 3,
+      "surface": "unpaved",
+      "km_from_start": 54.9
+    },
+    {
+      "from_index": 1214,
+      "to_index": 1341,
+      "start_lat": 43.163798,
+      "start_lng": 11.467654,
+      "distance_m": 6335,
+      "elevation_up_m": 92,
+      "surface": "unpaved",
+      "km_from_start": 59.2
+    },
+    {
+      "from_index": 1346,
+      "to_index": 1381,
+      "start_lat": 43.200982,
+      "start_lng": 11.45515,
+      "distance_m": 2605,
+      "elevation_up_m": 14,
+      "surface": "unpaved",
+      "km_from_start": 66.0
+    },
+    {
+      "from_index": 1394,
+      "to_index": 1625,
+      "start_lat": 43.22856,
+      "start_lng": 11.429091,
+      "distance_m": 9377,
+      "elevation_up_m": 268,
+      "surface": "unpaved",
+      "km_from_start": 70.0
+    },
+    {
+      "from_index": 1806,
+      "to_index": 2118,
+      "start_lat": 43.240333,
+      "start_lng": 11.553061,
+      "distance_m": 11489,
+      "elevation_up_m": 309,
+      "surface": "unpaved",
+      "km_from_start": 88.4
+    },
+    {
+      "from_index": 2554,
+      "to_index": 2569,
+      "start_lat": 43.325901,
+      "start_lng": 11.421961,
+      "distance_m": 534,
+      "elevation_up_m": 48,
+      "surface": "unpaved",
+      "km_from_start": 118.6
+    },
+    {
+      "from_index": 2655,
+      "to_index": 2719,
+      "start_lat": 43.320479,
+      "start_lng": 11.376135,
+      "distance_m": 2334,
+      "elevation_up_m": 81,
+      "surface": "unpaved",
+      "km_from_start": 123.0
+    },
+    {
+      "from_index": 2803,
+      "to_index": 2833,
+      "start_lat": 43.334518,
+      "start_lng": 11.344803,
+      "distance_m": 1177,
+      "elevation_up_m": 32,
+      "surface": "compacted",
+      "km_from_start": 129.1
+    }
+  ]
+}

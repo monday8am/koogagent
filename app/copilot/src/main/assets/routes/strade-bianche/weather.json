@@ -1,0 +1,152 @@
+{
+  "route_id": "strade-bianche-granfondo",
+  "location": "Siena, Tuscany, Italy",
+  "date": "2026-03-07",
+  "timezone": "Europe/Rome",
+  "summary": "Partly cloudy with morning chill, chance of afternoon showers",
+  "hourly": [
+    {
+      "hour": 6,
+      "temp_c": 5,
+      "feels_like_c": 2,
+      "wind_kph": 15,
+      "wind_dir": "NW",
+      "humidity_pct": 78,
+      "condition": "clear",
+      "precip_mm": 0.0,
+      "uv_index": 0
+    },
+    {
+      "hour": 7,
+      "temp_c": 6,
+      "feels_like_c": 3,
+      "wind_kph": 14,
+      "wind_dir": "NW",
+      "humidity_pct": 75,
+      "condition": "clear",
+      "precip_mm": 0.0,
+      "uv_index": 1
+    },
+    {
+      "hour": 8,
+      "temp_c": 8,
+      "feels_like_c": 5,
+      "wind_kph": 16,
+      "wind_dir": "NW",
+      "humidity_pct": 70,
+      "condition": "partly_cloudy",
+      "precip_mm": 0.0,
+      "uv_index": 2
+    },
+    {
+      "hour": 9,
+      "temp_c": 10,
+      "feels_like_c": 7,
+      "wind_kph": 18,
+      "wind_dir": "W",
+      "humidity_pct": 65,
+      "condition": "partly_cloudy",
+      "precip_mm": 0.0,
+      "uv_index": 3
+    },
+    {
+      "hour": 10,
+      "temp_c": 12,
+      "feels_like_c": 9,
+      "wind_kph": 20,
+      "wind_dir": "W",
+      "humidity_pct": 62,
+      "condition": "cloudy",
+      "precip_mm": 0.1,
+      "uv_index": 4
+    },
+    {
+      "hour": 11,
+      "temp_c": 13,
+      "feels_like_c": 10,
+      "wind_kph": 22,
+      "wind_dir": "SW",
+      "humidity_pct": 60,
+      "condition": "cloudy",
+      "precip_mm": 0.2,
+      "uv_index": 4
+    },
+    {
+      "hour": 12,
+      "temp_c": 14,
+      "feels_like_c": 11,
+      "wind_kph": 24,
+      "wind_dir": "SW",
+      "humidity_pct": 63,
+      "condition": "light_rain",
+      "precip_mm": 0.8,
+      "uv_index": 3
+    },
+    {
+      "hour": 13,
+      "temp_c": 13,
+      "feels_like_c": 10,
+      "wind_kph": 26,
+      "wind_dir": "S",
+      "humidity_pct": 68,
+      "condition": "light_rain",
+      "precip_mm": 1.2,
+      "uv_index": 2
+    },
+    {
+      "hour": 14,
+      "temp_c": 12,
+      "feels_like_c": 9,
+      "wind_kph": 22,
+      "wind_dir": "S",
+      "humidity_pct": 72,
+      "condition": "light_rain",
+      "precip_mm": 0.6,
+      "uv_index": 2
+    },
+    {
+      "hour": 15,
+      "temp_c": 12,
+      "feels_like_c": 9,
+      "wind_kph": 20,
+      "wind_dir": "SE",
+      "humidity_pct": 70,
+      "condition": "partly_cloudy",
+      "precip_mm": 0.1,
+      "uv_index": 3
+    },
+    {
+      "hour": 16,
+      "temp_c": 11,
+      "feels_like_c": 8,
+      "wind_kph": 18,
+      "wind_dir": "E",
+      "humidity_pct": 68,
+      "condition": "partly_cloudy",
+      "precip_mm": 0.0,
+      "uv_index": 2
+    },
+    {
+      "hour": 17,
+      "temp_c": 10,
+      "feels_like_c": 7,
+      "wind_kph": 15,
+      "wind_dir": "NE",
+      "humidity_pct": 72,
+      "condition": "clear",
+      "precip_mm": 0.0,
+      "uv_index": 1
+    },
+    {
+      "hour": 18,
+      "temp_c": 8,
+      "feels_like_c": 5,
+      "wind_kph": 12,
+      "wind_dir": "NE",
+      "humidity_pct": 76,
+      "condition": "clear",
+      "precip_mm": 0.0,
+      "uv_index": 0
+    }
+  ]
+}
