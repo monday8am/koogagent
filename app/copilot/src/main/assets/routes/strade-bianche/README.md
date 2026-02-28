@@ -73,8 +73,10 @@ To look up the surface at coordinate index `i`, find the entry where
 ]
 ```
 
-`named_sectors` — the 6 highlights Komoot tagged by name (Vridritta,
-Bagnaia, Radi, Monte Santa Margherita, Monte Santa Maria, Farmhouse Path).
+`named_sectors` — the 5 highlights Komoot tagged by name (Vridritta,
+Bagnaia, Radi, Monte Santa Margherita, Farmhouse Path). Note: Komoot
+originally tagged "Monte Santa Maria" to the same coordinate range as
+Monte Santa Margherita (indices 1806–2118); the duplicate has been removed.
 
 `gravel_sectors` — 15 auto-detected unpaved/compacted stretches ≥ 500 m,
 derived from the surface ranges in `route.json`. Use these for the HUD
@@ -115,7 +117,7 @@ route.json
 ├── way_types[31 ranges]   ← road type per coordinate slice
 │
 segments.json
-├── named_sectors[6]       ── from/to index → coordinates slice
+├── named_sectors[5]       ── from/to index → coordinates slice
 └── gravel_sectors[15]     ── from/to index → coordinates slice
 
 weather.json               ── standalone; correlated via rider t + hour bucket

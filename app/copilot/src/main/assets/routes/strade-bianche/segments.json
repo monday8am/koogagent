@@ -54,19 +54,6 @@
       "km_from_start": 88.4
     },
     {
-      "id": "strade_bianche__monte_santa_maria_segment",
-      "name": "Strade Bianche \u2013 Monte Santa Maria Segment",
-      "category": "cycle_way",
-      "from_index": 1806,
-      "to_index": 2118,
-      "start_lat": 43.240333,
-      "start_lng": 11.553061,
-      "distance_m": 11489,
-      "elevation_up_m": 309,
-      "surface": "unpaved",
-      "km_from_start": 88.4
-    },
-    {
       "id": "abandoned_farmhouse_and_vineyard_path",
       "name": "Abandoned Farmhouse and Vineyard Path",
       "category": "other_man_made",
