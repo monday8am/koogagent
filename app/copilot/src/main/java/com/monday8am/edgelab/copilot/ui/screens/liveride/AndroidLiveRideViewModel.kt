@@ -1,24 +1,20 @@
 package com.monday8am.edgelab.copilot.ui.screens.liveride
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
+import com.monday8am.edgelab.data.route.RouteRepository
 import com.monday8am.edgelab.presentation.liveride.LiveRideAction
 import com.monday8am.edgelab.presentation.liveride.LiveRideUiState
 import com.monday8am.edgelab.presentation.liveride.LiveRideViewModelImpl
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.stateIn
 
 class AndroidLiveRideViewModel(
-    private val impl: LiveRideViewModelImpl = LiveRideViewModelImpl(),
+    routeId: String,
+    routeRepository: RouteRepository,
 ) : ViewModel() {
 
-    val uiState: StateFlow<LiveRideUiState> =
-        impl.uiState.stateIn(
-            viewModelScope,
-            SharingStarted.WhileSubscribed(5000L),
-            impl.uiState.value,
-        )
+    private val impl = LiveRideViewModelImpl(routeId, routeRepository)
+
+    val uiState: StateFlow<LiveRideUiState> = impl.uiState
 
     fun onUiAction(action: LiveRideAction) = impl.onUiAction(action)
 

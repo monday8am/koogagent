@@ -7,6 +7,7 @@ import com.monday8am.edgelab.core.oauth.HuggingFaceOAuthManager
 import com.monday8am.edgelab.data.auth.AuthRepository
 import com.monday8am.edgelab.data.model.ModelRepository
 import com.monday8am.edgelab.data.model.ModelRepositoryImpl
+import com.monday8am.edgelab.data.route.RouteRepository
 import com.monday8am.edgelab.presentation.modelselector.ModelDownloadManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -38,6 +39,10 @@ object Dependencies {
 
     val inferenceEngine: LocalInferenceEngine by lazy {
         CoreDependencies.createInferenceEngine()
+    }
+
+    val routeRepository: RouteRepository by lazy {
+        CoreDependencies.createRouteRepository(appContext)
     }
 
     // For onboarding, we need a simple model repository
