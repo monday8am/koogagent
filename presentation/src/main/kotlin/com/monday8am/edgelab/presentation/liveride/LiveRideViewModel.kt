@@ -157,7 +157,11 @@ class LiveRideViewModelImpl(
     }
 
     private suspend fun loadRoute() {
-        val data = routeRepository.getRoute(routeId) ?: return
+        val data = routeRepository.getRoute(routeId)
+        if (data == null || data.coordinates.isEmpty()) {
+            _uiState.update { it.copy(isLoading = false) }
+            return
+        }
         routePoints = data.coordinates.map { LatLng(it.lat, it.lng) }
         val startPos = routePoints.first()
         val totalKm = withContext(Dispatchers.Default) { computeTotalKm(data.coordinates) }
