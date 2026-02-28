@@ -26,14 +26,13 @@ import argparse
 import json
 import math
 import os
-import sys
 import time
 from dataclasses import dataclass
 from typing import Optional
 
 import requests
 
-ORS_BASE = "https://api.openrouteservice.org/v2/directions/cycling-regular"
+ORS_BASE_TMPL = "https://api.openrouteservice.org/v2/directions/{profile}"
 ORS_KEY = os.environ.get("ORS_API_KEY", "")
 
 # ─── Data structures ───
@@ -56,6 +55,7 @@ class AlternativeScenario:
     rejoin_index: int         # coordinate index where alt rejoins main route
     avoid_features: list      # ORS avoid_features (e.g., ["unpaved"])
     preference: str           # ORS preference: "fastest", "shortest", "recommended"
+    ors_profile: str          # ORS profile: "cycling-regular" or "cycling-road"
     description: str          # why this alternative exists
     extra_waypoints: list     # optional intermediate waypoints to guide the route
 
@@ -77,13 +77,15 @@ def load_segments(path: str) -> dict:
 
 # ─── Analyze route to pick diverge/rejoin points ───
 
-def compute_km_at_index(points: list[RoutePoint], index: int) -> float:
-    """Approximate km from start to a given index using haversine."""
-    total = 0.0
-    for i in range(1, min(index + 1, len(points))):
-        total += haversine(points[i - 1].lat, points[i - 1].lng,
-                           points[i].lat, points[i].lng)
-    return total
+def precompute_cum_km(points: list[RoutePoint]) -> list[float]:
+    """Precompute cumulative km from start for every index (O(n) once)."""
+    cum = [0.0] * len(points)
+    for i in range(1, len(points)):
+        cum[i] = cum[i - 1] + haversine(
+            points[i - 1].lat, points[i - 1].lng,
+            points[i].lat, points[i].lng,
+        )
+    return cum
 
 
 def haversine(lat1, lon1, lat2, lon2) -> float:
@@ -113,7 +115,7 @@ def find_climb_segments(points: list[RoutePoint], min_gain_m: float = 80,
                 if abs(delta) > 10:
                     break
             j += 1
-        if gain >= min_gain_m:
+        if gain >= min_gain_m and (j - i) >= window:  # enforce minimum climb length
             climbs.append((i, j, gain))
             i = j + 1
         else:
@@ -154,6 +156,7 @@ def pick_scenarios(points: list[RoutePoint], segments: dict) -> list[Alternative
             rejoin_index=rejoin,
             avoid_features=[],
             preference="recommended",
+            ors_profile="cycling-regular",
             description=f"Avoids the biggest climb ({biggest[2]:.0f}m gain). "
                         f"Routes through the valley on lower-gradient roads.",
             extra_waypoints=[],
@@ -182,6 +185,7 @@ def pick_scenarios(points: list[RoutePoint], segments: dict) -> list[Alternative
             rejoin_index=best_shortcut[1],
             avoid_features=[],
             preference="shortest",
+            ors_profile="cycling-regular",
             description=f"Cuts across the loop where the route doubles back. "
                         f"Saves distance at the cost of skipping mid-route sectors.",
             extra_waypoints=[],
@@ -195,6 +199,7 @@ def pick_scenarios(points: list[RoutePoint], segments: dict) -> list[Alternative
             rejoin_index=mid_end,
             avoid_features=[],
             preference="shortest",
+            ors_profile="cycling-regular",
             description="Takes the most direct cycling route between these points.",
             extra_waypoints=[],
         ))
@@ -210,8 +215,9 @@ def pick_scenarios(points: list[RoutePoint], segments: dict) -> list[Alternative
             label="Paved bypass",
             diverge_index=diverge,
             rejoin_index=rejoin,
-            avoid_features=["fords"],  # ORS doesn't have "unpaved" avoid, we use preference
+            avoid_features=[],          # cycling-road profile inherently prefers paved
             preference="recommended",
+            ors_profile="cycling-road", # road profile routes on paved surfaces
             description=f"Avoids the {longest_gravel.get('name', 'gravel')} sector "
                         f"({longest_gravel.get('distance_m', 0) / 1000:.1f}km unpaved). "
                         f"Uses parallel paved roads.",
@@ -234,10 +240,11 @@ def pick_scenarios(points: list[RoutePoint], segments: dict) -> list[Alternative
     scenarios.append(AlternativeScenario(
         query_value="scenic",
         label="Hilltop village detour",
-        diverge_index=flattest_start,
+        diverge_index=max(50, flattest_start),  # clamp: avoid starting at index 0
         rejoin_index=min(total_points - 1, flattest_start + window),
         avoid_features=[],
         preference="recommended",
+        ors_profile="cycling-regular",
         description="Detours through hilltop villages and viewpoints "
                     "instead of the main road section.",
         extra_waypoints=[],  # Could add a known scenic waypoint here
@@ -256,6 +263,7 @@ def pick_scenarios(points: list[RoutePoint], segments: dict) -> list[Alternative
         rejoin_index=rejoin,
         avoid_features=[],
         preference="recommended",
+        ors_profile="cycling-regular",
         description="Routes through the lower valley to avoid the exposed "
                     "ridge section. Less wind, more tree cover.",
         extra_waypoints=[],
@@ -304,8 +312,10 @@ def call_ors(start: RoutePoint, end: RoutePoint,
         "Content-Type": "application/json",
     }
 
+    url = ORS_BASE_TMPL.format(profile=scenario.ors_profile)
+
     try:
-        resp = requests.post(ORS_BASE, json=payload, headers=headers, timeout=30)
+        resp = requests.post(url, json=payload, headers=headers, timeout=30)
         resp.raise_for_status()
         data = resp.json()
 
@@ -366,13 +376,13 @@ def generate_mock_alternative(points: list[RoutePoint],
     n_points = 30
     coords = []
     for i in range(n_points + 1):
-        t = i / n_points
+        frac = i / n_points
         # Linear interpolation + sinusoidal offset
-        lat = diverge.lat + t * (rejoin.lat - diverge.lat) + \
-              math.sin(t * math.pi) * perp_lat * offset_km
-        lng = diverge.lng + t * (rejoin.lng - diverge.lng) + \
-              math.sin(t * math.pi) * perp_lng * offset_km
-        alt = diverge.alt + t * (rejoin.alt - diverge.alt)
+        lat = diverge.lat + frac * (rejoin.lat - diverge.lat) + \
+              math.sin(frac * math.pi) * perp_lat * offset_km
+        lng = diverge.lng + frac * (rejoin.lng - diverge.lng) + \
+              math.sin(frac * math.pi) * perp_lng * offset_km
+        alt = diverge.alt + frac * (rejoin.alt - diverge.alt)
 
         # Flatten altitude for "flatter" and "sheltered"
         if scenario.query_value in ("flatter", "sheltered"):
@@ -407,7 +417,8 @@ def generate_mock_alternative(points: list[RoutePoint],
 
 def build_alternative_entry(scenario: AlternativeScenario,
                             route_data: dict,
-                            points: list[RoutePoint]) -> dict:
+                            points: list[RoutePoint],
+                            cum_km: list[float]) -> dict:
     """Build one entry for route-alternatives.json."""
     diverge = points[scenario.diverge_index]
     rejoin = points[scenario.rejoin_index]
@@ -424,8 +435,26 @@ def build_alternative_entry(scenario: AlternativeScenario,
         for i in range(len(orig_segment) - 1)
     )
 
-    km_diverge = compute_km_at_index(points, scenario.diverge_index)
-    km_rejoin = compute_km_at_index(points, scenario.rejoin_index)
+    # Original segment duration from Komoot t values (ms → s)
+    orig_duration_s = (orig_segment[-1].t - orig_segment[0].t) // 1000
+
+    # Use precomputed cumulative km (O(1) lookup)
+    km_diverge = cum_km[scenario.diverge_index]
+    km_rejoin = cum_km[scenario.rejoin_index]
+
+    alt_entry: dict = {
+        "coordinates": route_data["coordinates"],
+        "distance_m": route_data["distance_m"],
+        "duration_s": route_data.get("duration_s", 0),
+        "ascent_m": route_data.get("ascent_m", 0),
+        "descent_m": route_data.get("descent_m", 0),
+        "is_mock": route_data.get("mock", False),
+    }
+    # Include surface/waytype data when available (ORS routes only)
+    if route_data.get("surface_info"):
+        alt_entry["surface_info"] = route_data["surface_info"]
+    if route_data.get("waytype_info"):
+        alt_entry["waytype_info"] = route_data["waytype_info"]
 
     return {
         "query_value": scenario.query_value,
@@ -447,18 +476,11 @@ def build_alternative_entry(scenario: AlternativeScenario,
             "distance_m": round(orig_distance * 1000),
             "ascent_m": round(orig_ascent),
         },
-        "alternative": {
-            "coordinates": route_data["coordinates"],
-            "distance_m": route_data["distance_m"],
-            "duration_s": route_data.get("duration_s", 0),
-            "ascent_m": route_data.get("ascent_m", 0),
-            "descent_m": route_data.get("descent_m", 0),
-            "is_mock": route_data.get("mock", False),
-        },
+        "alternative": alt_entry,
         "comparison": {
             "distance_delta_m": route_data["distance_m"] - round(orig_distance * 1000),
             "ascent_delta_m": route_data.get("ascent_m", 0) - round(orig_ascent),
-            "time_delta_s": route_data.get("duration_s", 0),
+            "time_delta_s": route_data.get("duration_s", 0) - orig_duration_s,
         },
     }
 
@@ -485,7 +507,8 @@ def main():
     # Load data
     print(f"Loading route from {args.route}...")
     points = load_route(args.route)
-    print(f"  {len(points)} points, {compute_km_at_index(points, len(points)-1):.1f}km total")
+    cum_km = precompute_cum_km(points)
+    print(f"  {len(points)} points, {cum_km[-1]:.1f}km total")
 
     print(f"Loading segments from {args.segments}...")
     segments = load_segments(args.segments)
@@ -499,8 +522,8 @@ def main():
 
     print(f"\nGenerated {len(scenarios)} scenarios:")
     for s in scenarios:
-        km_d = compute_km_at_index(points, s.diverge_index)
-        km_r = compute_km_at_index(points, s.rejoin_index)
+        km_d = cum_km[s.diverge_index]
+        km_r = cum_km[s.rejoin_index]
         print(f"  {s.query_value:12s} │ {s.label:30s} │ km {km_d:.0f}→{km_r:.0f} "
               f"│ idx {s.diverge_index}→{s.rejoin_index}")
 
@@ -523,10 +546,9 @@ def main():
                 source = "mock (fallback)"
             else:
                 source = "ORS"
-            # Rate limit: ORS free tier = 40 req/min
-            time.sleep(1.5)
+                time.sleep(1.5)  # Rate limit only on successful ORS call
 
-        entry = build_alternative_entry(scenario, route_data, points)
+        entry = build_alternative_entry(scenario, route_data, points, cum_km)
         alternatives.append(entry)
 
         dist = route_data["distance_m"]
@@ -538,8 +560,7 @@ def main():
     # Write output
     output = {
         "route_id": "strade-bianche-granfondo",
-        "generated_from": "OpenRouteService cycling-regular"
-                          if not args.mock_only else "geometric mock",
+        "generated_from": "OpenRouteService" if not args.mock_only else "geometric mock",
         "alternatives": alternatives,
     }
 
