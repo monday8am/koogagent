@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -27,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.monday8am.edgelab.copilot.Dependencies
 import com.monday8am.edgelab.presentation.liveride.LiveRideAction
 import com.monday8am.edgelab.presentation.liveride.LiveRideUiState
 
@@ -35,7 +37,12 @@ fun LiveRideScreen(
     routeId: String,
     playbackSpeed: Float,
     onNavigateBack: () -> Unit,
-    viewModel: AndroidLiveRideViewModel = viewModel { AndroidLiveRideViewModel() },
+    viewModel: AndroidLiveRideViewModel = viewModel {
+        AndroidLiveRideViewModel(
+            routeId = routeId,
+            routeRepository = Dependencies.routeRepository,
+        )
+    },
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -65,7 +72,9 @@ private fun LiveRideScreenContent(
 
         // Top app bar overlay (semi-transparent)
         CenterAlignedTopAppBar(
-            title = { Text("Guadarrama Loop") },
+            title = {
+                Text(uiState.routeName.ifEmpty { "Loading…" })
+            },
             navigationIcon = {
                 IconButton(onClick = onNavigateBack) {
                     Icon(
@@ -81,24 +90,28 @@ private fun LiveRideScreenContent(
             modifier = Modifier.align(Alignment.TopStart),
         )
 
-        // Playback controls — top right
-        PlaybackControls(
-            uiState = uiState,
-            onAction = onAction,
-            modifier = Modifier.align(Alignment.TopEnd).padding(top = 72.dp, end = 12.dp),
-        )
-
-        // Bottom panel: HUD + Chat
-        Column(
-            modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
-        ) {
-            HudStrip(metrics = uiState.hudMetrics)
-            ChatPanel(
-                chatMessages = uiState.chatMessages,
-                isChatExpanded = uiState.isChatExpanded,
-                isProcessing = uiState.isProcessing,
+        if (uiState.isLoading) {
+            CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+        } else {
+            // Playback controls — top right
+            PlaybackControls(
+                uiState = uiState,
                 onAction = onAction,
+                modifier = Modifier.align(Alignment.TopEnd).padding(top = 72.dp, end = 12.dp),
             )
+
+            // Bottom panel: HUD + Chat
+            Column(
+                modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
+            ) {
+                HudStrip(metrics = uiState.hudMetrics)
+                ChatPanel(
+                    chatMessages = uiState.chatMessages,
+                    isChatExpanded = uiState.isChatExpanded,
+                    isProcessing = uiState.isProcessing,
+                    onAction = onAction,
+                )
+            }
         }
     }
 }

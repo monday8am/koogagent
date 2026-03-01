@@ -24,7 +24,7 @@ fun AppNavigation(
             // Temporarily routes straight to LiveRide — wire to RideSetup when Screen 2 is added
             OnboardScreen(
                 onNavigateToSetup = {
-                    navController.navigate(Route.LiveRide("guadarrama-loop", 1.0f))
+                    navController.navigate(Route.LiveRide("strade-bianche", 1.0f))
                 }
             )
         }
