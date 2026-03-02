@@ -14,7 +14,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.monday8am.edgelab.copilot.ui.theme.CyclingCopilotTheme
 import com.monday8am.edgelab.presentation.liveride.HudMetrics
 
 @Composable
@@ -52,6 +54,38 @@ private fun HudCell(value: String, label: String) {
             text = label,
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun HudStripPreview() {
+    CyclingCopilotTheme(dynamicColor = false) {
+        HudStrip(
+            metrics =
+                HudMetrics(
+                    speed = 28.3f,
+                    distance = 14.7f,
+                    power = 187,
+                    batteryPercent = 72,
+                )
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "No power")
+@Composable
+private fun HudStripNoPowerPreview() {
+    CyclingCopilotTheme(dynamicColor = false) {
+        HudStrip(
+            metrics =
+                HudMetrics(
+                    speed = 0f,
+                    distance = 0f,
+                    power = null,
+                    batteryPercent = 100,
+                )
         )
     }
 }
