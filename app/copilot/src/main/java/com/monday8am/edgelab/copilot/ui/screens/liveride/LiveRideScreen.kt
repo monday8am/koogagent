@@ -25,12 +25,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.monday8am.edgelab.copilot.Dependencies
+import com.monday8am.edgelab.copilot.ui.theme.CyclingCopilotTheme
+import com.monday8am.edgelab.presentation.liveride.ChatMessage
+import com.monday8am.edgelab.presentation.liveride.HudMetrics
+import com.monday8am.edgelab.presentation.liveride.LatLng
 import com.monday8am.edgelab.presentation.liveride.LiveRideAction
 import com.monday8am.edgelab.presentation.liveride.LiveRideUiState
+import com.monday8am.edgelab.presentation.liveride.PlaybackState
+import kotlinx.collections.immutable.persistentListOf
 
 @Composable
 fun LiveRideScreen(
@@ -161,5 +168,118 @@ private fun PlaybackControls(
                 modifier = Modifier.padding(bottom = 4.dp),
             )
         }
+    }
+}
+
+private val previewUiState =
+    LiveRideUiState(
+        routeName = "Strade Bianche",
+        isLoading = false,
+        routePolyline = persistentListOf(),
+        completedPolyline = persistentListOf(),
+        currentPosition = LatLng(43.3226, 11.3223),
+        currentHeading = 45f,
+        hudMetrics = HudMetrics(speed = 28.3f, distance = 14.7f, power = 187, batteryPercent = 72),
+        pois = persistentListOf(),
+        chatMessages =
+            persistentListOf(
+                ChatMessage.Copilot(
+                    id = "1",
+                    text = "Ride started! Strade Bianche. Ready when you are \uD83D\uDEB4",
+                )
+            ),
+        isChatExpanded = false,
+        isVoiceRecording = false,
+        isProcessing = false,
+        playbackState =
+            PlaybackState(isPlaying = true, speedMultiplier = 1f, currentKm = 14.7f, totalKm = 184f),
+    )
+
+@Preview(showBackground = true, name = "Loading")
+@Composable
+private fun LiveRideScreenContentLoadingPreview() {
+    CyclingCopilotTheme(dynamicColor = false) {
+        LiveRideScreenContent(
+            uiState =
+                previewUiState.copy(
+                    routeName = "",
+                    isLoading = true,
+                    playbackState =
+                        PlaybackState(
+                            isPlaying = false,
+                            speedMultiplier = 1f,
+                            currentKm = 0f,
+                            totalKm = 0f,
+                        ),
+                ),
+            onAction = {},
+            onNavigateBack = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Playing")
+@Composable
+private fun LiveRideScreenContentPlayingPreview() {
+    CyclingCopilotTheme(dynamicColor = false) {
+        LiveRideScreenContent(
+            uiState = previewUiState,
+            onAction = {},
+            onNavigateBack = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Chat expanded")
+@Composable
+private fun LiveRideScreenContentChatExpandedPreview() {
+    CyclingCopilotTheme(dynamicColor = false) {
+        LiveRideScreenContent(
+            uiState =
+                previewUiState.copy(
+                    isChatExpanded = true,
+                    chatMessages =
+                        persistentListOf(
+                            ChatMessage.Copilot(
+                                id = "1",
+                                text =
+                                    "Ride started! Strade Bianche. Ready when you are \uD83D\uDEB4",
+                            ),
+                            ChatMessage.User(id = "2", text = "How far to the next climb?"),
+                            ChatMessage.Copilot(
+                                id = "3",
+                                text = "About 3.2 km ahead. It's a short punchy one, 8% average.",
+                            ),
+                        ),
+                ),
+            onAction = {},
+            onNavigateBack = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "PlaybackControls - playing")
+@Composable
+private fun PlaybackControlsPlayingPreview() {
+    CyclingCopilotTheme(dynamicColor = false) {
+        PlaybackControls(
+            uiState = previewUiState,
+            onAction = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "PlaybackControls - paused")
+@Composable
+private fun PlaybackControlsPausedPreview() {
+    CyclingCopilotTheme(dynamicColor = false) {
+        PlaybackControls(
+            uiState =
+                previewUiState.copy(
+                    playbackState =
+                        previewUiState.playbackState.copy(isPlaying = false, speedMultiplier = 4f),
+                ),
+            onAction = {},
+        )
     }
 }

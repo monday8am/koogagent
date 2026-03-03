@@ -40,7 +40,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.monday8am.edgelab.copilot.ui.theme.CyclingCopilotTheme
 import com.monday8am.edgelab.presentation.liveride.ChatMessage
 import com.monday8am.edgelab.presentation.liveride.LiveRideAction
 
@@ -219,5 +221,86 @@ private fun ChatMessageItem(message: ChatMessage) {
                 }
             }
         }
+    }
+}
+
+@Preview(showBackground = true, name = "Collapsed - empty")
+@Composable
+private fun ChatPanelCollapsedEmptyPreview() {
+    CyclingCopilotTheme(dynamicColor = false) {
+        ChatPanel(
+            chatMessages = emptyList(),
+            isChatExpanded = false,
+            isProcessing = false,
+            onAction = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Collapsed - with message")
+@Composable
+private fun ChatPanelCollapsedWithMessagePreview() {
+    CyclingCopilotTheme(dynamicColor = false) {
+        ChatPanel(
+            chatMessages =
+                listOf(
+                    ChatMessage.Copilot(
+                        id = "1",
+                        text =
+                            "Strade Bianche starts with a brutal climb. Stay in zone 2 for the first 5 km.",
+                    )
+                ),
+            isChatExpanded = false,
+            isProcessing = false,
+            onAction = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Expanded")
+@Composable
+private fun ChatPanelExpandedPreview() {
+    CyclingCopilotTheme(dynamicColor = false) {
+        ChatPanel(
+            chatMessages =
+                listOf(
+                    ChatMessage.Copilot(
+                        id = "1",
+                        text = "Ride started! Strade Bianche. Ready when you are \uD83D\uDEB4",
+                    ),
+                    ChatMessage.User(id = "2", text = "How far to the next climb?"),
+                    ChatMessage.Copilot(
+                        id = "3",
+                        text = "About 3.2 km ahead. It's a short punchy one, 8% average.",
+                    ),
+                    ChatMessage.ToolCallDebug(
+                        id = "4",
+                        text = "route.get_elevation_profile(from=14.2, to=17.4)",
+                    ),
+                ),
+            isChatExpanded = true,
+            isProcessing = false,
+            onAction = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Expanded - processing")
+@Composable
+private fun ChatPanelExpandedProcessingPreview() {
+    CyclingCopilotTheme(dynamicColor = false) {
+        ChatPanel(
+            chatMessages =
+                listOf(
+                    ChatMessage.Copilot(
+                        id = "1",
+                        text = "Ride started! Strade Bianche. Ready when you are \uD83D\uDEB4",
+                    ),
+                    ChatMessage.User(id = "2", text = "What's my current power zone?"),
+                ),
+            isChatExpanded = true,
+            isProcessing = true,
+            onAction = {},
+        )
     }
 }
