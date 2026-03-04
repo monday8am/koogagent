@@ -104,6 +104,7 @@ interface LiveRideViewModel {
 class LiveRideViewModelImpl(
     private val routeId: String,
     private val routeRepository: RouteRepository,
+    private val playbackSpeed: Float = 1.0f,
     dispatcher: CoroutineDispatcher = Dispatchers.Main.immediate,
 ) : LiveRideViewModel {
 
@@ -140,7 +141,7 @@ class LiveRideViewModelImpl(
                 playbackState =
                     PlaybackState(
                         isPlaying = false,
-                        speedMultiplier = 1.0f,
+                        speedMultiplier = playbackSpeed,
                         currentKm = 0f,
                         totalKm = 0f,
                     ),

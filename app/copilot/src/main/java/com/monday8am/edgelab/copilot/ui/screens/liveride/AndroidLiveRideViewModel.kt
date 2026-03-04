@@ -10,9 +10,10 @@ import kotlinx.coroutines.flow.StateFlow
 class AndroidLiveRideViewModel(
     routeId: String,
     routeRepository: RouteRepository,
+    playbackSpeed: Float = 1.0f,
 ) : ViewModel() {
 
-    private val impl = LiveRideViewModelImpl(routeId, routeRepository)
+    private val impl = LiveRideViewModelImpl(routeId, routeRepository, playbackSpeed)
 
     val uiState: StateFlow<LiveRideUiState> = impl.uiState
 
