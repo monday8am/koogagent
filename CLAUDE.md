@@ -22,6 +22,7 @@ Strict unidirectional. No module may depend on a module to its right.
 5. Use `ImmutableList`/`ImmutableMap` from `kotlinx.collections.immutable` in all UiState data classes.
 6. All dependency versions go in `gradle/libs.versions.toml`. Never hardcode in `build.gradle.kts`.
 7. Every feature follows the 3-layer ViewModel pattern: interface + impl in `:presentation`, wrapper in `:app:*`. See `docs/patterns.md`.
+8. Every new ViewModel requires unit tests. Every new Composable screen requires `@Preview`. See `presentation/CLAUDE.md` for specifics.
 
 ## Commands
 
