@@ -9,6 +9,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.monday8am.edgelab.copilot.ui.screens.liveride.LiveRideScreen
 import com.monday8am.edgelab.copilot.ui.screens.onboard.OnboardScreen
+import com.monday8am.edgelab.copilot.ui.screens.ridesetup.RideSetupScreen
 
 @Composable
 fun AppNavigation(
@@ -21,16 +22,17 @@ fun AppNavigation(
         modifier = modifier,
     ) {
         composable<Route.Onboard> {
-            // Temporarily routes straight to LiveRide — wire to RideSetup when Screen 2 is added
             OnboardScreen(
-                onNavigateToSetup = {
-                    navController.navigate(Route.LiveRide("strade-bianche", 1.0f))
-                }
+                onNavigateToSetup = { navController.navigate(Route.RideSetup) }
             )
         }
 
         composable<Route.RideSetup> {
-            // TODO: Implement RideSetupScreen
+            RideSetupScreen(
+                onNavigateToLiveRide = { routeId, speed ->
+                    navController.navigate(Route.LiveRide(routeId, speed))
+                }
+            )
         }
 
         composable<Route.LiveRide> { backStackEntry ->

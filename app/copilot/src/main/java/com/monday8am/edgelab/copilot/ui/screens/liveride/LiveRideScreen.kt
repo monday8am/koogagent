@@ -47,6 +47,7 @@ fun LiveRideScreen(
     viewModel: AndroidLiveRideViewModel = viewModel {
         AndroidLiveRideViewModel(
             routeId = routeId,
+            playbackSpeed = playbackSpeed,
             routeRepository = Dependencies.routeRepository,
         )
     },

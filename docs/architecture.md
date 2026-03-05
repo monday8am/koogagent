@@ -94,14 +94,15 @@ On-device AI cycling assistant. See [`docs/cyclingcopilot/ui-architecture.md`](c
 
 ### Current State
 - **Screen 1 (Onboard)**: Complete — model download flow with HuggingFace sign-in
-- **Screen 2 (Ride Setup)**: Pending
-- **Screen 3 (Live Ride)**: Pending
+- **Screen 2 (Ride Setup)**: Complete — GPS mode, route selection, playback config
+- **Screen 3 (Live Ride)**: Complete — map, HUD, chat panel, playback controls
 
 ### Screens
 
 | Screen | ViewModel wrapper | Purpose |
 |--------|------------------|---------|
 | `OnboardScreen` | `AndroidOnboardViewModel` | HF sign-in + model download (2 models) |
+| `RideSetupScreen` | `AndroidRideSetupViewModel` | GPS mode, route selection, playback config |
 
 ---
 

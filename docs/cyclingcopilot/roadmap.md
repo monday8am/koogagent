@@ -8,10 +8,9 @@
 - [x] Screen 3: Live Ride — map, HUD metrics strip, chat panel, playback controls (MapLibre Compose declarative map, dark tile style)
 - [x] Route assets — Strade Bianche GranFondo (144 km, +2220 m): `route.json` (3207 GPS coords + surface/waytype metadata), `segments.json` (5 named sectors + 15 auto-detected gravel sectors), `weather.json` (hourly Tuscany forecast), `generate_alternatives.py` (ORS-based alternative generator)
 - [x] Route → ViewModel wiring: `RouteRepository` interface (`:data`), `AssetRouteRepository` (`:core`), `LiveRideViewModelImpl` loads real route async, `ImmutableList` UiState, `isLoading` / `routeName` in UI
+- [x] Screen 2: Ride Setup (GPS mode selector, route list with difficulty badges, playback speed control, advanced settings panel, 3-screen navigation flow)
 
 ## In Progress / Next Up
-
-- [ ] Screen 2: Ride Setup (route selection, GPS mode, playback speed config)
 - [ ] Voice input pipeline (SpeechRecognizer → text)
 - [ ] AI pipeline (FunctionGemma → tools → Gemma 550M → TTS)
 - [ ] GPX playback engine (auto-advance position along trace at realistic pace using route `t` timestamps)
