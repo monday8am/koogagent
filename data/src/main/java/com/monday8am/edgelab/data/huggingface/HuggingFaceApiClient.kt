@@ -9,13 +9,44 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
-import org.json.JSONArray
-import org.json.JSONObject
+
+private val json = Json { ignoreUnknownKeys = true }
+
+@Serializable
+private data class HfModelDto(
+    val id: String,
+    val pipeline_tag: String? = null,
+    val gated: JsonElement? = null,
+    val downloads: Int = 0,
+    val likes: Int = 0,
+)
+
+@Serializable
+private data class HfFileDto(
+    val path: String? = null,
+    val size: Long = -1L,
+    val lfs: HfLfsDto? = null,
+)
+
+@Serializable private data class HfLfsDto(val size: Long = -1L)
+
+@Serializable private data class HfUserDto(val name: String? = null)
+
+@Serializable
+private data class HfAuthorDto(
+    val avatarUrl: String? = null,
+    val avatar: String? = null,
+    val numModels: Int? = null,
+)
 
 class HuggingFaceApiClient(
     private val authRepository: AuthRepository? = null,
@@ -38,10 +69,8 @@ class HuggingFaceApiClient(
         val request = Request.Builder().url(listUrl).build()
 
         return executeRequest(request) { response ->
-            val body = response.body.string()
-            val jsonArray = JSONArray(body)
-            (0 until jsonArray.length()).mapNotNull { i ->
-                parseModelSummary(jsonArray.getJSONObject(i))
+            json.decodeFromString<List<HfModelDto>>(response.body.string()).mapNotNull {
+                parseModelSummary(it)
             }
         }
     }
@@ -52,25 +81,14 @@ class HuggingFaceApiClient(
 
         return try {
             executeRequest(request) { response ->
-                val jsonArray = JSONArray(response.body.string())
+                val files = json.decodeFromString<List<HfFileDto>>(response.body.string())
                 val sizeMap = mutableMapOf<String, Long>()
-
-                for (i in 0 until jsonArray.length()) {
-                    val fileObj = jsonArray.getJSONObject(i)
-                    val path = fileObj.optString("path", null) ?: continue
-
+                for (file in files) {
+                    val path = file.path ?: continue
                     val size =
-                        if (fileObj.has("lfs")) {
-                            fileObj.getJSONObject("lfs").optLong("size", -1L)
-                        } else {
-                            fileObj.optLong("size", -1L)
-                        }
-
-                    if (size > 0) {
-                        sizeMap[path] = size
-                    }
+                        file.lfs?.size?.takeIf { it > 0 } ?: file.size.takeIf { it > 0 } ?: continue
+                    sizeMap[path] = size
                 }
-
                 logger.d { "Found ${sizeMap.size} files with size info" }
                 sizeMap
             }
@@ -90,9 +108,7 @@ class HuggingFaceApiClient(
         return try {
             val request = Request.Builder().url(WHOAMI_URL).build()
             executeRequest(request) { response ->
-                val body = response.body.string()
-                val json = JSONObject(body)
-                json.optString("name", null)?.also {
+                json.decodeFromString<HfUserDto>(response.body.string()).name?.also {
                     logger.d { "Fetched username from whoami: $it" }
                 }
             }
@@ -126,11 +142,12 @@ class HuggingFaceApiClient(
 
     private suspend fun parseAuthorInfo(name: String, request: Request): AuthorInfo {
         return executeRequest(request) { response ->
-            val body = response.body.string()
-            val json = JSONObject(body)
-            val avatarUrl = json.optString("avatarUrl", null) ?: json.optString("avatar", null)
-            val numModels = if (json.has("numModels")) json.optInt("numModels") else null
-            AuthorInfo(name = name, avatarUrl = avatarUrl, modelCount = numModels)
+            val dto = json.decodeFromString<HfAuthorDto>(response.body.string())
+            AuthorInfo(
+                name = name,
+                avatarUrl = dto.avatarUrl ?: dto.avatar,
+                modelCount = dto.numModels,
+            )
         }
     }
 
@@ -173,15 +190,15 @@ class HuggingFaceApiClient(
         }
     }
 
-    private fun parseModelSummary(json: JSONObject): HuggingFaceModelSummary? {
+    private fun parseModelSummary(dto: HfModelDto): HuggingFaceModelSummary? {
         return try {
-            val gatedValue = json.opt("gated")
+            val gatedValue = dto.gated?.jsonPrimitive?.content
             HuggingFaceModelSummary(
-                id = json.getString("id"),
-                pipelineTag = json.optString("pipeline_tag", null),
+                id = dto.id,
+                pipelineTag = dto.pipeline_tag,
                 gated = GatedStatus.fromApiValue(gatedValue),
-                downloads = json.optInt("downloads", 0),
-                likes = json.optInt("likes", 0),
+                downloads = dto.downloads,
+                likes = dto.likes,
             )
         } catch (_: Exception) {
             null

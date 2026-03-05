@@ -1,11 +1,6 @@
 package com.monday8am.edgelab.presentation.liveride
 
-import com.monday8am.edgelab.data.route.RouteCoordinate
 import com.monday8am.edgelab.data.route.RouteRepository
-import kotlin.math.atan2
-import kotlin.math.cos
-import kotlin.math.sin
-import kotlin.math.sqrt
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -23,7 +18,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 data class LatLng(val latitude: Double, val longitude: Double)
 
@@ -160,14 +154,14 @@ class LiveRideViewModelImpl(
     }
 
     private suspend fun loadRoute() {
-        val data = routeRepository.getRoute(routeId)
+        val data = routeRepository.getRoute(routeId).getOrNull()
         if (data == null || data.coordinates.isEmpty()) {
             _uiState.update { it.copy(isLoading = false) }
             return
         }
         routePoints = data.coordinates.map { LatLng(it.lat, it.lng) }
         val startPos = routePoints.first()
-        val totalKm = withContext(dispatcher) { computeTotalKm(data.coordinates) }
+        val totalKm = data.distanceKm
 
         _uiState.update { state ->
             state.copy(
@@ -221,18 +215,6 @@ class LiveRideViewModelImpl(
         }
     }
 
-    private fun computeTotalKm(coords: List<RouteCoordinate>): Float {
-        var total = 0.0
-        for (i in 1 until coords.size) {
-            total +=
-                haversineKm(
-                    LatLng(coords[i - 1].lat, coords[i - 1].lng),
-                    LatLng(coords[i].lat, coords[i].lng),
-                )
-        }
-        return total.toFloat()
-    }
-
     override fun onUiAction(action: LiveRideAction) {
         when (action) {
             LiveRideAction.TogglePlayback -> togglePlayback()
@@ -277,17 +259,5 @@ class LiveRideViewModelImpl(
 
     override fun dispose() {
         scope.cancel()
-    }
-
-    private fun haversineKm(from: LatLng, to: LatLng): Float {
-        val r = 6371.0
-        val dLat = Math.toRadians(to.latitude - from.latitude)
-        val dLon = Math.toRadians(to.longitude - from.longitude)
-        val lat1 = Math.toRadians(from.latitude)
-        val lat2 = Math.toRadians(to.latitude)
-        val a =
-            sin(dLat / 2) * sin(dLat / 2) + cos(lat1) * cos(lat2) * sin(dLon / 2) * sin(dLon / 2)
-        val c = 2 * atan2(sqrt(a), sqrt(1 - a))
-        return (r * c).toFloat()
     }
 }

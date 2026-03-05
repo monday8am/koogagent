@@ -20,7 +20,9 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 
 internal class FakeRouteRepository(private val route: RouteData? = null) : RouteRepository {
-    override suspend fun getRoute(routeId: String): RouteData? = route
+    override suspend fun getRoute(routeId: String): Result<RouteData> =
+        if (route != null) Result.success(route)
+        else Result.failure(NoSuchElementException("not found"))
 }
 
 internal class FakeGpsSource : GpsSource {
@@ -38,6 +40,7 @@ class LiveRideViewModelTest {
         RouteData(
             routeId = "strade-bianche",
             name = "Strade Bianche",
+            distanceKm = 2.96f,
             coordinates =
                 listOf(
                     RouteCoordinate(lat = 43.32, lng = 11.33, alt = 300.0, t = 0L),
