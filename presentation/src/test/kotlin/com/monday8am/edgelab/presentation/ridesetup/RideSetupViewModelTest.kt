@@ -181,11 +181,7 @@ class RideSetupViewModelTest {
         val viewModel = createViewModel()
 
         val updated =
-            AdvancedSettings(
-                useRemoteLLM = false,
-                showDeveloperHUD = true,
-                enableAutoVoice = false,
-            )
+            AdvancedSettings(useRemoteLLM = false, showDeveloperHUD = true, enableAutoVoice = false)
         viewModel.onUiAction(UiAction.UpdateAdvancedSettings(updated))
         runCurrent()
 
