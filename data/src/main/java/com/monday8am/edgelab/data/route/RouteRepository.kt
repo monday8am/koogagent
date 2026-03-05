@@ -7,9 +7,13 @@ data class RouteCoordinate(
     val t: Long, // ms elapsed from route start (Komoot pace)
 )
 
-data class RouteData(val routeId: String, val name: String, val coordinates: List<RouteCoordinate>)
+data class RouteData(
+    val routeId: String,
+    val name: String,
+    val distanceKm: Float,
+    val coordinates: List<RouteCoordinate>,
+)
 
 interface RouteRepository {
-    /** Returns route data for the given routeId, or null if not found. */
-    suspend fun getRoute(routeId: String): RouteData?
+    suspend fun getRoute(routeId: String): Result<RouteData>
 }

@@ -1,12 +1,6 @@
 package com.monday8am.edgelab.presentation.liveride
 
-import com.monday8am.edgelab.data.route.RouteCoordinate
 import com.monday8am.edgelab.data.route.RouteRepository
-import kotlin.math.atan2
-import kotlin.math.cos
-import kotlin.math.sin
-import kotlin.math.sqrt
-import kotlin.random.Random
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -17,11 +11,13 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 data class LatLng(val latitude: Double, val longitude: Double)
 
@@ -105,21 +101,19 @@ class LiveRideViewModelImpl(
     private val routeId: String,
     private val routeRepository: RouteRepository,
     private val playbackSpeed: Float = 1.0f,
-    dispatcher: CoroutineDispatcher = Dispatchers.Main.immediate,
+    private val gpsSourceFactory: GpsSourceFactory = GpsSourceFactory { points, state ->
+        SimulatedGpsSource(points, state)
+    },
+    private val dispatcher: CoroutineDispatcher = Dispatchers.Main.immediate,
 ) : LiveRideViewModel {
 
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
 
     private var routePoints: List<LatLng> = emptyList()
-    private var currentPositionIndex = 0
-    private var powerWalk = 170
-    private var batteryPercent = 88
-    private var distanceTravelled = 0.0f
     private var messageIdCounter = 1
 
     companion object {
         private val SPEED_MULTIPLIERS = listOf(1.0f, 2.0f, 4.0f, 8.0f)
-        private const val TICK_INTERVAL_MS = 1000L
     }
 
     private val _uiState =
@@ -129,7 +123,7 @@ class LiveRideViewModelImpl(
                 isLoading = true,
                 routePolyline = persistentListOf(),
                 completedPolyline = persistentListOf(),
-                currentPosition = LatLng(43.3226, 11.3223), // Siena — default before load
+                currentPosition = LatLng(43.3226, 11.3223),
                 currentHeading = 0f,
                 hudMetrics =
                     HudMetrics(speed = 0f, distance = 0f, power = null, batteryPercent = 88),
@@ -153,19 +147,21 @@ class LiveRideViewModelImpl(
     init {
         scope.launch {
             loadRoute()
-            startPlaybackLoop()
+            if (routePoints.isNotEmpty()) {
+                startGps()
+            }
         }
     }
 
     private suspend fun loadRoute() {
-        val data = routeRepository.getRoute(routeId)
+        val data = routeRepository.getRoute(routeId).getOrNull()
         if (data == null || data.coordinates.isEmpty()) {
             _uiState.update { it.copy(isLoading = false) }
             return
         }
         routePoints = data.coordinates.map { LatLng(it.lat, it.lng) }
         val startPos = routePoints.first()
-        val totalKm = withContext(Dispatchers.Default) { computeTotalKm(data.coordinates) }
+        val totalKm = data.distanceKm
 
         _uiState.update { state ->
             state.copy(
@@ -188,58 +184,33 @@ class LiveRideViewModelImpl(
         }
     }
 
-    private fun computeTotalKm(coords: List<RouteCoordinate>): Float {
-        var total = 0.0
-        for (i in 1 until coords.size) {
-            total +=
-                haversineKm(
-                    LatLng(coords[i - 1].lat, coords[i - 1].lng),
-                    LatLng(coords[i].lat, coords[i].lng),
-                )
-        }
-        return total.toFloat()
-    }
+    private fun startGps() {
+        val playbackStateFlow =
+            _uiState
+                .map { it.playbackState }
+                .stateIn(scope, SharingStarted.Eagerly, _uiState.value.playbackState)
 
-    private suspend fun startPlaybackLoop() {
-        while (true) {
-            delay(TICK_INTERVAL_MS)
-            val state = _uiState.value
-            if (state.isLoading || !state.playbackState.isPlaying || routePoints.size < 2) continue
-            val steps = state.playbackState.speedMultiplier.toInt().coerceIn(1, 4)
-            repeat(steps) { advancePosition() }
+        scope.launch {
+            gpsSourceFactory.create(routePoints, playbackStateFlow).positions.collect { pos ->
+                applyGpsPosition(pos)
+            }
         }
     }
 
-    private fun advancePosition() {
-        if (routePoints.size < 2) return
-        val maxIndex = routePoints.size - 1
-        if (currentPositionIndex >= maxIndex) {
-            currentPositionIndex = 0
-            distanceTravelled = 0f
-        }
-        val from = routePoints[currentPositionIndex]
-        currentPositionIndex++
-        val to = routePoints[currentPositionIndex]
-
-        val segmentKm = haversineKm(from, to)
-        distanceTravelled += segmentKm
-        val speedKmh = (segmentKm * 3600f).coerceIn(5f, 80f)
-        powerWalk = (powerWalk + Random.nextInt(-10, 11)).coerceIn(130, 220)
-        val heading = bearing(from, to)
-
+    private fun applyGpsPosition(pos: GpsPosition) {
         _uiState.update { state ->
             state.copy(
-                completedPolyline = routePoints.take(currentPositionIndex + 1).toImmutableList(),
-                currentPosition = to,
-                currentHeading = heading,
+                completedPolyline = routePoints.take(pos.routePointIndex + 1).toImmutableList(),
+                currentPosition = pos.latLng,
+                currentHeading = pos.heading,
                 hudMetrics =
                     HudMetrics(
-                        speed = speedKmh,
-                        distance = distanceTravelled,
-                        power = powerWalk,
-                        batteryPercent = batteryPercent,
+                        speed = pos.speedKmh,
+                        distance = pos.distanceTravelledKm,
+                        power = pos.power,
+                        batteryPercent = 88,
                     ),
-                playbackState = state.playbackState.copy(currentKm = distanceTravelled),
+                playbackState = state.playbackState.copy(currentKm = pos.distanceTravelledKm),
             )
         }
     }
@@ -288,26 +259,5 @@ class LiveRideViewModelImpl(
 
     override fun dispose() {
         scope.cancel()
-    }
-
-    private fun haversineKm(from: LatLng, to: LatLng): Float {
-        val r = 6371.0
-        val dLat = Math.toRadians(to.latitude - from.latitude)
-        val dLon = Math.toRadians(to.longitude - from.longitude)
-        val lat1 = Math.toRadians(from.latitude)
-        val lat2 = Math.toRadians(to.latitude)
-        val a =
-            sin(dLat / 2) * sin(dLat / 2) + cos(lat1) * cos(lat2) * sin(dLon / 2) * sin(dLon / 2)
-        val c = 2 * atan2(sqrt(a), sqrt(1 - a))
-        return (r * c).toFloat()
-    }
-
-    private fun bearing(from: LatLng, to: LatLng): Float {
-        val dLon = Math.toRadians(to.longitude - from.longitude)
-        val lat1 = Math.toRadians(from.latitude)
-        val lat2 = Math.toRadians(to.latitude)
-        val y = sin(dLon) * cos(lat2)
-        val x = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(dLon)
-        return (Math.toDegrees(atan2(y, x)).toFloat() + 360f) % 360f
     }
 }

@@ -19,7 +19,6 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kermit)
     api(libs.okhttp)
-    api(libs.json)
     implementation(libs.kotlinx.serialization.json)
 
     // Testing

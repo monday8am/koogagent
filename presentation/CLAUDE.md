@@ -40,6 +40,18 @@ Each feature gets its own package: `com.monday8am.edgelab.presentation.<feature>
 - MUST call `viewModel.dispose()` at end of every test
 - See `docs/testing.md` for complete template
 
+## Mandatory Deliverables
+
+When adding or modifying a ViewModel:
+- Unit test file at `presentation/src/test/kotlin/.../XxxViewModelTest.kt`
+- Tests cover: initial state, at least one action→state transition, and `dispose()`
+- Use `StandardTestDispatcher`, `Dispatchers.setMain`/`resetMain`, and fake repositories from `docs/testing.md`
+
+When adding or modifying a Composable screen in `:app:*`:
+- `@Preview` function in the same file covering default state + at least one variant (loading, error, or non-default data)
+
+These are not optional. Do not mark a task complete without them.
+
 ## Anti-patterns
 
 - Importing `androidx.lifecycle.ViewModel` (wrong module — goes in `:app:*`)
