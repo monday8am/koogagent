@@ -24,8 +24,7 @@ import kotlinx.coroutines.flow.map
 fun AppNavigation(
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
-) {
-    val onboardViewModel: AndroidOnboardViewModel =
+    onboardViewModel: AndroidOnboardViewModel =
         viewModel {
             AndroidOnboardViewModel(
                 OnboardViewModelImpl(
@@ -33,7 +32,8 @@ fun AppNavigation(
                     authRepository = Dependencies.authRepository,
                 )
             )
-        }
+        },
+) {
 
     val startDestination by
         produceState<Route?>(initialValue = null) {
